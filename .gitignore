@@ -1,0 +1,14 @@
+_venv
+__pycache__
+.vscode
+.ipynb_checkpoints
+
+*.egg-info
+
+/_temp
+/database/Portfolio
+/statics/secrets.py
+
+geckodriver.log
+test.py
+test.ipynb
