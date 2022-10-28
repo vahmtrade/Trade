@@ -4,6 +4,10 @@ __pycache__
 .ipynb_checkpoints
 
 *.egg-info
+*.pdf
+*.docx
+*.pkl
+*.txt
 
 /_temp
 /database/Portfolio
