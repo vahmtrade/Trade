@@ -1077,6 +1077,45 @@ def get_pe_data(name, kind):
 
     return pe, pe_norm, pe_u
 
+def select_df(df,str1,str2):
+    first = []
+    end=[]
+    ########search for str1 str2##########
+    for i in df.index:
+        for j in df.columns:
+            if df.loc[i,j]==str1:
+                first.append(i)
+
+            if df.loc[i,j]==str2:
+                end.append(i)
+    a=[]
+    #########search for str2 subsequent str1##########
+    for i in end:
+        if i-first[0]>0:
+            a.append(i)
+ 
+    resault=df.loc[first[0]:a[0]]
+    ############preprocess resault#############
+    resault.dropna(axis=1,how='all',inplace=True)
+    resault.dropna(axis=0,how='all',inplace=True)
+    # remove '-' from data
+    for i in resault.index:
+        for j in resault.columns:
+            if resault.loc[i, j] == "-":
+                resault.loc[i, j] = 1         
+    return resault    
+
+def delete_empty(df):
+    c=0
+    empty=[]
+    for i in df.columns:
+        for j in df[i]:
+            if (j==1)|(j==0):
+                c+=1
+        if c==len(df):
+            empty.append(i)     
+        c=0
+    df.drop(empty,axis=1,inplace=True)      
 
 class DesiredPortfolio:
     def __init__(self, names, farsi, start, end):
@@ -3168,57 +3207,61 @@ class Stock:
     def get_cost(self, period):
         # read cost data
         if period == "yearly":
-            cost = pd.read_excel(
-                f"{DB}/industries/{self.industry}/{self.Name}/cost/yearly/cost.xlsx"
+            # all data is cost_dl 
+            cost_dl = pd.read_excel(
+                f"{DB}/industries/{self.industry}/{self.Name}/cost/yearly.xlsx"
             )
-            official = pd.read_excel(
-                f"{DB}/industries/{self.industry}/{self.Name}/cost/yearly/official.xlsx"
+            official_dl = pd.read_excel(
+                f"{DB}/industries/{self.industry}/{self.Name}/official/yearly.xlsx"
             )
-            overhead = pd.read_excel(
-                f"{DB}/industries/{self.industry}/{self.Name}/cost/yearly/overhead.xlsx"
-            )
-            # remove '-' from data
-            for i in cost.index:
-                for j in cost.columns:
-                    if cost.loc[i, j] == "-":
-                        cost.loc[i, j] = 1
-            for i in overhead.index:
-                for j in overhead.columns:
-                    if overhead.loc[i, j] == "-":
-                        overhead.loc[i, j] = 1
-            for i in official.index:
-                for j in official.columns:
-                    if official.loc[i, j] == "-":
-                        official.loc[i, j] = 1
+            #select desired data
+            cost=select_df(cost_dl,'بهای تمام شده','جمع بهای تمام شده')
+            overhead=select_df(cost_dl,'هزینه سربار','جمع')
+            official=select_df(official_dl,'هزینه های عمومی و اداری','جمع')
+            personnel=select_df(official_dl,'تعداد پرسنل','تعداد پرسنل تولیدی شرکت')                      
+            #define column
             my_col = list(self.income_rial_yearly.index)
             my_col.insert(0, "Data")
 
         elif period == "fasli":
-            cost = pd.read_excel(
-                f"{DB}/industries/{self.industry}/{self.Name}/cost/fasli/cost.xlsx"
+            cost_dl = pd.read_excel(
+                f"{DB}/industries/{self.industry}/{self.Name}/cost/fasli.xlsx"
             )
-            official = pd.read_excel(
-                f"{DB}/industries/{self.industry}/{self.Name}/cost/fasli/official.xlsx"
-            )
-            overhead = pd.read_excel(
-                f"{DB}/industries/{self.industry}/{self.Name}/cost/fasli/overhead.xlsx"
-            )
+            official_dl = pd.read_excel(
+                f"{DB}/industries/{self.industry}/{self.Name}/official/fasli.xlsx"
+            )            
+            #select desired data
+            cost=select_df(cost_dl,'بهای تمام شده','جمع بهای تمام شده')
+            overhead=select_df(cost_dl,'هزینه سربار','جمع')
+            official=select_df(official_dl,'هزینه های عمومی و اداری','جمع')
+            personnel=select_df(official_dl,'تعداد پرسنل','تعداد پرسنل تولیدی شرکت')
             my_col = list(self.income_rial_fasli.index)
             my_col.insert(0, "Data")
+        #preprocess data
         cost.dropna(how="all", inplace=True)
         official.dropna(how="all", inplace=True)
         overhead.dropna(how="all", inplace=True)
-        # change column name to english
+        personnel.dropna(how="all", inplace=True)
+        # change column name
         for i in range(len(my_col)):
             cost.rename(columns={cost.columns[i]: my_col[i]}, inplace=True)
             official.rename(columns={official.columns[i]: my_col[i]}, inplace=True)
             overhead.rename(columns={overhead.columns[i]: my_col[i]}, inplace=True)
+            personnel.rename(columns={personnel.columns[i]: my_col[i]}, inplace=True)
         cost.dropna(axis=0, inplace=True)
         official.dropna(axis=0, inplace=True)
         overhead.dropna(axis=0, inplace=True)
+        personnel.dropna(axis=0, inplace=True)
+        # set Data is index 
         cost.set_index("Data", inplace=True)
         official.set_index("Data", inplace=True)
         overhead.set_index("Data", inplace=True)
+        personnel.set_index("Data", inplace=True)
+        # drop unnessecary data
+        cost.drop('بهای تمام شده',inplace=True)
+        overhead.drop('هزینه سربار',inplace=True)
+        official.drop('هزینه های عمومی و اداری',inplace=True)
+        personnel.drop('تعداد پرسنل',inplace=True)
         cost_index = [
             "direct_material",
             "direct_salary",
@@ -3255,18 +3298,17 @@ class Stock:
         for i in range(len(official_index)):
             official.rename(index={official.index[i]: official_index[i]}, inplace=True)
             overhead.rename(index={overhead.index[i]: official_index[i]}, inplace=True)
+        #change personel index to english
+        personnel_index=['prod','non_prod']
+        for i in range(len(personnel_index)):
+            personnel.rename(index={personnel.index[i]:personnel_index[i]},inplace=True)
         # transpose data
         cost = cost.T
         overhead = overhead.T
         official = official.T
-        # convert to number
-        for c in cost.columns:
-            cost[c] = [to_digits(i) for i in cost[c]]
-        for c in official.columns:
-            official[c] = [to_digits(i) for i in official[c]]
-        for c in overhead.columns:
-            overhead[c] = [to_digits(i) for i in overhead[c]]
-
+        personnel=personnel.T
+        #add total to personel
+        personnel['total']=personnel['prod']+personnel['non_prod']
         # define new definition of cost extract units of cost
         my_cost = pd.DataFrame(columns=["salary", "material", "energy"])
         #inventory ratio
@@ -3299,6 +3341,7 @@ class Stock:
             self.overhead_yearly = overhead
             self.official_yearly = official
             self.my_cost_yearly = my_cost
+            self.personnel_yearly=personnel
             # create cost com to revenue
             my_cost_com = pd.DataFrame(columns=my_cost.columns)
             for i in my_cost:
@@ -3320,6 +3363,7 @@ class Stock:
             self.overhead_fasli = overhead
             self.official_fasli = official
             self.my_cost_fasli = my_cost
+            self.personnel_fasli=personnel
             # create cost com to revenue
             my_cost_com = pd.DataFrame(columns=my_cost.columns)
             for i in my_cost:
@@ -3605,22 +3649,87 @@ class Stock:
         self.p_fcfe = self.pe_fw / self.fcfe.loc[self.future_year]["ratio"]
 
     def get_product(self, period):
-        if period == "yearly":
-            adress = f"{DB}/industries/{self.industry}/{self.Name}/product/yearly.xlsx"
-            product = pd.read_excel(adress)
-            product.drop("Unnamed: 0", axis=1, inplace=True)
-            product.set_index(self.income_rial_yearly.index, inplace=True)
-            product["Rate"] = product["Revenue"] / product["Count"]
-            self.product_yearly = product
-        elif period == "monthly":
-            adress = f"{DB}/industries/{self.industry}/{self.Name}/product/monthly.xlsx"
-            product = pd.read_excel(adress, index_col="Unnamed: 0")
-            product["Rate"] = product["Revenue"] / product["Count"]
-            # decompose trend and cycle from count revenue
-            cycle, trend = hp_filter.hpfilter(product["Count"])
-            product["cycle"] = cycle
-            product["trend"] = trend
-            self.product_monthly = product
+        if period == "yearly":         
+            #all data
+            product_dl=pd.read_excel(f"{DB}/industries/{self.industry}/{self.Name}/product/yearly_dl.xlsx")
+            #select desired data
+            count_product=select_df(product_dl,'مقدار تولید','جمع')
+            count_revenue=select_df(product_dl,'مقدار فروش','جمع')
+            price_revenue=select_df(product_dl,'مبلغ فروش','جمع')
+            #define column
+            my_col = list(self.income_rial_yearly.index)
+            my_col.insert(0, "Data")     
+            my_col.insert(1,'unit')           
+          
+        elif period=='monthly':
+            #all data
+            product_dl=pd.read_excel(f"{DB}/industries/{self.industry}/{self.Name}/product/monthly_dl.xlsx")
+            #selece desired data
+            count_product=select_df(product_dl,'مقدار تولید','جمع')
+            count_revenue=select_df(product_dl,'مقدار فروش','جمع')
+            price_revenue=select_df(product_dl,'مبلغ فروش','جمع')
+            #define my_col
+            all_time_id=re.findall(regex_en_timeid_q, str(count_product.iloc[0]))
+            my_col=all_time_id
+            my_col.insert(0, "Data")
+            my_col.insert(1,'unit') 
+        #change column name
+        for i in range(len(my_col)):
+           count_product.rename(columns={count_product.columns[i]: my_col[i]}, inplace=True)  
+           count_revenue.rename(columns={count_revenue.columns[i]: my_col[i]}, inplace=True)  
+           price_revenue.rename(columns={price_revenue.columns[i]: my_col[i]}, inplace=True)  
+        # set Data is index 
+        count_product.set_index("Data", inplace=True) 
+        count_revenue.set_index("Data", inplace=True)
+        price_revenue.set_index("Data", inplace=True)
+        #delete unnecessary data'
+        count_product.dropna(how='all',inplace=True)
+        count_product.drop('مقدار تولید',inplace=True)
+        count_revenue.dropna(how='all',inplace=True)
+        count_revenue.drop('مقدار فروش',inplace=True)  
+        price_revenue.dropna(how='all',inplace=True) 
+        price_revenue.drop('مبلغ فروش',inplace=True)     
+        #transpose data      
+        count_product=count_product.T
+        count_revenue=count_revenue.T
+        price_revenue=price_revenue.T
+        #extract unit and delete from df
+        self.unit_prod=count_product.loc[['unit']]
+        count_product.drop('unit',inplace=True)
+        count_revenue.drop('unit',inplace=True)
+        price_revenue.drop('unit',inplace=True)
+        #delete duplicated culoumns
+        count_product=count_product.loc[:,~count_product.columns.duplicated()]
+        count_revenue=count_revenue.loc[:,~count_revenue.columns.duplicated()]
+        price_revenue=price_revenue.loc[:,~price_revenue.columns.duplicated()]
+        #delete empty file
+        delete_empty(count_product)
+        delete_empty(count_revenue)
+        delete_empty(price_revenue)  
+        #create count_product_com
+        count_product_com=pd.DataFrame(columns=count_product.columns)
+        for i in count_product.columns:
+            count_product_com[i]=count_product[i]/count_product['جمع']
+        #create count_revenue_com    
+        count_revenue_com=pd.DataFrame(columns=count_revenue.columns)
+        for i in count_revenue.columns:
+            count_revenue_com[i]=count_revenue[i]/count_revenue['جمع']  
+        #create price_revenue_com    
+        price_revenue_com=pd.DataFrame(columns=price_revenue.columns)
+        for i in price_revenue.columns:
+            price_revenue_com[i]=price_revenue[i]/price_revenue['جمع']                   
+        ########## create product_dataframe ################
+        product=pd.DataFrame(columns=['Product'])
+        product['Product']=count_product['جمع']
+        product['Count']=count_revenue['جمع']
+        product['Revenue']=price_revenue['جمع']
+        product['Rate']=product['Revenue']/product['Count']
+        cycle, trend = hp_filter.hpfilter(product["Count"])
+        product["cycle"] = cycle
+        product["trend"] = trend        
+        ####### create quarterly data from monthly #########
+        if period == "monthly":
+
             # create quarterly product
             fiscal_dic = {
                 12: {1: 3, 2: 6, 3: 9, 4: 12},
@@ -3655,7 +3764,30 @@ class Stock:
                 product_q = product_q[-self.n :]
             product_q.set_index(self.income_rial_fasli.index, inplace=True)
             self.product_quarterly = product_q
+        ############ send data to self ############
+        if period=='yearly':
+            self.count_product_yearly=count_product
+            self.count_product_com_yearly=count_product_com
+            
+            self.count_revenue_yearly=count_revenue
+            self.count_revenue_com_yearly=count_revenue_com
 
+            self.price_revenue_yearly=price_revenue
+            self.price_revenue_com_yearly=price_revenue_com 
+
+            self.product_yearly=product           
+        
+        elif period=='monthly':
+            self.count_product_monthly=count_product
+            self.count_product_com_monthly=count_product_com
+            
+            self.count_revenue_monthly=count_revenue
+            self.count_revenue_com_monthly=count_revenue_com
+
+            self.price_revenue_monthly=price_revenue
+            self.price_revenue_com_monthly=price_revenue_com
+
+            self.product_monthly=product            
         return product
 
     def update_predict(
