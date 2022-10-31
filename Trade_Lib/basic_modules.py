@@ -7,13 +7,22 @@ def create_database_structure():
 
     for stock, info in watchlist.items():
 
-        for i in ("income", "balancesheet", "cashflow", "product", "cost", "pe",'analyse'):
+        for i in (
+            "balancesheet",
+            "income",
+            "cashflow",
+            "product",
+            "cost",
+            "official",
+            "pe",
+            "analyse",
+        ):
 
-            if i == "income" or i == "cost":
-                for j in ("yearly", "fasli"):
-                    Path(
-                        f"{DB}/industries/{info['indus']}/{stock}/{i}/{j}/"
-                    ).mkdir(parents=True, exist_ok=True)
+            if i == "income":
+                for j in ("yearly", "quarterly"):
+                    Path(f"{DB}/industries/{info['indus']}/{stock}/{i}/{j}/").mkdir(
+                        parents=True, exist_ok=True
+                    )
 
             else:
                 Path(f"{DB}/industries/{info['indus']}/{stock}/{i}/").mkdir(

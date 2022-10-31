@@ -7,6 +7,7 @@ from time import sleep
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.keys import Keys
 
 from Trade_Lib.basic_modules import to_digits, best_table_id
 from statics.secrets import bourseview_user, bourseview_pass
@@ -47,6 +48,26 @@ if platform.system() == "Windows":
 
 # wait for load page
 driver.implicitly_wait(wait_time)
+
+# maximize driver
+driver.maximize_window()
+sleep(break_time)
+
+
+def move_last_file(new_path):
+    # find latest downloaded file
+    sleep(4 * break_time)
+    filename = max(
+        [f for f in os.listdir(DB)],
+        key=lambda x: os.path.getctime(os.path.join(DB, x)),
+    )
+
+    # replace last file
+    if ".xlsx" in filename:
+        os.replace(
+            f"{DB}/{filename}",
+            new_path,
+        )
 
 
 def codal_login():
@@ -351,11 +372,7 @@ def bourseview_login():
     """login into bourseview panel"""
 
     # get page
-    driver.get("https://www.bourseview.com")
-    sleep(break_time)
-
-    # go to app
-    driver.find_element(By.XPATH, "/html/body/div/div[1]/div[2]/nav/ul/li[7]").click()
+    driver.get("https://www.bourseview.com/home/#/account/login")
     sleep(break_time)
 
     # go to login page
@@ -375,131 +392,120 @@ def bourseview_login():
     # login
     driver.find_element(By.XPATH, "//*[@id='submit_btn']").click()
 
-    sleep(4 * break_time)
+    sleep(6 * break_time)
 
 
 def bourseview_search(stock_name):
     """search stock in bourseview"""
 
-    try:
-        # search stock name
-        sleep(break_time)
-        driver.find_element(By.XPATH, "//*[@id='input-0']").send_keys(
-            watchlist[stock_name]["token"]
-        )
-        sleep(break_time)
+    # search stock name
+    sleep(break_time)
+    driver.find_element(By.XPATH, "//*[@id='input-0']").send_keys(
+        watchlist[stock_name]["token"]
+    )
+    sleep(break_time)
 
-        # select first choice
-        driver.find_element(
-            By.XPATH,
-            "/html/body/md-virtual-repeat-container/div/div[2]/ul/li[1]/md-autocomplete-parent-scope/div/div/div[1]",
-        ).click()
-        sleep(break_time)
-
-    except:
-        pass
+    # select first choice
+    driver.find_element(
+        By.XPATH,
+        "/html/body/md-virtual-repeat-container/div/div[2]/ul/li[1]/md-autocomplete-parent-scope/div/div/div[1]",
+    ).click()
+    sleep(2 * break_time)
 
 
-def bourseview_balancesheet(stock_name, n=5):
-    """download 2 files : yearly,fasli"""
+def bourseview_balancesheet(stock_name, y=5, q=5):
+    """download 2 files : yearly,quarterly"""
 
     bourseview_search(stock_name)
 
     # select 'tarazname'
-    driver.find_element(By.XPATH,"//*[@id='stocks-sub-menu']/ul/li[2]").click()
+    driver.find_element(By.XPATH, "//*[@id='stocks-sub-menu']/ul/li[2]").click()
     sleep(break_time)
 
     # click blanck page
     driver.find_element(By.XPATH, "/html").click()
     sleep(break_time)
 
-    # select 'dore'
-    options = {5:1,10:2,20:3,50:4}
-    driver.find_element(By.XPATH, f"//*[@id='new-balance-sheet-grid']/div/div[1]/span[1]/span[4]/select/option[{options[n]}]").click()
-    sleep(break_time)
+    # download 2 excels
+    for time_type in ("yearly", "quarterly"):
 
-    # download 2 file
-    for time_type in (1,2): #("yearly", "quarterly")
-        # click 'salane','fasli'
-        driver.find_element(By.XPATH, f"//*[@id='new-balance-sheet-grid']/div/div[1]/span[1]/span[3]/select/option[{time_type}]").click()
+        if time_type == "yearly":
+            n = y
+
+        if time_type == "quarterly":
+            n = q
+
+        # select 'nooe'
+        driver.find_element(By.XPATH, f"//option[@value='{time_type}']").click()
+        sleep(2 * break_time)
+
+        # select 'dore'
+        driver.find_element(By.XPATH, f"//option[@value='{n}']").click()
         sleep(4 * break_time)
 
         # click download excel
-        driver.find_element(By.XPATH,"//*[@id='new-balance-sheet-grid']/div/div[1]/span[2]/span").click()
-        sleep(break_time)
-
-        # find latest downloaded file
-        sleep(4 * break_time)
-        filename = max(
-            [f for f in os.listdir(DB)],
-            key=lambda x: os.path.getctime(os.path.join(DB, x)),
-        )
+        driver.find_element(
+            By.XPATH, "//*[@id='new-balance-sheet-grid']/div/div[1]/span[2]/span"
+        ).click()
+        sleep(2 * break_time)
 
         # replace last file
-        dr = {1: "yearly", 2: "fasli"}
-
-        if ".xlsx" in filename:
-            os.replace(
-                f"{DB}/{filename}",
-                f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/balancesheet/{dr[time_type]}.xlsx",
-            )
-            sleep(break_time)
+        move_last_file(
+            f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/balancesheet/{time_type}.xlsx"
+        )
 
 
-def bourseview_income_statement(stock_name, n=5):
-    """download 4 files : yearly,fasli,rial,dollar"""
+def bourseview_income_statement(stock_name, y=5, q=5):
+    """download 4 files : yearly,quarterly,rial,dollar"""
 
     bourseview_search(stock_name)
 
     # select 'sood va zian'
-    driver.find_element(By.XPATH,"//*[@id='stocks-sub-menu']/ul/li[3]").click()
-    sleep(4 * break_time)
+    driver.find_element(By.XPATH, "//*[@id='stocks-sub-menu']/ul/li[3]").click()
+    sleep(break_time)
 
     # click blank page
     driver.find_element(By.XPATH, "/html").click()
     sleep(break_time)
 
-    # select 'dore'
-    options = {5:1,10:2,20:3,50:4}
-    driver.find_element(By.XPATH, f"//*[@id='new-income-statement-grid']/div/div[1]/span[1]/span[5]/select/option[{options[n]}]").click()
-    sleep(break_time)
+    # download 4 excels
+    for time_type in ("yearly", "quarterly"):
 
-    # download 4 file
-    for time_type in (1,2): #("yearly", "quarterly")
-    
-        # click 'salane','fasli'
-        driver.find_element(By.XPATH, f"//*[@id='new-income-statement-grid']/div/div[1]/span[1]/span[4]/select/option[{time_type}]").click()
-        sleep(4 * break_time)
+        if time_type == "yearly":
+            n = y
 
-        for money_type in (1,3): #("IRR", "USDf")
+        if time_type == "quarterly":
+            n = q
+
+        # select 'nooe'
+        driver.find_element(By.XPATH, f"//option[@value='{time_type}']").click()
+        sleep(2 * break_time)
+
+        # select 'dore'
+        driver.find_element(By.XPATH, f"//option[@value='{n}']").click()
+        sleep(2 * break_time)
+
+        for money_type in ("IRR", "USDf"):
 
             # click 'rial','dollar azad'
-            driver.find_element(By.XPATH, f"//*[@id='new-income-statement-grid']/div/div[1]/span[1]/span[9]/select/option[{money_type}]").click()
+            driver.find_element(By.XPATH, f"//option[@value='{money_type}']").click()
             sleep(6 * break_time)
 
             # click download excel
-            driver.find_element(By.XPATH,"//*[@id='new-income-statement-grid']/div/div[1]/span[2]/span").click()
-            sleep(break_time)
+            driver.find_element(
+                By.XPATH, "//*[@id='new-income-statement-grid']/div/div[1]/span[2]/span"
+            ).click()
+            sleep(2 * break_time)
 
-            # find latest downloaded file
-            sleep(4 * break_time)
-            filename = max(
-                [f for f in os.listdir(DB)],
-                key=lambda x: os.path.getctime(os.path.join(DB, x)),
-            )
             # replace last file
-            drt = {1: "yearly",2: "fasli"}
-            drm = {1: "rial",3: "dollar"}
-
-            if ".xlsx" in filename:
-                os.replace(
-                    f"{DB}/{filename}",
-                    f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/income/{drt[time_type]}/{drm[money_type]}.xlsx",
-                )
+            money_options = {"IRR": "rial", "USDf": "dollar"}
+            move_last_file(
+                f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/income/{time_type}/{money_options[money_type]}.xlsx"
+            )
 
 
-def bourseview_cashflow(stock_name, n=5):
-    """download 2 files : yearly,fasli"""
+def bourseview_cashflow(stock_name, y=5, q=5):
+    """download 2 files : yearly,quarterly"""
 
     bourseview_search(stock_name)
 
@@ -514,61 +520,44 @@ def bourseview_cashflow(stock_name, n=5):
     driver.find_element(By.XPATH, "/html").click()
     sleep(break_time)
 
-    # select 'dore'
-    options = {5:1,10:2,20:3,50:4}
-    driver.find_element(By.XPATH, f"//*[@id='new-cash-flow-grid']/div/div[1]/span[1]/span[4]/select/option[{options[n]}]").click()
-    sleep(break_time)
-
     # download 2 file
-    for time_type in (1,2): #("yearly", "quarterly")
-        # click 'salane','fasli'
-        driver.find_element(By.XPATH, f"//*[@id='new-cash-flow-grid']/div/div[1]/span[1]/span[3]/select/option[{time_type}]").click()
+    for time_type in ("yearly", "quarterly"):
+
+        if time_type == "yearly":
+            n = y
+
+        if time_type == "quarterly":
+            n = q
+
+        # select 'nooe'
+        driver.find_element(By.XPATH, f"//option[@value='{time_type}']").click()
+        sleep(2 * break_time)
+
+        # select 'dore'
+        driver.find_element(By.XPATH, f"//option[@value='{n}']").click()
         sleep(4 * break_time)
 
         # click download excel
-        driver.find_element(By.XPATH,"//*[@id='new-cash-flow-grid']/div/div[1]/span[2]/span").click()
-        sleep(break_time)
+        driver.find_element(
+            By.XPATH, "//*[@id='new-cash-flow-grid']/div/div[1]/span[2]/span"
+        ).click()
+        sleep(2 * break_time)
 
-        # find latest downloaded file
-        sleep(4 * break_time)
-        filename = max(
-            [f for f in os.listdir(DB)],
-            key=lambda x: os.path.getctime(os.path.join(DB, x)),
-        )
-
-        drt = {1: "yearly",2: "fasli"}
         # replace last file
-        if ".xlsx" in filename:
-            os.replace(
-                f"{DB}/{filename}",
-                f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/cashflow/{drt[time_type]}.xlsx",
-            )
-            sleep(break_time)
+        move_last_file(
+            f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/cashflow/{time_type}.xlsx"
+        )
 
 
 def bourseview_product_revenue(stock_name, y=5, q=5, m=5):
-    """create 6 files : (yearly,quarterly,monthly) (dl)
+    """create 6 files : (yearly,quarterly,monthly) (seprated)
     <y = year : 5,10,20,50>
     <q = quarterly : 5,10,20,50>
     <m = month : 5,10,20,50>"""
 
-    bourseview_search(stock_name)
-    try:
-        # select 'tolid va frosh'
-        driver.find_element(
-            By.XPATH,
-            "/html/body/div[2]/div/div/div/div/div[3]/div[2]/div/div/div/div[2]/ul/li[7]/a[2]",
-        ).click()
-        sleep(break_time)
+    def dl_excels(new_name=""):
 
-        # click blank page
-        driver.find_element(
-            By.XPATH,
-            "/html/body/div[2]/div/div/div/div/div[3]/div[2]/div/div/div/div[3]/div[1]/div[1]/div[1]/div/div",
-        ).click()
-        sleep(break_time)
-
-        # extract needed data to excel
+        # download seprated excels
         for time_type in ("yearly", "quarterly", "monthly"):
 
             if time_type == "yearly":
@@ -582,309 +571,157 @@ def bourseview_product_revenue(stock_name, y=5, q=5, m=5):
 
             # select 'nooe'
             driver.find_element(By.XPATH, f"//option[@value='{time_type}']").click()
+            sleep(2 * break_time)
 
             # select 'dore'
             driver.find_element(By.XPATH, f"//option[@value='{n}']").click()
-            sleep(6 * break_time)
+            sleep(4 * break_time)
 
             # click download excel
             driver.find_element(
                 By.XPATH,
-                "/html/body/div[2]/div/div/div/div/div[3]/div[2]/div/div/div/div[3]/div[1]/div[2]/div/div/div[1]/span[2]/span",
+                "//*[@id='grid']/div/div[1]/span[2]/span",
             ).click()
-
-            # find latest downloaded file
             sleep(2 * break_time)
-            filename = max(
-                [f for f in os.listdir(DB)],
-                key=lambda x: os.path.getctime(os.path.join(DB, x)),
-            )
 
             # replace last file
-            if ".xlsx" in filename:
-                os.replace(
-                    f"{DB}/{filename}",
-                    f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/product/{time_type}_dl.xlsx",
-                )
-
-            # scroll horizontally to get full data
-            scroll_bar = driver.find_element(
-                By.XPATH,
-                "/html/body/div[2]/div/div/div/div/div[3]/div[2]/div/div/div/div[3]/div[1]/div[2]/div/div/div[2]/div[1]",
+            move_last_file(
+                f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/product/{time_type}{new_name}.xlsx"
             )
-
-            for _ in range(n // 2):
-                scroll_bar.location_once_scrolled_into_view
-                ActionChains(driver).click_and_hold(scroll_bar).move_by_offset(
-                    scroll_bar.rect["width"] / 4, 0
-                ).release().perform()
-
-            # move mouse to blank page
-            sleep(break_time)
-            ActionChains(driver).move_by_offset(
-                0, scroll_bar.rect["height"] / 4
-            ).perform()
-
-            # extract 3 table Product,Count,Revenue
-            for i in (1, 2, 3):
-                table = driver.find_element(
-                    By.XPATH,
-                    f"/html/body/div[2]/div/div/div/div/div[3]/div[2]/div/div/div/div[3]/div[1]/div[2]/div/div/div[2]/div[{i}]/div[2]",
-                ).text
-
-                if i == 1:
-                    # create dataframe with time id like 1400/03
-                    time_ids = re.findall(regex_en_timeid_q, table)
-                    df = pd.DataFrame(index=time_ids)
-
-                    df["Product"] = [to_digits(a) for a in table.split()[-n:]]
-
-                if i == 2:
-                    df["Count"] = [to_digits(a) for a in table.split()[-n:]]
-
-                if i == 3:
-                    df["Revenue"] = [to_digits(a) for a in table.split()[-n:]]
-
-            # click 'tafkik dakheli,khareji'
-            driver.find_element(
-                By.XPATH,
-                "/html/body/div[2]/div/div/div/div/div[3]/div[2]/div/div/div/div[3]/div[1]/div[2]/div/div/div[1]/span[1]/div[3]/span[2]",
-            ).click()
-            sleep(6 * break_time)
-
-            # define seprated revenue location
-            seprated_table = {"yearly": "2", "quarterly": "2", "monthly": "3"}
-            seprated_xpath = (
-                "/html/body/div[2]/div/div/div/div/div[3]/div[2]/div/div/div/div[3]/div[1]/div[2]/div/div/div[2]/div["
-                + seprated_table[time_type]
-                + "]"
-            )
-
-            try:
-                # scroll horizontally to get full data
-                scroll_bar = driver.find_element(
-                    By.XPATH,
-                    "/html/body/div[2]/div/div/div/div/div[3]/div[2]/div/div/div/div[3]/div[1]/div[2]/div/div/div[2]/div[1]",
-                )
-
-                for _ in range(n // 2):
-                    scroll_bar.location_once_scrolled_into_view
-                    ActionChains(driver).click_and_hold(scroll_bar).move_by_offset(
-                        scroll_bar.rect["width"] / 4, 0
-                    ).release().perform()
-
-                # move mouse to blank page
-                sleep(break_time)
-                ActionChains(driver).move_by_offset(
-                    0, scroll_bar.rect["height"] / 4
-                ).perform()
-
-                # define seprated table
-                separated = driver.find_element(By.XPATH, seprated_xpath).text
-                separated = [a for a in (separated.split("\n")) if a != "میلیون ریال"]
-
-                # find domestic and foreign row index
-                domestic_index = separated.index("جمع فروش داخلی") + 1
-                foreign_index = separated.index("جمع فروش خارجی") + 1
-
-                # extract 2 table Domestic,Foreign
-                for i in (domestic_index, foreign_index):
-                    table = driver.find_element(
-                        By.XPATH, f"{seprated_xpath}/div[2]/div[{i}]"
-                    ).text
-                    sleep(break_time)
-
-                    if i == domestic_index:
-                        df["Domestic"] = [to_digits(a) for a in table.split()[-n:]]
-
-                    if i == foreign_index:
-                        df["Foreign"] = [to_digits(a) for a in table.split()[-n:]]
-
-            except:
-                df["Domestic"] = n * [0]
-                df["Foreign"] = n * [0]
-
-            # disable 'tafkik dakheli,khareji'
-            driver.find_element(
-                By.XPATH,
-                "/html/body/div[2]/div/div/div/div/div[3]/div[2]/div/div/div/div[3]/div[1]/div[2]/div/div/div[1]/span[1]/div[3]/span[2]",
-            ).click()
-
-            # export in excel
-            df.to_excel(
-                f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/product/{time_type}.xlsx"
-            )
-    except:
-        print(f"cant download product {stock_name}")
-
-
-def bourseview_cost(stock_name, n=5):
-    """create 4 excel : yearly,fasli,cost,overhead"""
 
     bourseview_search(stock_name)
-    try:
-        # select 'bahaye tamam shode'
-        driver.find_element(By.XPATH,"//*[@id='stocks-sub-menu']/ul/li[13]").click()
-        sleep(break_time)
 
-        # click blanck page
-        driver.find_element(By.XPATH, "/html").click()
-        sleep(break_time)
+    # select 'tolid va frosh'
+    driver.find_element(
+        By.XPATH,
+        "//*[@id='stocks-sub-menu']/ul/li[8]",
+    ).click()
+    sleep(break_time)
 
-        # select 'dore'
-        options = {5:1,10:2,20:3,50:4}
-        driver.find_element(By.XPATH, f"//*[@id='grid-cogs']/div/div[2]/span[1]/span[2]/select/option[{options[n]}]").click()
-        sleep(break_time)
+    # click blanck page
+    driver.find_element(By.XPATH, "/html").click()
+    sleep(break_time)
 
-        # 'salane','fasli'
-        for time_type in (1,2): #("yearly", "quarterly")
-            
-            driver.find_element(By.XPATH, f"//*[@id='grid-cogs']/div/div[2]/span[1]/span[1]/select/option[{time_type}]").click()
-            sleep(4 * break_time)
+    # download base excels
+    dl_excels()
+    sleep(2 * break_time)
 
-            # scroll horizontally to get full data
-            scroll_bar = driver.find_element(
-                By.XPATH,
-                "//*[@id='grid-cogs']/div/div[3]/div",
-            )
-            for _ in range(n // 2):
-                scroll_bar.location_once_scrolled_into_view
-                ActionChains(driver).click_and_hold(scroll_bar).move_by_offset(
-                    scroll_bar.rect["width"] / 4, 0
-                ).release().perform()
+    # click 'tafkik dakheli,khareji'
+    driver.find_element(
+        By.XPATH,
+        "//*[@id='grid']/div/div[1]/span[1]/div[3]",
+    ).click()
+    sleep(6 * break_time)
 
-            # 'bahaye tamam shode'
-            cost = []
-            for i in range(1, 17):
+    # download seprated excels
+    dl_excels("_seprated")
+    sleep(2 * break_time)
 
-                # parameters name
-                text = driver.find_element(
-                    By.XPATH,
-                    f"//*[@id='grid-cogs']/div/div[3]/div/div[1]/div[{i}]/div[1]",
-
-                ).text
-                cost.append(text)
-
-                # numbers
-                for j in range(1, n + 1):
-                    text = driver.find_element(
-                        By.XPATH,
-                        f"//*[@id='grid-cogs']/div/div[3]/div/div[2]/div[{i}]/div[{j}]",
-                    ).text
-
-                    cost.append(text)
-
-            # export in excel
-            df = pd.DataFrame([cost[a : a + n + 1] for a in range(0, len(cost), n + 1)])
-            df.to_excel(
-                f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/cost/{dr[time_type]}/cost.xlsx",
-                index=False,
-            )
-
-            # 'hazineye sarbar'
-            overhead = []
-            for i in range(1, 14):
-
-                # parameters name
-                text = driver.find_element(
-                    By.XPATH,
-                    f"//*[@id='grid-cogs']/div/div[5]/div/div[1]/div[{i}]/div[1]",
-                ).text
-                overhead.append(text)
-
-                # numbers
-                for j in range(1, n + 1):
-                    text = driver.find_element(
-                        By.XPATH,
-                        f"//*[@id='grid-cogs']/div/div[5]/div/div[2]/div[{i}]/div[{j}]",
-                    ).text
-
-                    overhead.append(text)
-
-            # export in excel
-            dr = {1: "yearly", 2: "fasli"}
-
-            df = pd.DataFrame(
-                [overhead[a : a + n + 1] for a in range(0, len(overhead), n + 1)]
-            )
-            df.to_excel(
-                f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/cost/{dr[time_type]}/overhead.xlsx",
-                index=False,
-            )
-
-    except:
-        print(f"cant download cost of {stock_name}")
+    # disable 'tafkik dakheli,khareji'
+    driver.find_element(
+        By.XPATH,
+        "//*[@id='grid']/div/div[1]/span[1]/div[3]",
+    ).click()
+    sleep(2 * break_time)
 
 
-def bourseview_official(stock_name, n=5):
-    """create 2 excel : yearly,fasli"""
+def bourseview_cost(stock_name, y=5, q=5):
+    """create 2 excel : yearly,quarterly
+    <y = year : 5,10,20,50>
+    <q = quarterly : 5,10,20,50>"""
 
     bourseview_search(stock_name)
-    try:
-        # select 'hazine haye omomi edari'
-        driver.find_element(
-            By.XPATH,
-            "/html/body/div[2]/div/div/div/div/div[3]/div[2]/div/div/div/div[2]/ul/li[15]/a[2]",
-        ).click()
-        sleep(break_time)
 
-        # click blanck page
-        driver.find_element(By.XPATH, "/html").click()
-        sleep(break_time)
+    # select 'bahaye tamam shode'
+    driver.find_element(By.XPATH, "//*[@id='stocks-sub-menu']/ul/li[13]").click()
+    sleep(break_time)
+
+    # click blanck page
+    driver.find_element(By.XPATH, "/html").click()
+    sleep(break_time)
+
+    # download excel
+    for time_type in ("yearly", "quarterly"):
+
+        if time_type == "yearly":
+            n = y
+
+        if time_type == "quarterly":
+            n = q
+
+        # select 'nooe'
+        driver.find_element(By.XPATH, f"//option[@value='{time_type}']").click()
+        sleep(2 * break_time)
 
         # select 'dore'
         driver.find_element(By.XPATH, f"//option[@value='{n}']").click()
-        sleep(break_time)
+        sleep(4 * break_time)
 
-        # 'salane','fasli'
-        for time_type in ("yearly", "quarterly"):
+        # click 'hameye' data
+        driver.find_element(
+            By.XPATH, "//*[@id='grid-cogs']/div/div[4]/div/div[1]"
+        ).click()
+        sleep(2 * break_time)
 
-            # select time type
-            dr = {"yearly": "yearly", "quarterly": "fasli"}
-            driver.find_element(By.XPATH, f"//option[@value='{time_type}']").click()
-            sleep(4 * break_time)
+        # go top of page
+        driver.find_element(By.TAG_NAME, "body").send_keys(Keys.CONTROL + Keys.HOME)
+        sleep(4 * break_time)
 
-            # scroll horizontally to get full data
-            scroll_bar = driver.find_element(
-                By.XPATH,
-                "/html/body/div[2]/div/div/div/div/div[3]/div[2]/div/div/div/div[3]/div[1]/div[2]/div/div/div[3]/div",
-            )
-            for _ in range(n // 2):
-                scroll_bar.location_once_scrolled_into_view
-                ActionChains(driver).click_and_hold(scroll_bar).move_by_offset(
-                    scroll_bar.rect["width"] / 4, 0
-                ).release().perform()
+        # click download excel
+        driver.find_element(
+            By.XPATH, "//*[@id='grid-cogs']/div/div[2]/span[2]/span"
+        ).click()
+        sleep(2 * break_time)
 
-            # 'hazinehaye omomi edari'
-            official = []
-            for j in range(1, 14):
+        # replace last file
+        move_last_file(
+            f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/cost/{time_type}.xlsx"
+        )
 
-                # parameters name
-                text = driver.find_element(
-                    By.XPATH,
-                    f"/html/body/div[2]/div/div/div/div/div[3]/div[2]/div/div/div/div[3]/div[1]/div[2]/div/div/div[3]/div/div[1]/div[{j}]/div[1]",
-                ).text
-                official.append(text)
 
-                # numbers
-                for i in range(1, n + 1):
-                    text = driver.find_element(
-                        By.XPATH,
-                        f"/html/body/div[2]/div/div/div/div/div[3]/div[2]/div/div/div/div[3]/div[1]/div[2]/div/div/div[3]/div/div[2]/div[{j}]/div[{i}]",
-                    ).text
+def bourseview_official(stock_name, y=5, q=5):
+    """create 2 excel : yearly,quarterly
+    <y = year : 5,10,20,50>
+    <q = quarterly : 5,10,20,50>"""
 
-                    official.append(text)
+    bourseview_search(stock_name)
 
-            # export in excel
-            df = pd.DataFrame(
-                [official[a : a + n + 1] for a in range(0, len(official), n + 1)]
-            )
-            df.to_excel(
-                f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/cost/{dr[time_type]}/official.xlsx",
-                index=False,
-            )
-    except:
-        print(f"cant download official {stock_name}")
+    # select 'hazine haye omomi edari'
+    driver.find_element(
+        By.XPATH,
+        "//*[@id='stocks-sub-menu']/ul/li[16]",
+    ).click()
+    sleep(break_time)
+
+    # click blanck page
+    driver.find_element(By.XPATH, "/html").click()
+    sleep(break_time)
+
+    # 'salane','fasli'
+    for time_type in ("yearly", "quarterly"):
+
+        if time_type == "yearly":
+            n = y
+
+        if time_type == "quarterly":
+            n = q
+
+        # select 'nooe'
+        driver.find_element(By.XPATH, f"//option[@value='{time_type}']").click()
+        sleep(2 * break_time)
+
+        # select 'dore'
+        driver.find_element(By.XPATH, f"//option[@value='{n}']").click()
+        sleep(4 * break_time)
+
+        # click download excel
+        driver.find_element(By.XPATH, "//*[@id='grid']/div/div[2]/span[2]/span").click()
+        sleep(2 * break_time)
+
+        # replace last file
+        move_last_file(
+            f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/official/{time_type}.xlsx"
+        )
 
 
 def bourseview_price_history(stock_name, start=first_day, end=last_day):
@@ -893,68 +730,50 @@ def bourseview_price_history(stock_name, start=first_day, end=last_day):
     <end : 1400/01/01>"""
 
     bourseview_search(stock_name)
-    try:
-        # select 'tarikhche gheimat'
-        driver.find_element(
-            By.XPATH,
-            "//*[@id='stocks-sub-menu']/ul/li[21]",
-        ).click()
+    # select 'tarikhche gheimat'
+    driver.find_element(
+        By.XPATH,
+        "//*[@id='stocks-sub-menu']/ul/li[21]",
+    ).click()
 
-        sleep(4 * break_time)
+    sleep(4 * break_time)
 
-        # click blank page
-        driver.find_element(By.XPATH, "/html").click()
-        sleep(break_time)
+    # click blank page
+    driver.find_element(By.XPATH, "/html").click()
+    sleep(break_time)
 
-        # send 'tarikh shoroea'
-        driver.find_element(
-            By.XPATH,
-            "//*[@id='stocks-content-body']/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/input",
-        ).send_keys(start)
-        sleep(break_time)
+    # send 'tarikh shoroea'
+    driver.find_element(
+        By.XPATH,
+        "//*[@id='stocks-content-body']/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/input",
+    ).send_keys(start)
+    sleep(break_time)
 
-        # send 'tarikh payan'
-        driver.find_element(
-            By.XPATH,
-            "//*[@id='stocks-content-body']/div[1]/div[2]/div[1]/div[1]/div[3]/div[1]/input",
-        ).send_keys(end)
-        sleep(break_time)
+    # send 'tarikh payan'
+    driver.find_element(
+        By.XPATH,
+        "//*[@id='stocks-content-body']/div[1]/div[2]/div[1]/div[1]/div[3]/div[1]/input",
+    ).send_keys(end)
+    sleep(break_time)
 
-        # click 'namayesh gheimat'
-        driver.find_element(
-            By.XPATH,
-            "//*[@id='stocks-content-body']/div[1]/div[2]/div[1]/div[1]/button",
-        ).click()
-        sleep(break_time)
+    # click 'namayesh gheimat'
+    driver.find_element(
+        By.XPATH,
+        "//*[@id='stocks-content-body']/div[1]/div[2]/div[1]/div[1]/button",
+    ).click()
+    sleep(2 * break_time)
 
-        driver.find_element(
-            By.XPATH,
-            "//*[@id='stocks-content-body']/div[1]/div[2]/div[1]/div[1]/button",
-        ).click()
-        sleep(break_time)
+    # click download excel
+    driver.find_element(
+        By.XPATH,
+        "//*[@id='stocks-content-body']/div[1]/div[2]/div[1]/div[2]/div/div/div[2]/div",
+    ).click()
+    sleep(2 * break_time)
 
-        # click download excel
-        driver.find_element(
-            By.XPATH,
-            "//*[@id='stocks-content-body']/div[1]/div[2]/div[1]/div[1]/button",
-        ).click()
-        sleep(break_time)
-
-        # find latest downloaded file
-        sleep(4 * break_time)
-        filename = max(
-            [f for f in os.listdir(DB)],
-            key=lambda x: os.path.getctime(os.path.join(DB, x)),
-        )
-
-        # replace last file
-        if ".xlsx" in filename:
-            os.replace(
-                f"{DB}/{filename}",
-                f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/pe/pe.xlsx",
-            )
-    except:
-        print(f"cant download price_history {stock_name}")
+    # replace last file
+    move_last_file(
+        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/pe/pe.xlsx"
+    )
 
 
 def bourseview_macro(start=first_day, end=last_day):
@@ -1037,6 +856,7 @@ def bourseview_macro(start=first_day, end=last_day):
         By.XPATH,
         "//*[@id='myModal']/div/div/div[2]/div/button",
     ).click()
+    sleep(break_time)
 
     # send 'tarikh shoroe'
     driver.find_element(
@@ -1057,22 +877,11 @@ def bourseview_macro(start=first_day, end=last_day):
         By.XPATH,
         "//*[@id='myModal']/div/div/div[3]/button",
     ).click()
-    sleep(break_time)
+    sleep(2 * break_time)
 
     # click blank page
     driver.find_element(By.XPATH, "/html").click()
     sleep(break_time)
 
-    # find latest downloaded file
-    sleep(4 * break_time)
-    filename = max(
-        [f for f in os.listdir(DB)],
-        key=lambda x: os.path.getctime(os.path.join(DB, x)),
-    )
-
     # replace last file
-    if ".xlsx" in filename:
-        os.replace(
-            f"{DB}/{filename}",
-            f"{DB}/macro/macro.xlsx",
-        )
+    move_last_file(f"{DB}/macro/macro.xlsx")
