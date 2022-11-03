@@ -696,12 +696,12 @@ def get_income_yearly(stock, money_type, n):
     )
 
 
-def get_income_fasli(stock, money_type, n, fisal_year):
+def get_income_quarterly(stock, money_type, n, fisal_year):
     industry = watchlist[stock]["indus"]
     if money_type == "rial":
-        adress = f"{DB}/industries/{industry}/{stock}/income/fasli/rial.xlsx"
+        adress = f"{DB}/industries/{industry}/{stock}/income/quarterly/rial.xlsx"
     if money_type == "dollar":
-        adress = f"{DB}/industries/{industry}/{stock}/income/fasli/dollar.xlsx"
+        adress = f"{DB}/industries/{industry}/{stock}/income/quarterly/dollar.xlsx"
 
     fiscal_dic = {
         12: {3: 1, 6: 2, 9: 3, 12: 4},
@@ -870,16 +870,16 @@ def plot_marq(stocks, y_s=1400, m_s=1, d_s=1, y_e=1401, m_e=6, d_e=1):
 def plot_margin(stocks):
     stocks_name = []
     margin_mean_yearly = []
-    margin_mean_fasli = []
+    margin_mean_quarterly = []
     margin_risk_yearly = []
-    margin_risk_fasli = []
+    margin_risk_quarterly = []
     for i in stocks:
         stocks_name.append(i.Name)
     for i in stocks:
         margin_mean_yearly.append(i.Risk_income_yearly[0])
         margin_risk_yearly.append(i.Risk_income_yearly[1])
-        margin_mean_fasli.append(i.Risk_income_rial_fasli[0])
-        margin_risk_fasli.append(i.Risk_income_rial_fasli[1])
+        margin_mean_quarterly.append(i.Risk_income_rial_quarterly[0])
+        margin_risk_quarterly.append(i.Risk_income_rial_quarterly[1])
     plt.figure(figsize=[20, 10])
     plt.title("Yearly")
     for i in range(len(stocks_name)):
@@ -889,13 +889,13 @@ def plot_margin(stocks):
         )
     plt.plot(margin_risk_yearly, margin_mean_yearly, "o", markersize=12)
     plt.figure(figsize=[20, 10])
-    plt.title("fasli")
+    plt.title("quarterly")
     for i in range(len(stocks_name)):
         plt.annotate(
             stocks_name[i],
-            xy=(margin_risk_fasli[i] + 0.0002, margin_mean_fasli[i] + 0.0002),
+            xy=(margin_risk_quarterly[i] + 0.0002, margin_mean_quarterly[i] + 0.0002),
         )
-    plt.plot(margin_risk_fasli, margin_mean_fasli, "o", markersize=12)
+    plt.plot(margin_risk_quarterly, margin_mean_quarterly, "o", markersize=12)
 
 
 def plot_pe_stocks(stocks):
@@ -967,9 +967,9 @@ def plot_margin_trend(stocks):
     plt.title("Net_Profit_Margin_yearly")
     plt.figure(figsize=[16, 8])
     for i in stocks:
-        plt.plot(i.income_common_rial_fasli[["Net_Profit"]], label=i.Name, marker="o")
+        plt.plot(i.income_common_rial_quarterly[["Net_Profit"]], label=i.Name, marker="o")
     plt.legend()
-    plt.title("Net_Profit_Margin_fasli")
+    plt.title("Net_Profit_Margin_quarterly")
     plt.figure(figsize=[16, 8])
 
 
@@ -1913,17 +1913,17 @@ class Stock:
             j,
         ) = get_income_yearly(self.Name, "dollar", self.n)
         (
-            self.income_rial_fasli,
-            self.income_common_rial_fasli,
-            self.Risk_income_rial_fasli,
-            self.cagr_rial_fasli,
-        ) = get_income_fasli(self.Name, "rial", self.n, self.fiscal_year)
+            self.income_rial_quarterly,
+            self.income_common_rial_quarterly,
+            self.Risk_income_rial_quarterly,
+            self.cagr_rial_quarterly,
+        ) = get_income_quarterly(self.Name, "rial", self.n, self.fiscal_year)
         (
-            self.income_dollar_fasli,
-            self.income_common_dollar_fasli,
-            self.Risk_income_dollar_fasli,
-            self.cagr_dollar_fasli,
-        ) = get_income_fasli(self.Name, "dollar", self.n, self.fiscal_year)
+            self.income_dollar_quarterly,
+            self.income_common_dollar_quarterly,
+            self.Risk_income_dollar_quarterly,
+            self.cagr_dollar_quarterly,
+        ) = get_income_quarterly(self.Name, "dollar", self.n, self.fiscal_year)
         self.Buy_Power = type_record(self.farsi)
         self.Buy_Power_w = self.Buy_Power.resample("W").mean()
         self.Buy_Power_m = self.Buy_Power.resample("M").mean()
@@ -1934,13 +1934,13 @@ class Stock:
         ######### Load balancesheet ############
         try:
             self.get_balance_sheet("yearly")
-            self.get_balance_sheet("fasli")
+            self.get_balance_sheet("quarterly")
         except:
             print(f"add balancs sheet {self.Name}")
         ########## Load cash_flow ##############
         try:
             self.get_cash_flow("yearly")
-            self.get_cash_flow("fasli")
+            self.get_cash_flow("quarterly")
         except:
             print(f"add cash_flow {self.Name}")
 
@@ -1964,7 +1964,7 @@ class Stock:
         ]
         self.hazine_yearly = abs(self.hazine_yearly)
         # self.daramad_yearly=self.income_common_rial_yearly[['Other_operating_Income_Expense','Other_non_operating_Income_Expense']]
-        self.hazine_fasli = self.income_common_rial_fasli[
+        self.hazine_quarterly = self.income_common_rial_quarterly[
             [
                 "Cost_of_Revenue",
                 "Operating_Expense",
@@ -1972,8 +1972,8 @@ class Stock:
                 "Tax_Provision",
             ]
         ]
-        self.hazine_fasli = abs(self.hazine_fasli)
-        # self.daramad_fasli=self.income_common_rial_fasli[['Other_operating_Income_Expense','Other_non_operate_Income_Expense']]
+        self.hazine_quarterly = abs(self.hazine_quarterly)
+        # self.daramad_quarterly=self.income_common_rial_quarterly[['Other_operating_Income_Expense','Other_non_operate_Income_Expense']]
         self.Vp, self.Price_bin = voloume_profile(self.Price, "2020", 60)
         ############ create tester majule #############
         self.sma_tester = SmaTester(
@@ -2000,7 +2000,7 @@ class Stock:
         ########### load cost ###########
         try:
             self.get_cost("yearly")
-            self.get_cost("fasli")
+            self.get_cost("quarterly")
         except:
             print(f"add cost {self.Name}")
         ######### Load group p/e data #########
@@ -2075,44 +2075,44 @@ class Stock:
         plt.plot(self.income_dollar_yearly["Gross_Profit"], marker="o")
         plt.title("Gross_Profit_yearlly_dollar")
 
-    def plot_income_fasli(self):
+    def plot_income_quarterly(self):
         plt.figure(figsize=[20, 15])
         plt.subplot(3, 1, 1)
-        plt.plot(self.income_rial_fasli["Total_Revenue"], marker="o")
-        plt.title("Total_Revenue fasli")
+        plt.plot(self.income_rial_quarterly["Total_Revenue"], marker="o")
+        plt.title("Total_Revenue quarterly")
         plt.subplot(3, 1, 2)
-        plt.plot(self.income_rial_fasli["Net_Profit"], marker="o")
-        plt.title("Net_Profit_fasli")
+        plt.plot(self.income_rial_quarterly["Net_Profit"], marker="o")
+        plt.title("Net_Profit_quarterly")
         plt.subplot(3, 1, 3)
-        plt.plot(self.income_rial_fasli["Gross_Profit"], marker="o")
-        plt.title("Gross_Profit_fasli")
+        plt.plot(self.income_rial_quarterly["Gross_Profit"], marker="o")
+        plt.title("Gross_Profit_quarterly")
         plt.figure(figsize=[20, 12])
         plt.subplot(2, 1, 1)
-        plt.plot(self.income_common_rial_fasli["Gross_Profit"], marker="o")
+        plt.plot(self.income_common_rial_quarterly["Gross_Profit"], marker="o")
         plt.axhline(y=0, color="black", linestyle="dashed")
         plt.subplot(2, 1, 2)
-        plt.hist(self.income_common_rial_fasli["Gross_Profit"], edgecolor="black")
+        plt.hist(self.income_common_rial_quarterly["Gross_Profit"], edgecolor="black")
         plt.axvline(
-            x=self.income_common_rial_fasli["Gross_Profit"].iloc[-1], color="red"
+            x=self.income_common_rial_quarterly["Gross_Profit"].iloc[-1], color="red"
         )
         plt.figure(figsize=[20, 15])
         plt.subplot(3, 1, 1)
-        plt.plot(self.income_dollar_fasli["Total_Revenue"], marker="o")
-        plt.title("Total_Revenue fasli")
+        plt.plot(self.income_dollar_quarterly["Total_Revenue"], marker="o")
+        plt.title("Total_Revenue quarterly")
         plt.subplot(3, 1, 2)
-        plt.plot(self.income_dollar_fasli["Net_Profit"], marker="o")
-        plt.title("Net_Profit_fasli")
+        plt.plot(self.income_dollar_quarterly["Net_Profit"], marker="o")
+        plt.title("Net_Profit_quarterly")
         plt.subplot(3, 1, 3)
-        plt.plot(self.income_dollar_fasli["Gross_Profit"], marker="o")
-        plt.title("Gross_Profit_fasli")
+        plt.plot(self.income_dollar_quarterly["Gross_Profit"], marker="o")
+        plt.title("Gross_Profit_quarterly")
         plt.figure(figsize=[20, 12])
         plt.subplot(2, 1, 1)
-        plt.plot(self.income_common_dollar_fasli["Gross_Profit"], marker="o")
+        plt.plot(self.income_common_dollar_quarterly["Gross_Profit"], marker="o")
         plt.axhline(y=0, color="black", linestyle="dashed")
         plt.subplot(2, 1, 2)
-        plt.hist(self.income_common_dollar_fasli["Gross_Profit"], edgecolor="black")
+        plt.hist(self.income_common_dollar_quarterly["Gross_Profit"], edgecolor="black")
         plt.axvline(
-            x=self.income_common_dollar_fasli["Gross_Profit"].iloc[-1], color="red"
+            x=self.income_common_dollar_quarterly["Gross_Profit"].iloc[-1], color="red"
         )
 
     def plot_ret_hist(self, start, end):
@@ -2165,8 +2165,8 @@ class Stock:
     def plot_hazine(self):
         self.hazine_yearly.plot(marker="o", figsize=[20, 8])
         plt.title("Hazine_Yearly")
-        self.hazine_fasli.plot(marker="o", figsize=[20, 8])
-        plt.title("Hazine_fasli")
+        self.hazine_quarterly.plot(marker="o", figsize=[20, 8])
+        plt.title("Hazine_quarterly")
 
     def plot_voloume_profile(self):
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=[20, 10])
@@ -2309,19 +2309,19 @@ class Stock:
         if ((self.industry == "ghaza") | (self.industry == "dode") |(self.industry=='darou') | (self.industry=='kashi')) & (material_g == 1):
             material_g = (
                 np.mean(
-                    self.my_cost_unit_fasli["material"] / self.product_quarterly["Rate"]
+                    self.my_cost_unit_quarterly["material"] / self.product_quarterly["Rate"]
                 )
                 * self.product_monthly["Rate"].iloc[-1]
-                / self.my_cost_unit_fasli["material"].iloc[-1]
+                / self.my_cost_unit_quarterly["material"].iloc[-1]
             )
         self.material_g = material_g
         ######## call data ##########
         income_y = self.income_rial_yearly.copy()
-        income_f = self.income_rial_fasli.copy()
-        income_common_f = self.income_common_rial_fasli.copy()
+        income_f = self.income_rial_quarterly.copy()
+        income_common_f = self.income_common_rial_quarterly.copy()
         prod_y = self.product_yearly.copy()
         prod_m = self.product_monthly.copy()
-        pred_cost_unit = self.my_cost_unit_fasli.copy()
+        pred_cost_unit = self.my_cost_unit_quarterly.copy()
         interest = self.interest
         # weight_matrix
         w = [1, 3]
@@ -2451,7 +2451,7 @@ class Stock:
         cost_rev_done = 0
         rev_cost_known = 0
         count_rev_cost_known = 0
-        #search on fasli income statement
+        #search on quarterly income statement
         for i in income_f.index:
             if int(i[:4]) == future_year:
                 cost_rev_done += (
@@ -2675,7 +2675,7 @@ class Stock:
                 if df.loc[i][j] == "-":
                     df.loc[i, j] = np.nan
         df.dropna(inplace=True)
-        df["capital_now"] = self.income_rial_fasli.iloc[-1]["Capital"] * np.ones(
+        df["capital_now"] = self.income_rial_quarterly.iloc[-1]["Capital"] * np.ones(
             [len(df["capital_now"]), 1]
         )
         df["EPS"] = df["EPS"] * df["capital"] / df["capital_now"]
@@ -2716,8 +2716,8 @@ class Stock:
         df.loc[future_year, "DPS"] = (
             self.pred_income.loc[future_year]["EPS"] * ratio_mean
         )
-        df.loc[future_year, "capital"] = self.income_rial_fasli.iloc[-1]["Capital"]
-        df.loc[future_year, "capital_now"] = self.income_rial_fasli.iloc[-1]["Capital"]
+        df.loc[future_year, "capital"] = self.income_rial_quarterly.iloc[-1]["Capital"]
+        df.loc[future_year, "capital_now"] = self.income_rial_quarterly.iloc[-1]["Capital"]
         df.loc[future_year, "ratio"] = (
             df.loc[future_year]["DPS"] / df.loc[future_year]["EPS"]
         )
@@ -2735,8 +2735,8 @@ class Stock:
         df.loc[future_year + 1, "DPS"] = (
             self.pred_income.loc[future_year + 1]["EPS"] * ratio_mean
         )
-        df.loc[future_year + 1, "capital"] = self.income_rial_fasli.iloc[-1]["Capital"]
-        df.loc[future_year + 1, "capital_now"] = self.income_rial_fasli.iloc[-1][
+        df.loc[future_year + 1, "capital"] = self.income_rial_quarterly.iloc[-1]["Capital"]
+        df.loc[future_year + 1, "capital_now"] = self.income_rial_quarterly.iloc[-1][
             "Capital"
         ]
         df.loc[future_year + 1, "ratio"] = (
@@ -2769,11 +2769,11 @@ class Stock:
             )
             my_col = list(self.income_rial_yearly.index)
             my_col.insert(0, "Data")
-        elif periode == "fasli":
+        elif periode == "quarterly":
             adress = (
-                f"{DB}/industries/{self.industry}/{self.Name}/balancesheet/fasli.xlsx"
+                f"{DB}/industries/{self.industry}/{self.Name}/balancesheet/quarterly.xlsx"
             )
-            my_col = list(self.income_rial_fasli.index)
+            my_col = list(self.income_rial_quarterly.index)
             my_col.insert(0, "Data")
         # create raw data
         balance_original = pd.read_excel(adress)
@@ -2813,6 +2813,11 @@ class Stock:
             balance_sheet.rename(
                 columns={balance_sheet.columns[i]: my_col[i]}, inplace=True
             )
+        #remove '-' from data
+        for i in balance_sheet.index:
+            for j in balance_sheet.columns:
+                if balance_sheet.loc[i,j]=='-':
+                    balance_sheet.loc[i,j]=1
         balance_sheet.set_index("Data", inplace=True)
         my_index = [
             "cash",
@@ -2872,12 +2877,12 @@ class Stock:
                 inv_balance_com[i] = (
                     inv_balance[i] / self.income_rial_yearly["Total_Revenue"]
                 )
-        # fill data fasli
-        elif periode == "fasli":
+        # fill data quarterly
+        elif periode == "quarterly":
             for i in balance_sheet_com.index:
                 balance_sheet_com.loc[i] = (
                     balance_sheet.loc[i]
-                    / self.income_rial_fasli.loc[i]["Total_Revenue"]
+                    / self.income_rial_quarterly.loc[i]["Total_Revenue"]
                 )
 
             for i in balance_sheet.columns:
@@ -2886,7 +2891,7 @@ class Stock:
 
             for i in inv_balance.columns:
                 inv_balance_com[i] = (
-                    inv_balance[i] / self.income_rial_fasli["Total_Revenue"]
+                    inv_balance[i] / self.income_rial_quarterly["Total_Revenue"]
                 )
         # send to self
         if periode == "yearly":
@@ -2894,20 +2899,20 @@ class Stock:
             self.balance_com_yearly = balance_sheet_com
             self.inv_balance_yearly = inv_balance
             self.inv_balance_com_yearly = inv_balance_com
-        elif periode == "fasli":
-            self.balance_sheet_fasli = balance_sheet
-            self.balance_com_fasli = balance_sheet_com
-            self.inv_balance_fasli = inv_balance
-            self.inv_balance_com_fasli = inv_balance_com
+        elif periode == "quarterly":
+            self.balance_sheet_quarterly = balance_sheet
+            self.balance_com_quarterly = balance_sheet_com
+            self.inv_balance_quarterly = inv_balance
+            self.inv_balance_com_quarterly = inv_balance_com
 
     def get_cash_flow(self, preiode):
         if preiode == "yearly":
             adress = f"{DB}/industries/{self.industry}/{self.Name}/cashflow/yearly.xlsx"
             my_col = list(self.income_rial_yearly.index)
             my_col.insert(0, "Data")
-        elif preiode == "fasli":
-            adress = f"{DB}/industries/{self.industry}/{self.Name}/cashflow/fasli.xlsx"
-            my_col = list(self.income_rial_fasli.index)
+        elif preiode == "quarterly":
+            adress = f"{DB}/industries/{self.industry}/{self.Name}/cashflow/quarterly.xlsx"
+            my_col = list(self.income_rial_quarterly.index)
             my_col.insert(0, "Data")
         cash_flow_original = pd.read_excel(adress)
         # year = re.findall("[0123456789]{4}/[0123456789]{2}", str(cash_flow_original))
@@ -2997,16 +3002,16 @@ class Stock:
         if preiode == "yearly":
             for i in cash_flow.columns:
                 cash_com[i] = cash_flow[i] / self.income_rial_yearly["Net_Profit"]
-        elif preiode == "fasli":
+        elif preiode == "quarterly":
             for i in cash_flow.columns:
-                cash_com[i] = cash_flow[i] / self.income_rial_fasli["Net_Profit"]
+                cash_com[i] = cash_flow[i] / self.income_rial_quarterly["Net_Profit"]
         # send cashflow to self
         if preiode == "yearly":
             self.cash_flow_yearly = cash_flow
             self.cash_com_yearly = cash_com
-        elif preiode == "fasli":
-            self.cash_flow_fasli = cash_flow
-            self.cash_com_fasli = cash_com
+        elif preiode == "quarterly":
+            self.cash_flow_quarterly = cash_flow
+            self.cash_com_quarterly = cash_com
         return cash_flow
 
     def plot_balance_sheet(self):
@@ -3218,50 +3223,57 @@ class Stock:
             cost=select_df(cost_dl,'بهای تمام شده','جمع بهای تمام شده')
             overhead=select_df(cost_dl,'هزینه سربار','جمع')
             official=select_df(official_dl,'هزینه های عمومی و اداری','جمع')
-            personnel=select_df(official_dl,'تعداد پرسنل','تعداد پرسنل تولیدی شرکت')                      
+            personnel=select_df(official_dl,'تعداد پرسنل','تعداد پرسنل تولیدی شرکت')    
+            count_consump=select_df(cost_dl,'مقدار مصرف طی دوره','جمع')                  
             #define column
             my_col = list(self.income_rial_yearly.index)
             my_col.insert(0, "Data")
 
-        elif period == "fasli":
+        elif period == "quarterly":
             cost_dl = pd.read_excel(
-                f"{DB}/industries/{self.industry}/{self.Name}/cost/fasli.xlsx"
+                f"{DB}/industries/{self.industry}/{self.Name}/cost/quarterly.xlsx"
             )
             official_dl = pd.read_excel(
-                f"{DB}/industries/{self.industry}/{self.Name}/official/fasli.xlsx"
+                f"{DB}/industries/{self.industry}/{self.Name}/official/quarterly.xlsx"
             )            
             #select desired data
             cost=select_df(cost_dl,'بهای تمام شده','جمع بهای تمام شده')
             overhead=select_df(cost_dl,'هزینه سربار','جمع')
             official=select_df(official_dl,'هزینه های عمومی و اداری','جمع')
             personnel=select_df(official_dl,'تعداد پرسنل','تعداد پرسنل تولیدی شرکت')
-            my_col = list(self.income_rial_fasli.index)
+            count_consump=select_df(cost_dl,'مقدار مصرف طی دوره','جمع')
+            my_col = list(self.income_rial_quarterly.index)
             my_col.insert(0, "Data")
         #preprocess data
         cost.dropna(how="all", inplace=True)
         official.dropna(how="all", inplace=True)
         overhead.dropna(how="all", inplace=True)
         personnel.dropna(how="all", inplace=True)
+        count_consump.dropna(how="all", inplace=True)
         # change column name
         for i in range(len(my_col)):
             cost.rename(columns={cost.columns[i]: my_col[i]}, inplace=True)
             official.rename(columns={official.columns[i]: my_col[i]}, inplace=True)
             overhead.rename(columns={overhead.columns[i]: my_col[i]}, inplace=True)
             personnel.rename(columns={personnel.columns[i]: my_col[i]}, inplace=True)
+            count_consump.rename(columns={count_consump.columns[i]:my_col[i]},inplace=True)
         cost.dropna(axis=0, inplace=True)
         official.dropna(axis=0, inplace=True)
         overhead.dropna(axis=0, inplace=True)
         personnel.dropna(axis=0, inplace=True)
+        count_consump.dropna(axis=0, inplace=True)
         # set Data is index 
         cost.set_index("Data", inplace=True)
         official.set_index("Data", inplace=True)
         overhead.set_index("Data", inplace=True)
         personnel.set_index("Data", inplace=True)
+        count_consump.set_index('Data',inplace=True)
         # drop unnessecary data
         cost.drop('بهای تمام شده',inplace=True)
         overhead.drop('هزینه سربار',inplace=True)
         official.drop('هزینه های عمومی و اداری',inplace=True)
         personnel.drop('تعداد پرسنل',inplace=True)
+        
         cost_index = [
             "direct_material",
             "direct_salary",
@@ -3358,16 +3370,16 @@ class Stock:
             )
             self.my_cost_unit_yearly = my_cost_unit
 
-        elif period == "fasli":
-            self.cost_fasli = cost
-            self.overhead_fasli = overhead
-            self.official_fasli = official
-            self.my_cost_fasli = my_cost
-            self.personnel_fasli=personnel
+        elif period == "quarterly":
+            self.cost_quarterly = cost
+            self.overhead_quarterly = overhead
+            self.official_quarterly = official
+            self.my_cost_quarterly = my_cost
+            self.personnel_quarterly=personnel
             # create cost com to revenue
             my_cost_com = pd.DataFrame(columns=my_cost.columns)
             for i in my_cost:
-                my_cost_com[i] = my_cost[i] / self.income_rial_fasli["Total_Revenue"]
+                my_cost_com[i] = my_cost[i] / self.income_rial_quarterly["Total_Revenue"]
             my_cost_com["margin"] = (
                 np.ones(len(my_cost_com["total"])) - my_cost_com["total"]
             )
@@ -3377,8 +3389,8 @@ class Stock:
             my_cost_unit["profit"] = (
                 self.product_quarterly["Rate"].values - my_cost_unit["total"]
             )
-            self.my_cost_unit_fasli = my_cost_unit
-            self.my_cost_com_fasli = my_cost_com
+            self.my_cost_unit_quarterly = my_cost_unit
+            self.my_cost_com_quarterly = my_cost_com
 
     def sensitivity(self):
         rate = []
@@ -3591,10 +3603,10 @@ class Stock:
             + self.pred_income.loc[future_year + 1]["Tax_Provision"]
         )
         # add capital to data frame
-        self.pred_income.loc[future_year, "Capital"] = self.income_rial_fasli[
+        self.pred_income.loc[future_year, "Capital"] = self.income_rial_quarterly[
             "Capital"
         ].iloc[-1]
-        self.pred_income.loc[future_year + 1, "Capital"] = self.income_rial_fasli[
+        self.pred_income.loc[future_year + 1, "Capital"] = self.income_rial_quarterly[
             "Capital"
         ].iloc[-1]
         # add eps to data frame
@@ -3651,7 +3663,7 @@ class Stock:
     def get_product(self, period):
         if period == "yearly":         
             #all data
-            product_dl=pd.read_excel(f"{DB}/industries/{self.industry}/{self.Name}/product/yearly_dl.xlsx")
+            product_dl=pd.read_excel(f"{DB}/industries/{self.industry}/{self.Name}/product/yearly.xlsx")
             #select desired data
             count_product=select_df(product_dl,'مقدار تولید','جمع')
             count_revenue=select_df(product_dl,'مقدار فروش','جمع')
@@ -3663,7 +3675,7 @@ class Stock:
           
         elif period=='monthly':
             #all data
-            product_dl=pd.read_excel(f"{DB}/industries/{self.industry}/{self.Name}/product/monthly_dl.xlsx")
+            product_dl=pd.read_excel(f"{DB}/industries/{self.industry}/{self.Name}/product/monthly.xlsx")
             #selece desired data
             count_product=select_df(product_dl,'مقدار تولید','جمع')
             count_revenue=select_df(product_dl,'مقدار فروش','جمع')
@@ -3757,12 +3769,12 @@ class Stock:
             product_q["Rate"] = product_q["Revenue"] / product_q["Count"]
             # lag from statement and product report
             last_m = int(product.index[-1].split("/")[1])
-            last_q = int(self.income_rial_fasli.index[-1][-1])
+            last_q = int(self.income_rial_quarterly.index[-1][-1])
             if (last_m % 3 == 0) & (last_m > fiscal_dic[self.fiscal_year][last_q]):
                 product_q = product_q[-(self.n + 1) : -1]
             else:
                 product_q = product_q[-self.n :]
-            product_q.set_index(self.income_rial_fasli.index, inplace=True)
+            product_q.set_index(self.income_rial_quarterly.index, inplace=True)
             self.product_quarterly = product_q
         ############ send data to self ############
         if period=='yearly':
@@ -3845,10 +3857,10 @@ class Stock:
     def create_macro(self):
         # macro economic data
         macro = Macro()
-        df = macro.exchange[["dollar", "cpi", "cash"]][-5:]
+        df = macro.exchange[["dollar", "cpi", "cash"]][-(self.n+1):]
         df["total_cost"] = self.my_cost_unit_yearly["total"]
         df["profit"] = self.my_cost_unit_yearly["profit"]
-        df_ret = macro.exchange_ret[["dollar", "cpi", "cash"]][-5:]
+        df_ret = macro.exchange_ret[["dollar", "cpi", "cash"]][-(self.n+1):]
         df_ret["profit"] = self.my_cost_unit_yearly["profit"].pct_change()
         df_ret["total_cost"] = self.my_cost_unit_yearly["total"].pct_change()
         df_ret.dropna(inplace=True)
@@ -4178,15 +4190,15 @@ class Industry:
         self.revenue_yearly = pd.DataFrame(columns=[stocks[0].Name])
         self.net_margin_yearly = pd.DataFrame(columns=[stocks[0].Name])
         self.gross_margin_yearly = pd.DataFrame(columns=[stocks[0].Name])
-        self.net_profit_fasli_12 = pd.DataFrame(columns=[stocks[0].Name])
-        self.gross_profit_fasli_12 = pd.DataFrame(columns=[stocks[0].Name])
-        self.revenue_fasli_12 = pd.DataFrame(columns=[stocks[0].Name])
-        self.net_margin_fasli_12 = pd.DataFrame(columns=[stocks[0].Name])
-        self.gross_margin_fasli_12 = pd.DataFrame(columns=[stocks[0].Name])
+        self.net_profit_quarterly_12 = pd.DataFrame(columns=[stocks[0].Name])
+        self.gross_profit_quarterly_12 = pd.DataFrame(columns=[stocks[0].Name])
+        self.revenue_quarterly_12 = pd.DataFrame(columns=[stocks[0].Name])
+        self.net_margin_quarterly_12 = pd.DataFrame(columns=[stocks[0].Name])
+        self.gross_margin_quarterly_12 = pd.DataFrame(columns=[stocks[0].Name])
         self.total_industry = pd.DataFrame(
             columns=["Revenue", "Gross_Profit", "Net_Profit"]
         )
-        self.total_industry_fasli_12 = pd.DataFrame(
+        self.total_industry_quarterly_12 = pd.DataFrame(
             columns=["Revenue", "Gross_Profit", "Net_Profit"]
         )
         temp_rev = 0
@@ -4195,21 +4207,21 @@ class Industry:
         temp_rev_f = 0
         temp_net_f = 0
         temp_gross_f = 0
-        self.net_margin_fasli_9 = pd.DataFrame(columns=[stocks[0].Name])
-        self.net_margin_fasli_6 = pd.DataFrame(columns=[stocks[0].Name])
-        self.net_margin_fasli_3 = pd.DataFrame(columns=[stocks[0].Name])
-        self.gross_margin_fasli_9 = pd.DataFrame(columns=[stocks[0].Name])
-        self.gross_margin_fasli_6 = pd.DataFrame(columns=[stocks[0].Name])
-        self.gross_margin_fasli_3 = pd.DataFrame(columns=[stocks[0].Name])
-        self.revenue_fasli_9 = pd.DataFrame(columns=[stocks[0].Name])
-        self.revenue_fasli_6 = pd.DataFrame(columns=[stocks[0].Name])
-        self.revenue_fasli_3 = pd.DataFrame(columns=[stocks[0].Name])
-        self.net_profit_fasli_9 = pd.DataFrame(columns=[stocks[0].Name])
-        self.net_profit_fasli_6 = pd.DataFrame(columns=[stocks[0].Name])
-        self.net_profit_fasli_3 = pd.DataFrame(columns=[stocks[0].Name])
-        self.gross_profit_fasli_9 = pd.DataFrame(columns=[stocks[0].Name])
-        self.gross_profit_fasli_6 = pd.DataFrame(columns=[stocks[0].Name])
-        self.gross_profit_fasli_3 = pd.DataFrame(columns=[stocks[0].Name])
+        self.net_margin_quarterly_9 = pd.DataFrame(columns=[stocks[0].Name])
+        self.net_margin_quarterly_6 = pd.DataFrame(columns=[stocks[0].Name])
+        self.net_margin_quarterly_3 = pd.DataFrame(columns=[stocks[0].Name])
+        self.gross_margin_quarterly_9 = pd.DataFrame(columns=[stocks[0].Name])
+        self.gross_margin_quarterly_6 = pd.DataFrame(columns=[stocks[0].Name])
+        self.gross_margin_quarterly_3 = pd.DataFrame(columns=[stocks[0].Name])
+        self.revenue_quarterly_9 = pd.DataFrame(columns=[stocks[0].Name])
+        self.revenue_quarterly_6 = pd.DataFrame(columns=[stocks[0].Name])
+        self.revenue_quarterly_3 = pd.DataFrame(columns=[stocks[0].Name])
+        self.net_profit_quarterly_9 = pd.DataFrame(columns=[stocks[0].Name])
+        self.net_profit_quarterly_6 = pd.DataFrame(columns=[stocks[0].Name])
+        self.net_profit_quarterly_3 = pd.DataFrame(columns=[stocks[0].Name])
+        self.gross_profit_quarterly_9 = pd.DataFrame(columns=[stocks[0].Name])
+        self.gross_profit_quarterly_6 = pd.DataFrame(columns=[stocks[0].Name])
+        self.gross_profit_quarterly_3 = pd.DataFrame(columns=[stocks[0].Name])
         self.pe = pd.DataFrame(columns=[stocks[0].Name])
         self.potential_price_g = pd.DataFrame(columns=[stocks[0].Name])
         self.pe_med = pd.DataFrame(columns=[stocks[0].Name])
@@ -4233,92 +4245,92 @@ class Industry:
             self.pe_med[i.Name] = [i.pe_med]
             self.rate_monthly[i.Name] = i.product_monthly["Rate"]
             if i.fiscal_year == 12:
-                self.net_profit_fasli_12[i.Name] = i.income_rial_fasli[
+                self.net_profit_quarterly_12[i.Name] = i.income_rial_quarterly[
                     "Net_Profit"
-                ] / np.abs(i.income_rial_fasli["Net_Profit"].iloc[0])
-                self.gross_profit_fasli_12[i.Name] = i.income_rial_fasli[
+                ] / np.abs(i.income_rial_quarterly["Net_Profit"].iloc[0])
+                self.gross_profit_quarterly_12[i.Name] = i.income_rial_quarterly[
                     "Gross_Profit"
-                ] / np.abs(i.income_rial_fasli["Gross_Profit"].iloc[0])
-                self.revenue_fasli_12[i.Name] = i.income_rial_fasli[
+                ] / np.abs(i.income_rial_quarterly["Gross_Profit"].iloc[0])
+                self.revenue_quarterly_12[i.Name] = i.income_rial_quarterly[
                     "Total_Revenue"
-                ] / np.abs(i.income_rial_fasli["Total_Revenue"].iloc[0])
-                self.net_margin_fasli_12[i.Name] = i.income_common_rial_fasli[
+                ] / np.abs(i.income_rial_quarterly["Total_Revenue"].iloc[0])
+                self.net_margin_quarterly_12[i.Name] = i.income_common_rial_quarterly[
                     "Net_Profit"
                 ]
-                self.gross_margin_fasli_12[i.Name] = i.income_common_rial_fasli[
+                self.gross_margin_quarterly_12[i.Name] = i.income_common_rial_quarterly[
                     "Gross_Profit"
                 ]
-                self.net_margin_fasli_12.dropna(axis=1, inplace=True)
-                self.gross_margin_fasli_12.dropna(axis=1, inplace=True)
-                self.revenue_fasli_12.dropna(axis=1, inplace=True)
-                self.gross_profit_fasli_12.dropna(axis=1, inplace=True)
-                self.net_profit_fasli_12.dropna(axis=1, inplace=True)
-                temp_rev_f += i.income_rial_fasli["Total_Revenue"]
-                temp_gross_f += i.income_rial_fasli["Gross_Profit"]
-                temp_net_f += i.income_rial_fasli["Net_Profit"]
+                self.net_margin_quarterly_12.dropna(axis=1, inplace=True)
+                self.gross_margin_quarterly_12.dropna(axis=1, inplace=True)
+                self.revenue_quarterly_12.dropna(axis=1, inplace=True)
+                self.gross_profit_quarterly_12.dropna(axis=1, inplace=True)
+                self.net_profit_quarterly_12.dropna(axis=1, inplace=True)
+                temp_rev_f += i.income_rial_quarterly["Total_Revenue"]
+                temp_gross_f += i.income_rial_quarterly["Gross_Profit"]
+                temp_net_f += i.income_rial_quarterly["Net_Profit"]
             if i.fiscal_year == 9:
-                self.net_profit_fasli_9[i.Name] = i.income_rial_fasli[
+                self.net_profit_quarterly_9[i.Name] = i.income_rial_quarterly[
                     "Net_Profit"
-                ] / np.abs(i.income_rial_fasli["Net_Profit"].iloc[0])
-                self.gross_profit_fasli_9[i.Name] = i.income_rial_fasli[
+                ] / np.abs(i.income_rial_quarterly["Net_Profit"].iloc[0])
+                self.gross_profit_quarterly_9[i.Name] = i.income_rial_quarterly[
                     "Gross_Profit"
-                ] / np.abs(i.income_rial_fasli["Gross_Profit"].iloc[0])
-                self.revenue_fasli_9[i.Name] = i.income_rial_fasli[
+                ] / np.abs(i.income_rial_quarterly["Gross_Profit"].iloc[0])
+                self.revenue_quarterly_9[i.Name] = i.income_rial_quarterly[
                     "Total_Revenue"
-                ] / np.abs(i.income_rial_fasli["Total_Revenue"].iloc[0])
-                self.net_margin_fasli_9[i.Name] = i.income_common_rial_fasli[
+                ] / np.abs(i.income_rial_quarterly["Total_Revenue"].iloc[0])
+                self.net_margin_quarterly_9[i.Name] = i.income_common_rial_quarterly[
                     "Net_Profit"
                 ]
-                self.gross_margin_fasli_9[i.Name] = i.income_common_rial_fasli[
+                self.gross_margin_quarterly_9[i.Name] = i.income_common_rial_quarterly[
                     "Gross_Profit"
                 ]
-                self.net_margin_fasli_9.dropna(axis=1, inplace=True)
-                self.gross_margin_fasli_9.dropna(axis=1, inplace=True)
-                self.revenue_fasli_9.dropna(axis=1, inplace=True)
-                self.gross_profit_fasli_9.dropna(axis=1, inplace=True)
-                self.net_profit_fasli_9.dropna(axis=1, inplace=True)
+                self.net_margin_quarterly_9.dropna(axis=1, inplace=True)
+                self.gross_margin_quarterly_9.dropna(axis=1, inplace=True)
+                self.revenue_quarterly_9.dropna(axis=1, inplace=True)
+                self.gross_profit_quarterly_9.dropna(axis=1, inplace=True)
+                self.net_profit_quarterly_9.dropna(axis=1, inplace=True)
             if i.fiscal_year == 6:
-                self.net_profit_fasli_6[i.Name] = i.income_rial_fasli[
+                self.net_profit_quarterly_6[i.Name] = i.income_rial_quarterly[
                     "Net_Profit"
-                ] / np.abs(i.income_rial_fasli["Net_Profit"].iloc[0])
-                self.gross_profit_fasli_6[i.Name] = i.income_rial_fasli[
+                ] / np.abs(i.income_rial_quarterly["Net_Profit"].iloc[0])
+                self.gross_profit_quarterly_6[i.Name] = i.income_rial_quarterly[
                     "Gross_Profit"
-                ] / np.abs(i.income_rial_fasli["Gross_Profit"].iloc[0])
-                self.revenue_fasli_6[i.Name] = i.income_rial_fasli[
+                ] / np.abs(i.income_rial_quarterly["Gross_Profit"].iloc[0])
+                self.revenue_quarterly_6[i.Name] = i.income_rial_quarterly[
                     "Total_Revenue"
-                ] / np.abs(i.income_rial_fasli["Total_Revenue"].iloc[0])
-                self.net_margin_fasli_6[i.Name] = i.income_common_rial_fasli[
+                ] / np.abs(i.income_rial_quarterly["Total_Revenue"].iloc[0])
+                self.net_margin_quarterly_6[i.Name] = i.income_common_rial_quarterly[
                     "Net_Profit"
                 ]
-                self.gross_margin_fasli_6[i.Name] = i.income_common_rial_fasli[
+                self.gross_margin_quarterly_6[i.Name] = i.income_common_rial_quarterly[
                     "Gross_Profit"
                 ]
-                self.net_margin_fasli_6.dropna(axis=1, inplace=True)
-                self.gross_margin_fasli_6.dropna(axis=1, inplace=True)
-                self.revenue_fasli_6.dropna(axis=1, inplace=True)
-                self.gross_profit_fasli_6.dropna(axis=1, inplace=True)
-                self.net_profit_fasli_6.dropna(axis=1, inplace=True)
+                self.net_margin_quarterly_6.dropna(axis=1, inplace=True)
+                self.gross_margin_quarterly_6.dropna(axis=1, inplace=True)
+                self.revenue_quarterly_6.dropna(axis=1, inplace=True)
+                self.gross_profit_quarterly_6.dropna(axis=1, inplace=True)
+                self.net_profit_quarterly_6.dropna(axis=1, inplace=True)
             if i.fiscal_year == 3:
-                self.net_profit_fasli_3[i.Name] = i.income_rial_fasli[
+                self.net_profit_quarterly_3[i.Name] = i.income_rial_quarterly[
                     "Net_Profit"
-                ] / np.abs(i.income_rial_fasli["Net_Profit"].iloc[0])
-                self.gross_profit_fasli_3[i.Name] = i.income_rial_fasli[
+                ] / np.abs(i.income_rial_quarterly["Net_Profit"].iloc[0])
+                self.gross_profit_quarterly_3[i.Name] = i.income_rial_quarterly[
                     "Gross_Profit"
-                ] / np.abs(i.income_rial_fasli["Gross_Profit"].iloc[0])
-                self.revenue_fasli_3[i.Name] = i.income_rial_fasli[
+                ] / np.abs(i.income_rial_quarterly["Gross_Profit"].iloc[0])
+                self.revenue_quarterly_3[i.Name] = i.income_rial_quarterly[
                     "Total_Revenue"
-                ] / np.abs(i.income_rial_fasli["Total_Revenue"].iloc[0])
-                self.net_margin_fasli_3[i.Name] = i.income_common_rial_fasli[
+                ] / np.abs(i.income_rial_quarterly["Total_Revenue"].iloc[0])
+                self.net_margin_quarterly_3[i.Name] = i.income_common_rial_quarterly[
                     "Net_Profit"
                 ]
-                self.gross_margin_fasli_3[i.Name] = i.income_common_rial_fasli[
+                self.gross_margin_quarterly_3[i.Name] = i.income_common_rial_quarterly[
                     "Gross_Profit"
                 ]
-                self.net_margin_fasli_3.dropna(axis=1, inplace=True)
-                self.gross_margin_fasli_3.dropna(axis=1, inplace=True)
-                self.revenue_fasli_3.dropna(axis=1, inplace=True)
-                self.gross_profit_fasli_3.dropna(axis=1, inplace=True)
-                self.net_profit_fasli_3.dropna(axis=1, inplace=True)
+                self.net_margin_quarterly_3.dropna(axis=1, inplace=True)
+                self.gross_margin_quarterly_3.dropna(axis=1, inplace=True)
+                self.revenue_quarterly_3.dropna(axis=1, inplace=True)
+                self.gross_profit_quarterly_3.dropna(axis=1, inplace=True)
+                self.net_profit_quarterly_3.dropna(axis=1, inplace=True)
             temp_rev += i.income_rial_yearly["Total_Revenue"]
             temp_net += i.income_rial_yearly["Net_Profit"]
             temp_gross += i.income_rial_yearly["Net_Profit"]
@@ -4332,16 +4344,16 @@ class Industry:
         self.total_industry["Gross_margin"] = (
             self.total_industry["Gross_Profit"] / self.total_industry["Revenue"]
         )
-        self.total_industry_fasli_12["Revenue"] = temp_rev_f
-        self.total_industry_fasli_12["Net_Profit"] = temp_net_f
-        self.total_industry_fasli_12["Gross_Profit"] = temp_gross_f
-        self.total_industry_fasli_12["Net_margin"] = (
-            self.total_industry_fasli_12["Net_Profit"]
-            / self.total_industry_fasli_12["Revenue"]
+        self.total_industry_quarterly_12["Revenue"] = temp_rev_f
+        self.total_industry_quarterly_12["Net_Profit"] = temp_net_f
+        self.total_industry_quarterly_12["Gross_Profit"] = temp_gross_f
+        self.total_industry_quarterly_12["Net_margin"] = (
+            self.total_industry_quarterly_12["Net_Profit"]
+            / self.total_industry_quarterly_12["Revenue"]
         )
-        self.total_industry_fasli_12["Gross_margin"] = (
-            self.total_industry_fasli_12["Gross_Profit"]
-            / self.total_industry_fasli_12["Revenue"]
+        self.total_industry_quarterly_12["Gross_margin"] = (
+            self.total_industry_quarterly_12["Gross_Profit"]
+            / self.total_industry_quarterly_12["Revenue"]
         )
         self.total_industry_common = self.total_industry / self.total_industry.iloc[0]
 
@@ -4394,15 +4406,15 @@ class Industry:
         plt.title("Total_net")
         plt.figure(figsize=[20, 8])
         plt.subplot(1, 2, 1)
-        plt.plot(self.total_industry_fasli_12["Net_margin"], marker="o")
+        plt.plot(self.total_industry_quarterly_12["Net_margin"], marker="o")
         plt.title("Totlal_Net_Margin_Fassli")
         plt.subplot(1, 2, 2)
-        plt.plot(self.total_industry_fasli_12["Gross_margin"], marker="o")
+        plt.plot(self.total_industry_quarterly_12["Gross_margin"], marker="o")
         plt.title("Gross_margin")
         plt.figure(figsize=[20, 8])
         plt.subplot(1, 2, 1)
-        plt.plot(self.total_industry_fasli_12["Revenue"], marker="o")
-        plt.title("Total_Rev_fasli")
+        plt.plot(self.total_industry_quarterly_12["Revenue"], marker="o")
+        plt.title("Total_Rev_quarterly")
         plt.subplot(1, 2, 2)
-        plt.plot(self.total_industry_fasli_12["Net_Profit"], marker="o")
-        plt.title("Total_Net_fasli")
+        plt.plot(self.total_industry_quarterly_12["Net_Profit"], marker="o")
+        plt.title("Total_Net_quarterly")

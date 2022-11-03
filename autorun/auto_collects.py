@@ -50,8 +50,8 @@ if platform.system() == "Windows":
 driver.implicitly_wait(wait_time)
 
 # maximize driver
-driver.maximize_window()
-sleep(break_time)
+#driver.maximize_window()
+#sleep(break_time)
 
 
 def move_last_file(new_path):
