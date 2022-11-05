@@ -626,7 +626,10 @@ def get_income_yearly(stock, money_type, n):
         adress = f"{DB}/industries/{industry}/{stock}/income/yearly/dollar.xlsx"
 
     stock_income = pd.read_excel(adress, engine="openpyxl")
-    all_time_id = re.findall(regex_en_timeid_q, str(stock_income))
+    all_time_id = re.findall(regex_en_timeid_q, str(stock_income.loc[6]))
+    years=[]
+    for i in all_time_id:
+        years.append(int(i[:4]))
     year = int(all_time_id[-1][:4])
     fiscal_year = int(all_time_id[-1][5:])
     stock_income = pd.read_excel(adress, engine="openpyxl", usecols="B:end", skiprows=7)
