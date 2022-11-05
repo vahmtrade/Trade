@@ -618,34 +618,33 @@ def history(Broker, owner):
     return Data, History_Portfolio
 
 
-def get_income_yearly(stock, money_type, n):
+def get_income_yearly(stock, money_type):
     industry = watchlist[stock]["indus"]
     if money_type == "rial":
         adress = f"{DB}/industries/{industry}/{stock}/income/yearly/rial.xlsx"
     elif money_type == "dollar":
         adress = f"{DB}/industries/{industry}/{stock}/income/yearly/dollar.xlsx"
-
+    #read raw data
     stock_income = pd.read_excel(adress, engine="openpyxl")
     all_time_id = re.findall(regex_en_timeid_q, str(stock_income.loc[6]))
-    years=[]
+    my_col=[]
     for i in all_time_id:
-        years.append(int(i[:4]))
+        my_col.append(int(i[:4]))
     year = int(all_time_id[-1][:4])
     fiscal_year = int(all_time_id[-1][5:])
     stock_income = pd.read_excel(adress, engine="openpyxl", usecols="B:end", skiprows=7)
     stock_income.drop("Unnamed: 2", axis=1, inplace=True)
     stock_income.drop([0, 1, 6, 14], inplace=True)
     stock_income.dropna(inplace=True)
+    #remove '-' from data
     for i in stock_income.index:
         for j in stock_income.columns:
             if stock_income.loc[i][j] == "-":
                 stock_income.loc[i][j] = 0.01
             if stock_income.loc[i][j] == "-":
                 stock_income.loc[i][j] = 0.1
-    my_col = []
-    my_col.append("Data")
-    n = [year - i for i in range(n)]
-    my_col.extend(n[::-1])
+    my_col.insert(0,"Data")
+    #change column name
     for i in range(len(stock_income.columns)):
         stock_income.rename(columns={stock_income.columns[i]: my_col[i]}, inplace=True)
     stock_income.set_index("Data", inplace=True)
@@ -699,7 +698,7 @@ def get_income_yearly(stock, money_type, n):
     )
 
 
-def get_income_quarterly(stock, money_type, n, fisal_year):
+def get_income_quarterly(stock, money_type, fisal_year):
     industry = watchlist[stock]["indus"]
     if money_type == "rial":
         adress = f"{DB}/industries/{industry}/{stock}/income/quarterly/rial.xlsx"
@@ -714,7 +713,8 @@ def get_income_quarterly(stock, money_type, n, fisal_year):
         10: {1: 1, 4: 2, 7: 3, 10: 4},
     }
     stock_income = pd.read_excel(adress, engine="openpyxl")
-    all_time_id = re.findall(regex_en_timeid_q, str(stock_income))
+    all_time_id = re.findall(regex_en_timeid_q, str(stock_income.loc[6]))
+    n=len(all_time_id)
     my_year = int(all_time_id[-1][:4])
     my_month = int(all_time_id[-1][5:])
     my_Q = fiscal_dic[fisal_year][my_month]
@@ -1862,7 +1862,7 @@ class Stock:
     def __init__(
         self,
         Name,
-        year_s=1395,
+        year_s=1390,
         month_s=1,
         year_end=1401,
         month_end=12,
@@ -1870,9 +1870,14 @@ class Stock:
         year_tester_end=1401,
         month_tester_s=1,
         month_tester_end=12,
-        n=5,
+        g=0.2,
+        k=0.35,
+        discounted_n=0.7
     ):
 
+        self.g=g
+        self.k=k
+        self.discounted_n=discounted_n
         self.Name = Name
         self.industry = watchlist[Name]["indus"]
         self.farsi = watchlist[Name]["token"]
@@ -1883,7 +1888,6 @@ class Stock:
             JalaliDate(year_end, month_end, 1).to_gregorian()
         )
 
-        self.n = n
         self.tester_start = pd.to_datetime(
             JalaliDate(year_tester_s, month_tester_s, 1).to_gregorian()
         )
@@ -1906,7 +1910,7 @@ class Stock:
             self.cagr_rial_yearly,
             self.fiscal_year,
             self.last_year,
-        ) = get_income_yearly(self.Name, "rial", self.n)
+        ) = get_income_yearly(self.Name, "rial")
         (
             self.income_dollar_yearly,
             self.income_common_dollar_yearly,
@@ -1914,19 +1918,19 @@ class Stock:
             self.cagr_dollar_yearly,
             i,
             j,
-        ) = get_income_yearly(self.Name, "dollar", self.n)
+        ) = get_income_yearly(self.Name, "dollar")
         (
             self.income_rial_quarterly,
             self.income_common_rial_quarterly,
             self.Risk_income_rial_quarterly,
             self.cagr_rial_quarterly,
-        ) = get_income_quarterly(self.Name, "rial", self.n, self.fiscal_year)
+        ) = get_income_quarterly(self.Name, "rial", self.fiscal_year)
         (
             self.income_dollar_quarterly,
             self.income_common_dollar_quarterly,
             self.Risk_income_dollar_quarterly,
             self.cagr_dollar_quarterly,
-        ) = get_income_quarterly(self.Name, "dollar", self.n, self.fiscal_year)
+        ) = get_income_quarterly(self.Name, "dollar", self.fiscal_year)
         self.Buy_Power = type_record(self.farsi)
         self.Buy_Power_w = self.Buy_Power.resample("W").mean()
         self.Buy_Power_m = self.Buy_Power.resample("M").mean()
@@ -1934,6 +1938,7 @@ class Stock:
             self.income_dollar_yearly[["Total_Revenue"]]
             / self.income_dollar_yearly.iloc[0]["Total_Revenue"]
         )
+        self.n=len(self.income_rial_quarterly.index)
         ######### Load balancesheet ############
         try:
             self.get_balance_sheet("yearly")
@@ -2047,7 +2052,11 @@ class Stock:
             self.create_macro()
         except:
             print(f"cant compare returns {self.Name}")
-
+        ############ add valueation of stock ###########
+        try:
+            self.predict_value()
+        except:
+            print(f'cant valuation of {self.Name}')    
     def plot_income_yearly(self):
         plt.figure(figsize=[20, 15])
         plt.subplot(3, 1, 1)
@@ -2425,17 +2434,15 @@ class Stock:
         self.pred_prod = self.product_yearly.copy()
         self.pred_prod.loc[future_year] = np.zeros(len(self.pred_prod.iloc[0]))
         self.pred_prod.loc[future_year + 1] = np.zeros(len(self.pred_prod.iloc[0]))
-        self.pred_prod.loc[future_year]["Count"] = count_rev_pred
-        self.pred_prod.loc[future_year + 1]["Count"] = count_rev_pred * alpha_prod_next
-        self.pred_prod.loc[future_year]["Rate"] = last_rate
-        self.pred_prod.loc[future_year + 1]["Rate"] = last_rate * alpha_rate_next
-        self.pred_prod.loc[future_year]["Revenue"] = (
-            self.pred_prod.loc[future_year]["Count"]
-            * self.pred_prod.loc[future_year]["Rate"]
-        )
-        self.pred_prod.loc[future_year + 1]["Revenue"] = (
-            self.pred_prod.loc[future_year + 1]["Count"]
-            * self.pred_prod.loc[future_year + 1]["Rate"]
+        self.pred_prod.loc[future_year,"Count"] = count_rev_pred
+        self.pred_prod.loc[future_year + 1,"Count"] = count_rev_pred * alpha_prod_next
+        self.pred_prod.loc[future_year,"Rate"] = rev_pred/count_rev_pred
+        self.pred_prod.loc[future_year + 1,"Rate"] = last_rate * alpha_rate_next
+        self.pred_prod.loc[future_year,"Revenue"] = rev_pred
+
+        self.pred_prod.loc[future_year + 1,"Revenue"] = (
+            self.pred_prod.loc[future_year + 1,"Count"]
+            * self.pred_prod.loc[future_year + 1,"Rate"]
         )
         # create_pred_cost_com
         rate_q = self.product_quarterly["Rate"].values
@@ -2446,10 +2453,8 @@ class Stock:
         pred_cost_com.drop("margin", axis=1, inplace=True)
         self.pred_cost_com = pred_cost_com
         # add income to data frame
-        income_y.loc[future_year]["Total_Revenue"] = int(rev_pred)
-        income_y.loc[future_year + 1]["Total_Revenue"] = int(
-            last_rate * count_rev_pred * alpha_prod_next * alpha_rate_next
-        )
+        income_y.loc[future_year,"Total_Revenue"] = self.pred_prod.loc[future_year,'Revenue']
+        income_y.loc[future_year + 1,"Total_Revenue"] = self.pred_prod.loc[future_year+1,'Revenue']
         ############# predict_cost_of_revenue ##################
         cost_rev_done = 0
         rev_cost_known = 0
@@ -3511,6 +3516,8 @@ class Stock:
         )
         if inv<0:
             inv=0
+        interest.loc[future_year,"add_inv_ratio"]=np.average(interest["add_inv_ratio"][-3:-1])
+        interest.loc[future_year,"pay_ratio"]=np.average(interest["pay_ratio"][-3:-1])
         interest.loc[future_year, "add"] = (
             np.average(interest["add_inv_ratio"][-3:-1]) * inv
         )
@@ -3532,6 +3539,8 @@ class Stock:
             self.pred_inv_balance.loc[future_year + 1]["wc"]
             + self.tangible.loc[future_year + 1]["add"]
         )
+        interest.loc[future_year+1,"add_inv_ratio"]=np.average(interest["add_inv_ratio"][-3:-1])     
+        interest.loc[future_year+1,"pay_ratio"]=np.average(interest["pay_ratio"][-3:-1])
         interest.loc[future_year + 1, "add"] = (
             np.average(interest["add_inv_ratio"][-3:-1]) * inv
         )
@@ -3824,6 +3833,7 @@ class Stock:
         transport_g_next_update=1,
         other_g_next_update=1,
     ):
+        self.create_interest_data()
         self.predict_income(
             alpha_rate_update,
             alpha_prod_update,
@@ -3845,7 +3855,7 @@ class Stock:
         self.predict_balance_sheet()
         self.predict_interst()
         self.create_fcfe()
-
+        self.predict_value()
     def plot_margin(self):
         plt.figure(figsize=[20, 8])
         plt.subplot(1, 2, 1)
@@ -3925,9 +3935,12 @@ class Stock:
         plt.bar(height=self.compare_ret['cpi_ret'],x=self.compare_ret.index,alpha=0.3,label='Inflation')
         plt.legend()
 
-    def predict_value(self,n,g=0.2,k=0.35):
+    def predict_value(self):
         eps1=self.pred_income.loc[self.future_year,'EPS_Capital']
         eps2=self.pred_income.loc[self.future_year+1,'EPS_Capital']
+        g=self.g
+        k=self.k
+        n=self.discounted_n
         value_d=eps1/(1+k)**n+eps2/(1+k)**(1+n)
         pe_terminal=(1+g)/(k-g)
         terminal_value=(eps2*(1+g)/(k-g))/((1+k)**(1+n))
@@ -3936,6 +3949,7 @@ class Stock:
         self.terminal_value=terminal_value
         self.value=value
         self.pe_terminal=pe_terminal
+        self.potential_value_g=(value/self.Price['Close'].iloc[-1])-1
     #save your analyse
     def save_analyse(self,name):
         '''
