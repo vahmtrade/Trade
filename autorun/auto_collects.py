@@ -415,159 +415,25 @@ def bourseview_search(stock_name):
 
 def bourseview_balancesheet(stock_name, y=5, q=5):
     """download 2 files : yearly,quarterly"""
+    try:
+        bourseview_search(stock_name)
 
-    bourseview_search(stock_name)
+        # select 'tarazname'
+        driver.find_element(By.XPATH, "//*[@id='stocks-sub-menu']/ul/li[2]").click()
+        sleep(break_time)
 
-    # select 'tarazname'
-    driver.find_element(By.XPATH, "//*[@id='stocks-sub-menu']/ul/li[2]").click()
-    sleep(break_time)
+        # click blanck page
+        driver.find_element(By.XPATH, "/html").click()
+        sleep(break_time)
 
-    # click blanck page
-    driver.find_element(By.XPATH, "/html").click()
-    sleep(break_time)
-
-    # download 2 excels
-    for time_type in ("yearly", "quarterly"):
-
-        if time_type == "yearly":
-            n = y
-
-        if time_type == "quarterly":
-            n = q
-
-        # select 'nooe'
-        driver.find_element(By.XPATH, f"//option[@value='{time_type}']").click()
-        sleep(2 * break_time)
-
-        # select 'dore'
-        driver.find_element(By.XPATH, f"//option[@value='{n}']").click()
-        sleep(4 * break_time)
-
-        # click download excel
-        driver.find_element(
-            By.XPATH, "//*[@id='new-balance-sheet-grid']/div/div[1]/span[2]/span"
-        ).click()
-        sleep(2 * break_time)
-
-        # replace last file
-        move_last_file(
-            f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/balancesheet/{time_type}.xlsx"
-        )
-
-
-def bourseview_income_statement(stock_name, y=5, q=5):
-    """download 4 files : yearly,quarterly,rial,dollar"""
-
-    bourseview_search(stock_name)
-
-    # select 'sood va zian'
-    driver.find_element(By.XPATH, "//*[@id='stocks-sub-menu']/ul/li[3]").click()
-    sleep(break_time)
-
-    # click blank page
-    driver.find_element(By.XPATH, "/html").click()
-    sleep(break_time)
-
-    # download 4 excels
-    for time_type in ("yearly", "quarterly"):
-
-        if time_type == "yearly":
-            n = y
-
-        if time_type == "quarterly":
-            n = q
-
-        # select 'nooe'
-        driver.find_element(By.XPATH, f"//option[@value='{time_type}']").click()
-        sleep(2 * break_time)
-
-        # select 'dore'
-        driver.find_element(By.XPATH, f"//option[@value='{n}']").click()
-        sleep(2 * break_time)
-
-        for money_type in ("IRR", "USDf"):
-
-            # click 'rial','dollar azad'
-            driver.find_element(By.XPATH, f"//option[@value='{money_type}']").click()
-            sleep(6 * break_time)
-
-            # click download excel
-            driver.find_element(
-                By.XPATH, "//*[@id='new-income-statement-grid']/div/div[1]/span[2]/span"
-            ).click()
-            sleep(2 * break_time)
-
-            # replace last file
-            money_options = {"IRR": "rial", "USDf": "dollar"}
-            move_last_file(
-                f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/income/{time_type}/{money_options[money_type]}.xlsx"
-            )
-
-
-def bourseview_cashflow(stock_name, y=5, q=5):
-    """download 2 files : yearly,quarterly"""
-
-    bourseview_search(stock_name)
-
-    # select 'jaryan vojoh naghd'
-    driver.find_element(
-        By.XPATH,
-        "//*[@id='stocks-sub-menu']/ul/li[4]",
-    ).click()
-    sleep(break_time)
-
-    # click blanck page
-    driver.find_element(By.XPATH, "/html").click()
-    sleep(break_time)
-
-    # download 2 file
-    for time_type in ("yearly", "quarterly"):
-
-        if time_type == "yearly":
-            n = y
-
-        if time_type == "quarterly":
-            n = q
-
-        # select 'nooe'
-        driver.find_element(By.XPATH, f"//option[@value='{time_type}']").click()
-        sleep(2 * break_time)
-
-        # select 'dore'
-        driver.find_element(By.XPATH, f"//option[@value='{n}']").click()
-        sleep(4 * break_time)
-
-        # click download excel
-        driver.find_element(
-            By.XPATH, "//*[@id='new-cash-flow-grid']/div/div[1]/span[2]/span"
-        ).click()
-        sleep(2 * break_time)
-
-        # replace last file
-        move_last_file(
-            f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/cashflow/{time_type}.xlsx"
-        )
-
-
-def bourseview_product_revenue(stock_name, y=5, q=5, m=5):
-    """create 6 files : (yearly,quarterly,monthly) (seprated)
-    <y = year : 5,10,20,50>
-    <q = quarterly : 5,10,20,50>
-    <m = month : 5,10,20,50>"""
-
-    def dl_excels(new_name=""):
-
-        # download seprated excels
-        for time_type in ("yearly", "quarterly", "monthly"):
+        # download 2 excels
+        for time_type in ("yearly", "quarterly"):
 
             if time_type == "yearly":
                 n = y
 
             if time_type == "quarterly":
                 n = q
-
-            if time_type == "monthly":
-                n = m
 
             # select 'nooe'
             driver.find_element(By.XPATH, f"//option[@value='{time_type}']").click()
@@ -579,309 +445,456 @@ def bourseview_product_revenue(stock_name, y=5, q=5, m=5):
 
             # click download excel
             driver.find_element(
-                By.XPATH,
-                "//*[@id='grid']/div/div[1]/span[2]/span",
+                By.XPATH, "//*[@id='new-balance-sheet-grid']/div/div[1]/span[2]/span"
             ).click()
             sleep(2 * break_time)
 
             # replace last file
             move_last_file(
-                f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/product/{time_type}{new_name}.xlsx"
+                f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/balancesheet/{time_type}.xlsx"
             )
+    except:
+        print(f'cant download balancesheet {stock_name}')
 
-    bourseview_search(stock_name)
+def bourseview_income_statement(stock_name, y=5, q=5):
+    """download 4 files : yearly,quarterly,rial,dollar"""
+    try:
+        bourseview_search(stock_name)
 
-    # select 'tolid va frosh'
-    driver.find_element(
-        By.XPATH,
-        "//*[@id='stocks-sub-menu']/ul/li[8]",
-    ).click()
-    sleep(break_time)
+        # select 'sood va zian'
+        driver.find_element(By.XPATH, "//*[@id='stocks-sub-menu']/ul/li[3]").click()
+        sleep(break_time)
 
-    # click blanck page
-    driver.find_element(By.XPATH, "/html").click()
-    sleep(break_time)
+        # click blank page
+        driver.find_element(By.XPATH, "/html").click()
+        sleep(break_time)
 
-    # download base excels
-    dl_excels()
-    sleep(2 * break_time)
+        # download 4 excels
+        for time_type in ("yearly", "quarterly"):
 
-    # click 'tafkik dakheli,khareji'
-    driver.find_element(
-        By.XPATH,
-        "//*[@id='grid']/div/div[1]/span[1]/div[3]",
-    ).click()
-    sleep(6 * break_time)
+            if time_type == "yearly":
+                n = y
 
-    # download seprated excels
-    dl_excels("_seprated")
-    sleep(2 * break_time)
+            if time_type == "quarterly":
+                n = q
 
-    # disable 'tafkik dakheli,khareji'
-    driver.find_element(
-        By.XPATH,
-        "//*[@id='grid']/div/div[1]/span[1]/div[3]",
-    ).click()
-    sleep(2 * break_time)
+            # select 'nooe'
+            driver.find_element(By.XPATH, f"//option[@value='{time_type}']").click()
+            sleep(2 * break_time)
 
+            # select 'dore'
+            driver.find_element(By.XPATH, f"//option[@value='{n}']").click()
+            sleep(2 * break_time)
+
+            for money_type in ("IRR", "USDf"):
+
+                # click 'rial','dollar azad'
+                driver.find_element(By.XPATH, f"//option[@value='{money_type}']").click()
+                sleep(6 * break_time)
+
+                # click download excel
+                driver.find_element(
+                    By.XPATH, "//*[@id='new-income-statement-grid']/div/div[1]/span[2]/span"
+                ).click()
+                sleep(2 * break_time)
+
+                # replace last file
+                money_options = {"IRR": "rial", "USDf": "dollar"}
+                move_last_file(
+                    f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/income/{time_type}/{money_options[money_type]}.xlsx"
+                )
+    except:
+        print(f'cant download income_statement {stock_name}')
+
+def bourseview_cashflow(stock_name, y=5, q=5):
+    """download 2 files : yearly,quarterly"""
+
+    try:
+        bourseview_search(stock_name)
+
+        # select 'jaryan vojoh naghd'
+        driver.find_element(
+            By.XPATH,
+            "//*[@id='stocks-sub-menu']/ul/li[4]",
+        ).click()
+        sleep(break_time)
+
+        # click blanck page
+        driver.find_element(By.XPATH, "/html").click()
+        sleep(break_time)
+
+        # download 2 file
+        for time_type in ("yearly", "quarterly"):
+
+            if time_type == "yearly":
+                n = y
+
+            if time_type == "quarterly":
+                n = q
+
+            # select 'nooe'
+            driver.find_element(By.XPATH, f"//option[@value='{time_type}']").click()
+            sleep(2 * break_time)
+
+            # select 'dore'
+            driver.find_element(By.XPATH, f"//option[@value='{n}']").click()
+            sleep(4 * break_time)
+
+            # click download excel
+            driver.find_element(
+                By.XPATH, "//*[@id='new-cash-flow-grid']/div/div[1]/span[2]/span"
+            ).click()
+            sleep(2 * break_time)
+
+            # replace last file
+            move_last_file(
+                f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/cashflow/{time_type}.xlsx"
+            )
+    except:
+        print(f'cant download cashflow {stock_name}')
+
+def bourseview_product_revenue(stock_name, y=5, q=5, m=5):
+    """create 6 files : (yearly,quarterly,monthly) (seprated)
+    <y = year : 5,10,20,50>
+    <q = quarterly : 5,10,20,50>
+    <m = month : 5,10,20,50>"""
+
+    try:
+        def dl_excels(new_name=""):
+
+            # download seprated excels
+            for time_type in ("yearly", "quarterly", "monthly"):
+
+                if time_type == "yearly":
+                    n = y
+
+                if time_type == "quarterly":
+                    n = q
+
+                if time_type == "monthly":
+                    n = m
+
+                # select 'nooe'
+                driver.find_element(By.XPATH, f"//option[@value='{time_type}']").click()
+                sleep(2 * break_time)
+
+                # select 'dore'
+                driver.find_element(By.XPATH, f"//option[@value='{n}']").click()
+                sleep(4 * break_time)
+
+                # click download excel
+                driver.find_element(
+                    By.XPATH,
+                    "//*[@id='grid']/div/div[1]/span[2]/span",
+                ).click()
+                sleep(2 * break_time)
+
+                # replace last file
+                move_last_file(
+                    f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/product/{time_type}{new_name}.xlsx"
+                )
+
+        bourseview_search(stock_name)
+
+        # select 'tolid va frosh'
+        driver.find_element(
+            By.XPATH,
+            "//*[@id='stocks-sub-menu']/ul/li[8]",
+        ).click()
+        sleep(break_time)
+
+        # click blanck page
+        driver.find_element(By.XPATH, "/html").click()
+        sleep(break_time)
+
+        # download base excels
+        dl_excels()
+        sleep(2 * break_time)
+
+        # click 'tafkik dakheli,khareji'
+        driver.find_element(
+            By.XPATH,
+            "//*[@id='grid']/div/div[1]/span[1]/div[3]",
+        ).click()
+        sleep(6 * break_time)
+
+        # download seprated excels
+        dl_excels("_seprated")
+        sleep(2 * break_time)
+
+        # disable 'tafkik dakheli,khareji'
+        driver.find_element(
+            By.XPATH,
+            "//*[@id='grid']/div/div[1]/span[1]/div[3]",
+        ).click()
+        sleep(2 * break_time)
+    except:
+        print(f'cant download product_revenue {stock_name}')
 
 def bourseview_cost(stock_name, y=5, q=5):
     """create 2 excel : yearly,quarterly
     <y = year : 5,10,20,50>
     <q = quarterly : 5,10,20,50>"""
 
-    bourseview_search(stock_name)
+    try:
+        bourseview_search(stock_name)
 
-    # select 'bahaye tamam shode'
-    driver.find_element(By.XPATH, "//*[@id='stocks-sub-menu']/ul/li[13]").click()
-    sleep(break_time)
+        # select 'bahaye tamam shode'
+        driver.find_element(By.XPATH, "//*[@id='stocks-sub-menu']/ul/li[13]").click()
+        sleep(break_time)
 
-    # click blanck page
-    driver.find_element(By.XPATH, "/html").click()
-    sleep(break_time)
+        # click blanck page
+        driver.find_element(By.XPATH, "/html").click()
+        sleep(break_time)
 
-    # download excel
-    for time_type in ("yearly", "quarterly"):
+        # download excel
+        for time_type in ("yearly", "quarterly"):
 
-        if time_type == "yearly":
-            n = y
+            if time_type == "yearly":
+                n = y
 
-        if time_type == "quarterly":
-            n = q
+            if time_type == "quarterly":
+                n = q
 
-        # select 'nooe'
-        driver.find_element(By.XPATH, f"//option[@value='{time_type}']").click()
-        sleep(2 * break_time)
+            # select 'nooe'
+            driver.find_element(By.XPATH, f"//option[@value='{time_type}']").click()
+            sleep(2 * break_time)
 
-        # select 'dore'
-        driver.find_element(By.XPATH, f"//option[@value='{n}']").click()
-        sleep(4 * break_time)
+            # select 'dore'
+            driver.find_element(By.XPATH, f"//option[@value='{n}']").click()
+            sleep(4 * break_time)
 
-        # click 'hameye' data
-        driver.find_element(
-            By.XPATH, "//*[@id='grid-cogs']/div/div[4]/div/div[1]"
-        ).click()
-        sleep(2 * break_time)
+            # click 'hameye' data
+            driver.find_element(
+                By.XPATH, "//*[@id='grid-cogs']/div/div[4]/div/div[1]"
+            ).click()
+            sleep(2 * break_time)
 
-        # go top of page
-        driver.find_element(By.TAG_NAME, "body").send_keys(Keys.CONTROL + Keys.HOME)
-        sleep(4 * break_time)
+            # go top of page
+            driver.find_element(By.TAG_NAME, "body").send_keys(Keys.CONTROL + Keys.HOME)
+            sleep(4 * break_time)
 
-        # click download excel
-        driver.find_element(
-            By.XPATH, "//*[@id='grid-cogs']/div/div[2]/span[2]/span"
-        ).click()
-        sleep(2 * break_time)
+            # click download excel
+            driver.find_element(
+                By.XPATH, "//*[@id='grid-cogs']/div/div[2]/span[2]/span"
+            ).click()
+            sleep(2 * break_time)
 
-        # replace last file
-        move_last_file(
-            f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/cost/{time_type}.xlsx"
-        )
-
+            # replace last file
+            move_last_file(
+                f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/cost/{time_type}.xlsx"
+            )
+    except:
+        print(f'cant download cost of {stock_name}')
 
 def bourseview_official(stock_name, y=5, q=5):
     """create 2 excel : yearly,quarterly
     <y = year : 5,10,20,50>
     <q = quarterly : 5,10,20,50>"""
 
-    bourseview_search(stock_name)
+    try:
+        bourseview_search(stock_name)
 
-    # select 'hazine haye omomi edari'
-    driver.find_element(
-        By.XPATH,
-        "//*[@id='stocks-sub-menu']/ul/li[16]",
-    ).click()
-    sleep(break_time)
+        # select 'hazine haye omomi edari'
+        driver.find_element(
+            By.XPATH,
+            "//*[@id='stocks-sub-menu']/ul/li[16]",
+        ).click()
+        sleep(break_time)
 
-    # click blanck page
-    driver.find_element(By.XPATH, "/html").click()
-    sleep(break_time)
+        # click blanck page
+        driver.find_element(By.XPATH, "/html").click()
+        sleep(break_time)
 
-    # 'salane','fasli'
-    for time_type in ("yearly", "quarterly"):
+        # 'salane','fasli'
+        for time_type in ("yearly", "quarterly"):
 
-        if time_type == "yearly":
-            n = y
+            if time_type == "yearly":
+                n = y
 
-        if time_type == "quarterly":
-            n = q
+            if time_type == "quarterly":
+                n = q
 
-        # select 'nooe'
-        driver.find_element(By.XPATH, f"//option[@value='{time_type}']").click()
-        sleep(2 * break_time)
+            # select 'nooe'
+            driver.find_element(By.XPATH, f"//option[@value='{time_type}']").click()
+            sleep(2 * break_time)
 
-        # select 'dore'
-        driver.find_element(By.XPATH, f"//option[@value='{n}']").click()
-        sleep(4 * break_time)
+            # select 'dore'
+            driver.find_element(By.XPATH, f"//option[@value='{n}']").click()
+            sleep(4 * break_time)
 
-        # click download excel
-        driver.find_element(By.XPATH, "//*[@id='grid']/div/div[2]/span[2]/span").click()
-        sleep(2 * break_time)
+            # click download excel
+            driver.find_element(By.XPATH, "//*[@id='grid']/div/div[2]/span[2]/span").click()
+            sleep(2 * break_time)
 
-        # replace last file
-        move_last_file(
-            f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/official/{time_type}.xlsx"
-        )
-
+            # replace last file
+            move_last_file(
+                f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/official/{time_type}.xlsx"
+            )
+    except:
+        print(f'cant download official of {stock_name}')
 
 def bourseview_price_history(stock_name, start=first_day, end=last_day):
     """download pe.xlsx
     <start : 1390/01/01>
     <end : 1400/01/01>"""
+    try:
+        bourseview_search(stock_name)
+        # select 'tarikhche gheimat'
+        driver.find_element(
+            By.XPATH,
+            "//*[@id='stocks-sub-menu']/ul/li[21]",
+        ).click()
 
-    bourseview_search(stock_name)
-    # select 'tarikhche gheimat'
-    driver.find_element(
-        By.XPATH,
-        "//*[@id='stocks-sub-menu']/ul/li[21]",
-    ).click()
+        sleep(4 * break_time)
 
-    sleep(4 * break_time)
+        # click blank page
+        driver.find_element(By.XPATH, "/html").click()
+        sleep(break_time)
 
-    # click blank page
-    driver.find_element(By.XPATH, "/html").click()
-    sleep(break_time)
+        # send 'tarikh shoroea'
+        driver.find_element(
+            By.XPATH,
+            "//*[@id='stocks-content-body']/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/input",
+        ).send_keys(start)
+        sleep(break_time)
 
-    # send 'tarikh shoroea'
-    driver.find_element(
-        By.XPATH,
-        "//*[@id='stocks-content-body']/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/input",
-    ).send_keys(start)
-    sleep(break_time)
+        # send 'tarikh payan'
+        driver.find_element(
+            By.XPATH,
+            "//*[@id='stocks-content-body']/div[1]/div[2]/div[1]/div[1]/div[3]/div[1]/input",
+        ).send_keys(end)
+        sleep(break_time)
 
-    # send 'tarikh payan'
-    driver.find_element(
-        By.XPATH,
-        "//*[@id='stocks-content-body']/div[1]/div[2]/div[1]/div[1]/div[3]/div[1]/input",
-    ).send_keys(end)
-    sleep(break_time)
+        # click 'namayesh gheimat'
+        driver.find_element(
+            By.XPATH,
+            "//*[@id='stocks-content-body']/div[1]/div[2]/div[1]/div[1]/button",
+        ).click()
+        sleep(2 * break_time)
 
-    # click 'namayesh gheimat'
-    driver.find_element(
-        By.XPATH,
-        "//*[@id='stocks-content-body']/div[1]/div[2]/div[1]/div[1]/button",
-    ).click()
-    sleep(2 * break_time)
+        # click download excel
+        driver.find_element(
+            By.XPATH,
+            "//*[@id='stocks-content-body']/div[1]/div[2]/div[1]/div[2]/div/div/div[2]/div",
+        ).click()
+        sleep(2 * break_time)
 
-    # click download excel
-    driver.find_element(
-        By.XPATH,
-        "//*[@id='stocks-content-body']/div[1]/div[2]/div[1]/div[2]/div/div/div[2]/div",
-    ).click()
-    sleep(2 * break_time)
-
-    # replace last file
-    move_last_file(
-        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/pe/pe.xlsx"
-    )
-
+        # replace last file
+        move_last_file(
+            f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/pe/pe.xlsx"
+        )
+    except:
+        print(f'cant download price history of {stock_name}')
 
 def bourseview_macro(start=first_day, end=last_day):
     """download macro.xlsx
     <start : 1390/01/01>
     <end : 1400/01/01>"""
+    try:
+        # select 'dadehaye kalan'
+        driver.find_element(
+            By.XPATH,
+            "//*[@id='step3']/li[9]",
+        ).click()
+        sleep(break_time)
 
-    # select 'dadehaye kalan'
-    driver.find_element(
-        By.XPATH,
-        "//*[@id='step3']/li[9]",
-    ).click()
-    sleep(break_time)
+        # select 'shakhes boors iran'
+        driver.find_element(
+            By.XPATH,
+            "//*[@id='macro-history-select-irex-wrapper']/span",
+        ).click()
+        sleep(break_time)
 
-    # select 'shakhes boors iran'
-    driver.find_element(
-        By.XPATH,
-        "//*[@id='macro-history-select-irex-wrapper']/span",
-    ).click()
-    sleep(break_time)
+        # click 'arzesh moamelat'
+        driver.find_element(By.XPATH, "/html/body/span/span/span/ul/li/ul/li[3]").click()
+        sleep(break_time)
 
-    # click 'arzesh moamelat'
-    driver.find_element(By.XPATH, "/html/body/span/span/span/ul/li/ul/li[3]").click()
-    sleep(break_time)
+        # click p/e ttm
+        driver.find_element(By.XPATH, "/html/body/span/span/span/ul/li/ul/li[6]").click()
+        sleep(break_time)
 
-    # click p/e ttm
-    driver.find_element(By.XPATH, "/html/body/span/span/span/ul/li/ul/li[6]").click()
-    sleep(break_time)
+        # click p/d
+        driver.find_element(By.XPATH, "/html/body/span/span/span/ul/li/ul/li[8]").click()
+        sleep(break_time)
 
-    # click p/d
-    driver.find_element(By.XPATH, "/html/body/span/span/span/ul/li/ul/li[8]").click()
-    sleep(break_time)
+        # select 'saham shakhes boors'
+        driver.find_element(
+            By.XPATH,
+            "//*[@id='macro-history-select-tedpix-wrapper']/span",
+        ).click()
+        sleep(break_time)
 
-    # select 'saham shakhes boors'
-    driver.find_element(
-        By.XPATH,
-        "//*[@id='macro-history-select-tedpix-wrapper']/span",
-    ).click()
-    sleep(break_time)
+        # click 'arzesh khales vorod haghighi'
+        driver.find_element(By.XPATH, "/html/body/span/span/span/ul/li/ul/li[20]").click()
+        sleep(break_time)
 
-    # click 'arzesh khales vorod haghighi'
-    driver.find_element(By.XPATH, "/html/body/span/span/span/ul/li/ul/li[20]").click()
-    sleep(break_time)
+        # select 'nerkh arz'
+        driver.find_element(
+            By.XPATH,
+            "//*[@id='macro-history-select-currency-wrapper']/span",
+        ).click()
+        sleep(break_time)
 
-    # select 'nerkh arz'
-    driver.find_element(
-        By.XPATH,
-        "//*[@id='macro-history-select-currency-wrapper']/span",
-    ).click()
-    sleep(break_time)
+        # click dollar 'nima'
+        driver.find_element(By.XPATH, "/html/body/span/span/span/ul/li/ul/li[1]").click()
+        sleep(break_time)
 
-    # click dollar 'nima'
-    driver.find_element(By.XPATH, "/html/body/span/span/span/ul/li/ul/li[1]").click()
-    sleep(break_time)
+        # click dollar 'azad'
+        driver.find_element(By.XPATH, "/html/body/span/span/span/ul/li/ul/li[2]").click()
+        sleep(break_time)
 
-    # click dollar 'azad'
-    driver.find_element(By.XPATH, "/html/body/span/span/span/ul/li/ul/li[2]").click()
-    sleep(break_time)
+        # select 'motoghayerhaye poli'
+        driver.find_element(
+            By.XPATH,
+            "//*[@id='macro-history-select-economics-wrapper']/span",
+        ).click()
+        sleep(break_time)
 
-    # select 'motoghayerhaye poli'
-    driver.find_element(
-        By.XPATH,
-        "//*[@id='macro-history-select-economics-wrapper']/span",
-    ).click()
-    sleep(break_time)
+        # click 'miangin nerkh bedon risk'
+        driver.find_element(By.XPATH, "/html/body/span/span/span/ul/li/ul/li[2]").click()
+        sleep(break_time)
 
-    # click 'miangin nerkh bedon risk'
-    driver.find_element(By.XPATH, "/html/body/span/span/span/ul/li/ul/li[2]").click()
-    sleep(break_time)
+        # click download excel
+        driver.find_element(
+            By.XPATH,
+            "/html/body/div[2]/div/div/div/div/div[3]/div[3]/div/div[1]/div/div/div[3]/div/span",
+        ).click()
+        sleep(break_time)
 
-    # click download excel
-    driver.find_element(
-        By.XPATH,
-        "/html/body/div[2]/div/div/div/div/div[3]/div[3]/div/div[1]/div/div/div[3]/div/span",
-    ).click()
-    sleep(break_time)
+        # click 'entekhab baze delkhah'
+        driver.find_element(
+            By.XPATH,
+            "//*[@id='myModal']/div/div/div[2]/div/button",
+        ).click()
+        sleep(break_time)
 
-    # click 'entekhab baze delkhah'
-    driver.find_element(
-        By.XPATH,
-        "//*[@id='myModal']/div/div/div[2]/div/button",
-    ).click()
-    sleep(break_time)
+        # send 'tarikh shoroe'
+        driver.find_element(
+            By.XPATH,
+            "//*[@id='collapseExample']/div/div/div[1]/div[1]/input",
+        ).send_keys(start)
+        sleep(break_time)
 
-    # send 'tarikh shoroe'
-    driver.find_element(
-        By.XPATH,
-        "//*[@id='collapseExample']/div/div/div[1]/div[1]/input",
-    ).send_keys(start)
-    sleep(break_time)
+        # send 'tarikh payan'
+        driver.find_element(
+            By.XPATH,
+            "//*[@id='collapseExample']/div/div/div[3]/div[1]/input",
+        ).send_keys(end)
+        sleep(break_time)
 
-    # send 'tarikh payan'
-    driver.find_element(
-        By.XPATH,
-        "//*[@id='collapseExample']/div/div/div[3]/div[1]/input",
-    ).send_keys(end)
-    sleep(break_time)
+        # click download button
+        driver.find_element(
+            By.XPATH,
+            "//*[@id='myModal']/div/div/div[3]/button",
+        ).click()
+        sleep(2 * break_time)
 
-    # click download button
-    driver.find_element(
-        By.XPATH,
-        "//*[@id='myModal']/div/div/div[3]/button",
-    ).click()
-    sleep(2 * break_time)
+        # click blank page
+        driver.find_element(By.XPATH, "/html").click()
+        sleep(break_time)
 
-    # click blank page
-    driver.find_element(By.XPATH, "/html").click()
-    sleep(break_time)
-
-    # replace last file
-    move_last_file(f"{DB}/macro/macro.xlsx")
+        # replace last file
+        move_last_file(f"{DB}/macro/macro.xlsx")
+    except:
+        print('cant download macro data')

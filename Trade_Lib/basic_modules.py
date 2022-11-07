@@ -16,6 +16,7 @@ def create_database_structure():
             "official",
             "pe",
             "analyse",
+            'detail_trade',
         ):
 
             if i == "income":
