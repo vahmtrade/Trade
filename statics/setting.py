@@ -28,23 +28,23 @@ watchlist = {
     "shapna": {"indus": "palayesh", "token": "شپنا", "name": "پالایش نفت اصفهان"},
     "shesadaf": {"indus": "dode", "token": "شصدف", "name": "صنعتی دوده فام"},
     "shedoos": {"indus": "dode", "token": "شدوص", "name": "دوده صنعتی پارس"},
-    'sehegmat':{'indus':'siman','token':'سهگمت','name':'سیمان هگمتان'},
-    'ghegolpa':{'indus':'ghaza','token':'غگلپا','name':'پگاه گلپایگان'},
-    'gheshasfa':{'indus':'ghaza','token':'غشصفا','name':'پگاه اصفهان'},
-    'ghekurosh':{"indus":'ghaza','token':'غکورش','name':'صنعت غذایی کورش'},
-    'ghegorji':{"indus":'ghaza','token':'غگرجی','name':'بیسکویت گرجی'},
-    'faspa':{'indus':'folad','token':'فسپا','name':'گره صنعتی سپاهان'},
-    'kesave':{'indus':'kashi','token':'کساوه','name':'کاشی و سرامیک سینا'},
-    'detmad':{'indus':'darou','token':'دتماد','name':'تولید مواد اولیه دارو پخش'},
-    'ghezar':{'indus':'ghaza','token':'غزر','name':'زر ماکارون'},
-    'delor':{'indus':'darou','token':'دلر','name':'داروسازی اکسیر'},
-    'kehamda':{'indus':'shishe','token':'کهمدا','name':'شیشه همدان'},
-    'kehafez':{'indus':'kashi','token':'کحافظ','name':'کاشی و سرامیک حافظ'},
-    'shaspa':{'indus':'ravankar','token':'شسپا','name':'نفت سپاهان'},
-    'shepaksa':{'indus':'shoyande','token':'شپاکسا','name':'پاکسان'}
+    "sehegmat": {"indus": "siman", "token": "سهگمت", "name": "سیمان هگمتان"},
+    "ghegolpa": {"indus": "ghaza", "token": "غگلپا", "name": "پگاه گلپایگان"},
+    "gheshasfa": {"indus": "ghaza", "token": "غشصفا", "name": "پگاه اصفهان"},
+    "ghekurosh": {"indus": "ghaza", "token": "غکورش", "name": "صنعت غذایی کورش"},
+    "ghegorji": {"indus": "ghaza", "token": "غگرجی", "name": "بیسکویت گرجی"},
+    "faspa": {"indus": "folad", "token": "فسپا", "name": "گره صنعتی سپاهان"},
+    "kesave": {"indus": "kashi", "token": "کساوه", "name": "کاشی و سرامیک سینا"},
+    "detmad": {"indus": "darou", "token": "دتماد", "name": "تولید مواد اولیه دارو پخش"},
+    "ghezar": {"indus": "ghaza", "token": "غزر", "name": "زر ماکارون"},
+    "delor": {"indus": "darou", "token": "دلر", "name": "داروسازی اکسیر"},
+    "kehamda": {"indus": "shishe", "token": "کهمدا", "name": "شیشه همدان"},
+    "kehafez": {"indus": "kashi", "token": "کحافظ", "name": "کاشی و سرامیک حافظ"},
+    "shaspa": {"indus": "ravankar", "token": "شسپا", "name": "نفت سپاهان"},
+    "shepaksa": {"indus": "shoyande", "token": "شپاکسا", "name": "پاکسان"},
 }
 
-ROOT_PATH = os.path.abspath(os.curdir).replace('\\','/')
+ROOT_PATH = os.path.abspath(os.curdir).replace("\\", "/")
 DB = f"{ROOT_PATH}/database"
 WINDOWS_FIREFOX_DRIVER_PATH = f"{ROOT_PATH}/statics/geckodriver.exe"
 LINUX_FIREFOX_DRIVER_PATH = f"{ROOT_PATH}/statics/geckodriver"

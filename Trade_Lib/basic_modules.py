@@ -1,24 +1,28 @@
 import os
 from pathlib import Path
+from datetime import datetime
+from persiantools.jdatetime import JalaliDate
 from statics.setting import DB, watchlist
 
 
 def create_database_structure():
     """create database folders based on watchlist"""
 
+    base_folders = [
+        "balancesheet",
+        "income",
+        "cashflow",
+        "product",
+        "cost",
+        "official",
+        "pe",
+        "analyse",
+        "detail_trade",
+    ]
+
     for stock, info in watchlist.items():
 
-        for i in (
-            "balancesheet",
-            "income",
-            "cashflow",
-            "product",
-            "cost",
-            "official",
-            "pe",
-            "analyse",
-            'detail_trade',
-        ):
+        for i in base_folders:
 
             if i == "income":
                 for j in ("yearly", "quarterly"):
@@ -43,8 +47,8 @@ def list_stock_files(stock_name):
     return stock_files
 
 
-def update_stock_files(stock):
-    stock_folder = f"{DB}/industries/{watchlist[stock]['indus']}/{stock}"
+def update_stock_files(stock_name):
+    stock_folder = f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}"
 
     # files that must every stock have it
     base_files = [
@@ -61,6 +65,7 @@ def update_stock_files(stock):
         f"{stock_folder}/official/quarterly.xlsx",
         f"{stock_folder}/official/yearly.xlsx",
         f"{stock_folder}/pe/pe.xlsx",
+        f"{stock_folder}/pe/forward.xlsx",
         f"{stock_folder}/product/monthly.xlsx",
         f"{stock_folder}/product/monthly_seprated.xlsx",
         f"{stock_folder}/product/quarterly.xlsx",
@@ -72,25 +77,22 @@ def update_stock_files(stock):
     ]
 
     # show deficiency files
-    print(100 * "#")
-    print(f"<<< DEFICIENCY {stock.upper()} >>>")
     for b in base_files:
         if Path(b).exists() == False:
-            print(b.replace("\\", "/"))
+            print("deficiency : ", b)
 
-    # remove unnecessary files
-    print(100 * "-")
-    print(f"<<< UNNECESSARY {stock.upper()} >>>")
-    all_files = list_stock_files(stock)
+    # show unnecessary files
+    all_files = list_stock_files(stock_name)
     for a in all_files:
         if a not in base_files:
-            print(a)
-            os.remove(a)
+            print("unnecessary : ", a)
 
-
-def update_database():
-    for stock in list(watchlist.keys()):
-        update_stock_files(stock)
+    # show date files
+    for b in base_files:
+        if Path(b).exists():
+            # get creation time of file
+            t = JalaliDate(datetime.fromtimestamp(os.path.getctime(b)))
+            print(f"{t} : {b}")
 
 
 def to_digits(string):
