@@ -44,7 +44,7 @@ watchlist = {
     'shepaksa':{'indus':'shoyande','token':'شپاکسا','name':'پاکسان'}
 }
 
-ROOT_PATH = os.path.abspath(os.curdir)
+ROOT_PATH = os.path.abspath(os.curdir).replace('\\','/')
 DB = f"{ROOT_PATH}/database"
 WINDOWS_FIREFOX_DRIVER_PATH = f"{ROOT_PATH}/statics/geckodriver.exe"
 LINUX_FIREFOX_DRIVER_PATH = f"{ROOT_PATH}/statics/geckodriver"

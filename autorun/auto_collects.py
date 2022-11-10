@@ -391,8 +391,15 @@ def bourseview_login():
 
     # login
     driver.find_element(By.XPATH, "//*[@id='submit_btn']").click()
-
     sleep(6 * break_time)
+
+    try:
+        # block pop-ups
+        driver.find_element(By.XPATH,"//*[@id='dialog_1']/div[1]/div[1]/span").click()
+        sleep(break_time)
+    
+    except:
+        pass
 
 
 def bourseview_search(stock_name):
