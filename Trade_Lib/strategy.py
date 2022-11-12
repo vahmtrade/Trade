@@ -3,16 +3,17 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from itertools import product
 from statics.setting import *
+
 plt.style.use("seaborn")
 
 
 class TesterOneSide:
-    def __init__(self, data, start, end, tc,name):
+    def __init__(self, data, start, end, tc, name):
         self.data = data
         self.start = start
         self.end = end
         self.tc = tc
-        self.name=name
+        self.name = name
 
     def test_strategy(self, sma_s, sma_l, vma_s, vma_l):
         df = self.data["Close"].copy().to_frame()
@@ -84,9 +85,9 @@ class TesterOneSide:
             columns=["SMA_s", "SMA_l", "VMA_S", "VMA_l"], data=combination
         )
         df["Performance"] = resault
-        industry=watchlist[self.name]['indus']
-        df=df.sort_values('Performance',ascending=False)
-        df.to_excel(f'{DB}/industries/{industry}/{self.name}/opt.xlsx')
+        industry = watchlist[self.name]["indus"]
+        df = df.sort_values("Performance", ascending=False)
+        df.to_excel(f"{DB}/industries/{industry}/{self.name}/opt.xlsx")
         return df
 
     def plot_position(self):

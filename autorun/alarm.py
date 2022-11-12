@@ -2,7 +2,7 @@ import pickle
 import smtplib, ssl
 from email.message import EmailMessage
 
-from statics.setting import DB,watchlist
+from statics.setting import DB, watchlist
 from statics.secrets import sender, sender_pass, receiver
 from Trade_Lib.boors_func import Stock
 

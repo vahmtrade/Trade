@@ -391,8 +391,15 @@ def bourseview_login():
 
     # login
     driver.find_element(By.XPATH, "//*[@id='submit_btn']").click()
-
     sleep(6 * break_time)
+
+    try:
+        # block pop-ups
+        driver.find_element(By.XPATH, "//*[@id='dialog_1']/div[1]/div[1]/span").click()
+        sleep(break_time)
+
+    except:
+        pass
 
 
 def bourseview_search(stock_name):
@@ -454,7 +461,8 @@ def bourseview_balancesheet(stock_name, y=5, q=5):
                 f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/balancesheet/{time_type}.xlsx"
             )
     except:
-        print(f'cant download balancesheet {stock_name}')
+        print(f"cant download balancesheet {stock_name}")
+
 
 def bourseview_income_statement(stock_name, y=5, q=5):
     """download 4 files : yearly,quarterly,rial,dollar"""
@@ -489,12 +497,15 @@ def bourseview_income_statement(stock_name, y=5, q=5):
             for money_type in ("IRR", "USDf"):
 
                 # click 'rial','dollar azad'
-                driver.find_element(By.XPATH, f"//option[@value='{money_type}']").click()
+                driver.find_element(
+                    By.XPATH, f"//option[@value='{money_type}']"
+                ).click()
                 sleep(6 * break_time)
 
                 # click download excel
                 driver.find_element(
-                    By.XPATH, "//*[@id='new-income-statement-grid']/div/div[1]/span[2]/span"
+                    By.XPATH,
+                    "//*[@id='new-income-statement-grid']/div/div[1]/span[2]/span",
                 ).click()
                 sleep(2 * break_time)
 
@@ -504,7 +515,8 @@ def bourseview_income_statement(stock_name, y=5, q=5):
                     f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/income/{time_type}/{money_options[money_type]}.xlsx"
                 )
     except:
-        print(f'cant download income_statement {stock_name}')
+        print(f"cant download income_statement {stock_name}")
+
 
 def bourseview_cashflow(stock_name, y=5, q=5):
     """download 2 files : yearly,quarterly"""
@@ -551,7 +563,8 @@ def bourseview_cashflow(stock_name, y=5, q=5):
                 f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/cashflow/{time_type}.xlsx"
             )
     except:
-        print(f'cant download cashflow {stock_name}')
+        print(f"cant download cashflow {stock_name}")
+
 
 def bourseview_product_revenue(stock_name, y=5, q=5, m=5):
     """create 6 files : (yearly,quarterly,monthly) (seprated)
@@ -560,6 +573,7 @@ def bourseview_product_revenue(stock_name, y=5, q=5, m=5):
     <m = month : 5,10,20,50>"""
 
     try:
+
         def dl_excels(new_name=""):
 
             # download seprated excels
@@ -629,7 +643,8 @@ def bourseview_product_revenue(stock_name, y=5, q=5, m=5):
         ).click()
         sleep(2 * break_time)
     except:
-        print(f'cant download product_revenue {stock_name}')
+        print(f"cant download product_revenue {stock_name}")
+
 
 def bourseview_cost(stock_name, y=5, q=5):
     """create 2 excel : yearly,quarterly
@@ -685,7 +700,8 @@ def bourseview_cost(stock_name, y=5, q=5):
                 f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/cost/{time_type}.xlsx"
             )
     except:
-        print(f'cant download cost of {stock_name}')
+        print(f"cant download cost of {stock_name}")
+
 
 def bourseview_official(stock_name, y=5, q=5):
     """create 2 excel : yearly,quarterly
@@ -724,7 +740,9 @@ def bourseview_official(stock_name, y=5, q=5):
             sleep(4 * break_time)
 
             # click download excel
-            driver.find_element(By.XPATH, "//*[@id='grid']/div/div[2]/span[2]/span").click()
+            driver.find_element(
+                By.XPATH, "//*[@id='grid']/div/div[2]/span[2]/span"
+            ).click()
             sleep(2 * break_time)
 
             # replace last file
@@ -732,7 +750,8 @@ def bourseview_official(stock_name, y=5, q=5):
                 f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/official/{time_type}.xlsx"
             )
     except:
-        print(f'cant download official of {stock_name}')
+        print(f"cant download official of {stock_name}")
+
 
 def bourseview_price_history(stock_name, start=first_day, end=last_day):
     """download pe.xlsx
@@ -785,7 +804,8 @@ def bourseview_price_history(stock_name, start=first_day, end=last_day):
             f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/pe/pe.xlsx"
         )
     except:
-        print(f'cant download price history of {stock_name}')
+        print(f"cant download price history of {stock_name}")
+
 
 def bourseview_macro(start=first_day, end=last_day):
     """download macro.xlsx
@@ -807,15 +827,21 @@ def bourseview_macro(start=first_day, end=last_day):
         sleep(break_time)
 
         # click 'arzesh moamelat'
-        driver.find_element(By.XPATH, "/html/body/span/span/span/ul/li/ul/li[3]").click()
+        driver.find_element(
+            By.XPATH, "/html/body/span/span/span/ul/li/ul/li[3]"
+        ).click()
         sleep(break_time)
 
         # click p/e ttm
-        driver.find_element(By.XPATH, "/html/body/span/span/span/ul/li/ul/li[6]").click()
+        driver.find_element(
+            By.XPATH, "/html/body/span/span/span/ul/li/ul/li[6]"
+        ).click()
         sleep(break_time)
 
         # click p/d
-        driver.find_element(By.XPATH, "/html/body/span/span/span/ul/li/ul/li[8]").click()
+        driver.find_element(
+            By.XPATH, "/html/body/span/span/span/ul/li/ul/li[8]"
+        ).click()
         sleep(break_time)
 
         # select 'saham shakhes boors'
@@ -826,7 +852,9 @@ def bourseview_macro(start=first_day, end=last_day):
         sleep(break_time)
 
         # click 'arzesh khales vorod haghighi'
-        driver.find_element(By.XPATH, "/html/body/span/span/span/ul/li/ul/li[20]").click()
+        driver.find_element(
+            By.XPATH, "/html/body/span/span/span/ul/li/ul/li[20]"
+        ).click()
         sleep(break_time)
 
         # select 'nerkh arz'
@@ -837,11 +865,15 @@ def bourseview_macro(start=first_day, end=last_day):
         sleep(break_time)
 
         # click dollar 'nima'
-        driver.find_element(By.XPATH, "/html/body/span/span/span/ul/li/ul/li[1]").click()
+        driver.find_element(
+            By.XPATH, "/html/body/span/span/span/ul/li/ul/li[1]"
+        ).click()
         sleep(break_time)
 
         # click dollar 'azad'
-        driver.find_element(By.XPATH, "/html/body/span/span/span/ul/li/ul/li[2]").click()
+        driver.find_element(
+            By.XPATH, "/html/body/span/span/span/ul/li/ul/li[2]"
+        ).click()
         sleep(break_time)
 
         # select 'motoghayerhaye poli'
@@ -852,7 +884,9 @@ def bourseview_macro(start=first_day, end=last_day):
         sleep(break_time)
 
         # click 'miangin nerkh bedon risk'
-        driver.find_element(By.XPATH, "/html/body/span/span/span/ul/li/ul/li[2]").click()
+        driver.find_element(
+            By.XPATH, "/html/body/span/span/span/ul/li/ul/li[2]"
+        ).click()
         sleep(break_time)
 
         # click download excel
@@ -897,4 +931,4 @@ def bourseview_macro(start=first_day, end=last_day):
         # replace last file
         move_last_file(f"{DB}/macro/macro.xlsx")
     except:
-        print('cant download macro data')
+        print("cant download macro data")
