@@ -1677,6 +1677,8 @@ class Macro:
         self.summary["Pred"] = pred
         # create monetary data
         self.get_historical_data()
+        # create commo data
+        self.get_como()
 
     def plot_dollar(self):
         plt.figure(figsize=[20, 12])
@@ -1943,15 +1945,14 @@ class Macro:
         )
         # extract price index
         price = history[["dollar", "cpi", "ppi", "land", "dollar_land", "stock"]]
+        price_90=price.loc[1390:]
         # extract foreign exchange data
         exchange = history[
             [
                 "dollar",
                 "oil_export",
-                "non_oil_export",
                 "total_export",
                 "import",
-                "current_gdp",
                 "constant_gdp",
                 "cpi",
                 "cash",
@@ -1977,7 +1978,10 @@ class Macro:
         data_1401_ret = pd.DataFrame(columns=data_1401.columns)
         for i in data_1401.columns:
             data_1401_ret[i] = data_1401[i].pct_change()
-
+        # add value to exchange
+        exchange['dollar_value_80']=(exchange['cpi']/exchange['cpi'].loc[1381])*exchange['dollar'].loc[1381]
+        exchange['dollar_value_90']=(exchange['cpi']/exchange['cpi'].loc[1390])*exchange['dollar'].loc[1390]
+        exchange['dollar_value_95']=(exchange['cpi']/exchange['cpi'].loc[1395])*exchange['dollar'].loc[1395]
         exchange_ret = pd.DataFrame(columns=["dollar", "cpi"])
         exchange_ret["dollar"] = exchange["dollar"].pct_change()
         exchange_ret["gdp"] = exchange["constant_gdp"].pct_change()
@@ -1993,6 +1997,13 @@ class Macro:
         price_ret["land"] = price["land"].pct_change()
         price_ret["dollar"] = price["dollar"].pct_change()
         price_ret["stock"] = price["stock"].pct_change()
+        # create_uni var
+        price_uni=pd.DataFrame(columns=price.columns)
+        for i in price_uni.columns:
+            price_uni[i]=price[i]/price[i].iloc[0]
+        price_90_uni=pd.DataFrame(columns=price.columns)
+        for i in price_90_uni.columns:
+            price_90_uni[i]=price_90[i]/price_90[i].iloc[0]
         # dropna from data
         price_ret.dropna(inplace=True)
         # exchange_ret.dropna(inplace=True)
@@ -2009,7 +2020,65 @@ class Macro:
         self.data_1400_ret = data_1400_ret
         self.data_1401 = data_1401
         self.data_1401_ret = data_1401_ret
+        self.price_uni=price_uni
+        self.price_90=price_90
+        self.price_90_uni=price_90_uni
 
+    def get_como(self):
+        como = pd.read_excel(
+            f"{DB}/macro/commoditie/monthly.xlsx", sheet_name="Monthly Prices"
+        )
+        for i in como.index:
+            for j in como.columns:
+                if como.loc[i, j] == "Crude oil, average":
+                    x = i
+        my_col = como.loc[x].values
+        my_col[0] = "date"
+        for i in range(len(como.columns)):
+            como.rename(columns={como.columns[i]: my_col[i]}, inplace=True)
+        como.drop([x, x + 1], inplace=True)
+        como = como[-250:]
+        como.set_index(["date"], inplace=True)
+        como = como[
+            [
+                "Urea ",
+                "Gold",
+                "Crude oil, average",
+                "Crude oil, Dubai",
+                "Crude oil, WTI",
+                "Iron ore, cfr spot",
+                "Natural gas, US",
+                "Natural gas, Europe **",
+                "Coal, Australian **",
+                "Copper",
+                "Aluminum",
+            ]
+        ]
+        
+        my_col = [
+            "urea",
+            "gold",
+            "oil_average",
+            "oil_dubai",
+            'oil_wti',
+            "iron_ore",
+            "gas_us",
+            "gas_europe",
+            "coal",
+            "cooper",
+            "aluminum",
+        ]
+        # change column name
+        for i in range(len(my_col)):
+            como.rename(columns={como.columns[i]:my_col[i]},inplace=True)
+          
+        # create como_uni
+        como_uni=pd.DataFrame(columns=como.columns)
+        for i in como.columns:
+            como_uni[i]=como[i]/como[i].iloc[0]
+        # send data to self
+        self.como = como 
+        self.como_uni=como_uni    
 
 class Stock:
     def __init__(
@@ -2604,6 +2673,9 @@ class Stock:
             self.pred_prod.loc[future_year + 1, "Count"]
             * self.pred_prod.loc[future_year + 1, "Rate"]
         )
+        self.pred_prod_ret = pd.DataFrame(columns=self.pred_prod.columns)
+        for i in self.pred_prod.columns:
+            self.pred_prod_ret[i] = self.pred_prod[i].pct_change()
         # create_pred_cost_com
         rate_q = self.product_quarterly["Rate"].values
         rate_adj = np.append(rate_q, [last_rate, last_rate * alpha_rate_next])
@@ -2617,6 +2689,20 @@ class Stock:
         self.pred_cost_com_yearly.loc[future_year + 1] = pred_cost_com.loc[
             future_year + 1
         ]
+        # create pred_cost_unit_yearly
+        self.pred_cost_unit_yearly = self.my_cost_unit_yearly.copy()
+        self.pred_cost_unit_yearly.loc[future_year] = pred_cost_unit.loc[future_year]
+        self.pred_cost_unit_yearly.loc[future_year + 1] = pred_cost_unit.loc[
+            future_year + 1
+        ]
+        self.pred_cost_unit_yearly_ret = pd.DataFrame(
+            columns=self.pred_cost_unit_yearly.columns
+        )
+        for i in self.pred_cost_unit_yearly.columns:
+            self.pred_cost_unit_yearly_ret[i] = self.pred_cost_unit_yearly[
+                i
+            ].pct_change()
+
         self.pred_cost_com = pred_cost_com
         # add income to data frame
         income_y.loc[future_year, "Total_Revenue"] = self.pred_prod.loc[
@@ -2774,6 +2860,7 @@ class Stock:
         income_y.loc[future_year + 1]["EPS_Capital"] = income_y.loc[future_year + 1][
             "EPS"
         ]
+
         ############## Create Hypothesis dictionary #############
         hypothesis = {
             "count_rev_pred": count_rev_pred,
@@ -2805,6 +2892,7 @@ class Stock:
             "transport_g_update": transport_g,
             "transport_g_next": transport_g_next,
         }
+        ######### send data to self ##############3
         self.parameters = parameters
         self.pred_income = income_y
         self.hypothesis = hypothesis
@@ -3840,6 +3928,42 @@ class Stock:
                 self.pred_income.loc[i] / self.pred_income.loc[i]["Total_Revenue"]
             )
         self.pred_com = pred_com
+        # create data
+        end_data = self.pred_income[["EPS_Capital"]]
+        price = []
+        price_first = []
+        price_last = []
+        min_price = []
+        max_price = []
+        for i in end_data.index:
+            date_1 = pd.to_datetime(JalaliDate(i, 1, 1).to_gregorian())
+            date_2 = pd.to_datetime(JalaliDate(i, 12, 29).to_gregorian())
+            price.append(self.Price.loc[date_1:date_2]["Close"].mean())
+            min_price.append(self.Price.loc[date_1:date_2]["Close"].min())
+            max_price.append(self.Price.loc[date_1:date_2]["Close"].max())
+            try:
+                price_first.append(self.Price.loc[date_1:date_2]["Close"][0])
+            except:
+                price_first.append(np.nan)
+            try:
+                price_last.append(self.Price.loc[date_1:date_2]["Close"][-1])
+            except:
+                price_last.append(np.nan)
+
+        end_data["price"] = price
+        end_data["max_price"] = max_price
+        end_data["min_price"] = min_price
+        end_data["first_price"] = price_first
+        end_data["last_price"] = price_last
+        end_data["mean_price/eps"] = end_data["price"] / end_data["EPS_Capital"]
+        end_data["max_price/eps"] = end_data["max_price"] / end_data["EPS_Capital"]
+        end_data["min_price/eps"] = end_data["min_price"] / end_data["EPS_Capital"]
+        end_data["first_price/eps"] = end_data["first_price"] / end_data["EPS_Capital"]
+        end_data["last_price/eps"] = end_data["last_price"] / end_data["EPS_Capital"]
+        end_data["volatility"] = (end_data["max_price"] / end_data["min_price"]) - 1
+        end_data["yearly_ret"] = (end_data["last_price"] / end_data["first_price"]) - 1
+        end_data["eps_ret"] = end_data["EPS_Capital"].pct_change()
+        self.end_data = end_data
         try:
             self.create_eps_data()
         except:
@@ -4084,7 +4208,7 @@ class Stock:
         df_ret = macro.exchange_ret[["dollar", "cpi", "cash"]][-(self.n + 1) :]
         df_ret["profit"] = self.my_cost_unit_yearly["profit"].pct_change()
         df_ret["total_cost"] = self.my_cost_unit_yearly["total"].pct_change()
-        df_ret.dropna(inplace=True)
+        # df_ret.dropna(inplace=True)
         self.macro = df
         self.macro_ret = df_ret
         # return net profit and market
