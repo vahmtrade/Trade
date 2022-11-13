@@ -16,7 +16,7 @@ from persiantools.jdatetime import JalaliDate
 from statsmodels.tsa.filters import hp_filter
 from Trade_Lib.strategy import SmaTester, TesterOneSide, TesterOneSidePrice
 from statics.setting import DB, watchlist, regex_en_timeid_q
-from Trade_Lib.basic_modules import to_digits
+from autorun.basic_modules import to_digits
 from scipy import stats
 import pickle
 
