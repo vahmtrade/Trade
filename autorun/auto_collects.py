@@ -2,6 +2,7 @@ import os
 import re
 import platform
 import pandas as pd
+import win32com.client as win32
 from time import sleep
 
 from selenium import webdriver
@@ -9,7 +10,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
 
-from Trade_Lib.basic_modules import to_digits, best_table_id
+from autorun.basic_modules import to_digits, best_table_id
 from statics.secrets import bourseview_user, bourseview_pass
 from statics.driver_setup import (
     driver_options,
@@ -56,7 +57,7 @@ sleep(break_time)
 
 def move_last_file(new_path):
     # find latest downloaded file
-    sleep(4 * break_time)
+    sleep(2 * break_time)
     filename = max(
         [f for f in os.listdir(DB)],
         key=lambda x: os.path.getctime(os.path.join(DB, x)),
@@ -68,6 +69,13 @@ def move_last_file(new_path):
             f"{DB}/{filename}",
             new_path,
         )
+
+    sleep(2 * break_time)
+    if platform.system() == "Windows":
+        # open and save excel file
+        excel = win32.gencache.EnsureDispatch("Excel.Application")
+        excel.Workbooks.Open(new_path).Save()
+        excel.Application.Quit()
 
 
 def codal_login():
@@ -460,8 +468,8 @@ def bourseview_balancesheet(stock_name, y=5, q=5):
             move_last_file(
                 f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/balancesheet/{time_type}.xlsx"
             )
-    except:
-        print(f"cant download balancesheet {stock_name}")
+    except Exception as err:
+        print(f"cant download balancesheet {stock_name}-{err}")
 
 
 def bourseview_income_statement(stock_name, y=5, q=5):
@@ -514,8 +522,8 @@ def bourseview_income_statement(stock_name, y=5, q=5):
                 move_last_file(
                     f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/income/{time_type}/{money_options[money_type]}.xlsx"
                 )
-    except:
-        print(f"cant download income_statement {stock_name}")
+    except Exception as err:
+        print(f"cant download income_statement {stock_name}-{err}")
 
 
 def bourseview_cashflow(stock_name, y=5, q=5):
@@ -562,8 +570,8 @@ def bourseview_cashflow(stock_name, y=5, q=5):
             move_last_file(
                 f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/cashflow/{time_type}.xlsx"
             )
-    except:
-        print(f"cant download cashflow {stock_name}")
+    except Exception as err:
+        print(f"cant download cashflow {stock_name}-{err}")
 
 
 def bourseview_product_revenue(stock_name, y=5, q=5, m=5):
@@ -642,8 +650,8 @@ def bourseview_product_revenue(stock_name, y=5, q=5, m=5):
             "//*[@id='grid']/div/div[1]/span[1]/div[3]",
         ).click()
         sleep(2 * break_time)
-    except:
-        print(f"cant download product_revenue {stock_name}")
+    except Exception as err:
+        print(f"cant download product_revenue {stock_name}-{err}")
 
 
 def bourseview_cost(stock_name, y=5, q=5):
@@ -699,8 +707,8 @@ def bourseview_cost(stock_name, y=5, q=5):
             move_last_file(
                 f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/cost/{time_type}.xlsx"
             )
-    except:
-        print(f"cant download cost of {stock_name}")
+    except Exception as err:
+        print(f"cant download cost of {stock_name}-{err}")
 
 
 def bourseview_official(stock_name, y=5, q=5):
@@ -737,7 +745,7 @@ def bourseview_official(stock_name, y=5, q=5):
 
             # select 'dore'
             driver.find_element(By.XPATH, f"//option[@value='{n}']").click()
-            sleep(4 * break_time)
+            sleep(6 * break_time)
 
             # click download excel
             driver.find_element(
@@ -749,8 +757,8 @@ def bourseview_official(stock_name, y=5, q=5):
             move_last_file(
                 f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/official/{time_type}.xlsx"
             )
-    except:
-        print(f"cant download official of {stock_name}")
+    except Exception as err:
+        print(f"cant download official of {stock_name}-{err}")
 
 
 def bourseview_price_history(stock_name, start=first_day, end=last_day):
