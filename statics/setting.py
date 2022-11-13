@@ -42,7 +42,10 @@ watchlist = {
     'kehafez':{'indus':'kashi','token':'کحافظ','name':'کاشی و سرامیک حافظ'},
     'shaspa':{'indus':'ravankar','token':'شسپا','name':'نفت سپاهان'},
     'shepaksa':{'indus':'shoyande','token':'شپاکسا','name':'پاکسان'},
-    'ghefars':{'indus':'ghaza','token':'ghefars','name':'شير پاستوريزه پگاه فارس'},
+    'ghefars':{'indus':'ghaza','token':'غفارس','name':' پگاه فارس'},
+    'bemoto':{'indus':'bargh','token':'بموتو','name':'موتوژن'},
+    'gheshasfa':{'indus':'ghaza','token':'غشصفا','name':'پگاه اصفهان'},
+
 }
 
 ROOT_PATH = os.path.abspath(os.curdir).replace("\\", "/")
