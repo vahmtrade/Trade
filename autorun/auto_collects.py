@@ -128,112 +128,117 @@ def codal_search(stock_name):
 def codal_eps(stock_name, n=5):
     """create eps.xlsx"""
 
-    codal_search(stock_name)
+    try:
+        codal_search(stock_name)
+        # davat_majamea
+        driver.find_element(
+            By.XPATH,
+            "/html/body/form/div[3]/div[1]/div[1]/div[2]/div[1]/div/div[1]/div/div[2]/div[3]/div/select/option[7]",
+        ).click()
+        sleep(break_time)
 
-    # davat_majamea
-    driver.find_element(
-        By.XPATH,
-        "/html/body/form/div[3]/div[1]/div[1]/div[2]/div[1]/div/div[1]/div/div[2]/div[3]/div/select/option[7]",
-    ).click()
-    sleep(break_time)
+        # nooe_etelaye
+        driver.find_element(
+            By.XPATH,
+            "/html/body/form/div[3]/div[1]/div[1]/div[2]/div[1]/div/div[1]/div/div[2]/div[5]/div/div/a/span[2]",
+        ).click()
+        sleep(break_time)
 
-    # nooe_etelaye
-    driver.find_element(
-        By.XPATH,
-        "/html/body/form/div[3]/div[1]/div[1]/div[2]/div[1]/div/div[1]/div/div[2]/div[5]/div/div/a/span[2]",
-    ).click()
-    sleep(break_time)
+        # tasmimat_majmae_omomi
+        driver.find_element(
+            By.XPATH,
+            "/html/body/form/div[3]/div[1]/div[1]/div[2]/div[1]/div/div[1]/div/div[2]/div[5]/div/div/div/ul/li/ul/li[5]/div/div",
+        ).click()
+        sleep(break_time)
 
-    # tasmimat_majmae_omomi
-    driver.find_element(
-        By.XPATH,
-        "/html/body/form/div[3]/div[1]/div[1]/div[2]/div[1]/div/div[1]/div/div[2]/div[5]/div/div/div/ul/li/ul/li[5]/div/div",
-    ).click()
-    sleep(break_time)
+        # codal_jostojo
+        driver.find_element(
+            By.XPATH,
+            "/html/body/form/div[3]/div[1]/div[1]/div[2]/div[1]/div/div[3]/div[1]/input",
+        ).click()
+        sleep(break_time)
 
-    # codal_jostojo
-    driver.find_element(
-        By.XPATH,
-        "/html/body/form/div[3]/div[1]/div[1]/div[2]/div[1]/div/div[3]/div[1]/input",
-    ).click()
-    sleep(break_time)
+        links = []
+        years = []
 
-    links = []
-    years = []
+        # links and years elements
+        links_xpath = "//a[@class = 'letter-title ng-binding ng-scope']"
 
-    # links and years elements
-    links_xpath = "//a[@class = 'letter-title ng-binding ng-scope']"
+        for el in driver.find_elements(By.XPATH, links_xpath):
 
-    for el in driver.find_elements(By.XPATH, links_xpath):
+            link_timeids = re.findall(regex_per_timeid_y, el.text)
 
-        link_timeids = re.findall(regex_per_timeid_y, el.text)
+            if str(to_digits(link_timeids[0]))[:4] not in years:
 
-        if str(to_digits(link_timeids[0]))[:4] not in years:
+                if "اعلام تنفس" not in el.text:
+                    links.append(el.get_attribute("href"))
+                    years.append(str(to_digits(link_timeids[0]))[:4])
 
-            if "اعلام تنفس" not in el.text:
-                links.append(el.get_attribute("href"))
-                years.append(str(to_digits(link_timeids[0]))[:4])
+        # set user n for lables
+        links = links[:n]
+        years = years[:n]
 
-    # set user n for lables
-    links = links[:n]
-    years = years[:n]
+        # find eps,dps,capital
+        dates = []
+        eps = []
+        dps = []
+        capital = []
 
-    # find eps,dps,capital
-    dates = []
-    eps = []
-    dps = []
-    capital = []
+        driver.implicitly_wait(10)
 
-    driver.implicitly_wait(10)
+        for link in links:
+            driver.execute_script("window.open('');")
+            driver.switch_to.window(driver.window_handles[1])
+            driver.get(link)
 
-    for link in links:
-        driver.execute_script("window.open('');")
-        driver.switch_to.window(driver.window_handles[1])
-        driver.get(link)
+            date_xpath = "/html/body/form/table[2]/tbody/tr/td/table/tbody/tr[4]/td/div/table/tbody/tr[1]/td/div/div/table/tbody/tr[2]/td/bdo[2]"
+            eps_xpath = '//*[@id="ucAssemblyPRetainedEarning_grdAssemblyProportionedRetainedEarning_ctl17_Span1"]'
+            dps_xpath = '//*[@id="ucAssemblyPRetainedEarning_grdAssemblyProportionedRetainedEarning_ctl18_Span1"]'
+            capital_xpath = '//*[@id="ucAssemblyPRetainedEarning_grdAssemblyProportionedRetainedEarning_ctl19_Span1"]'
 
-        date_xpath = "/html/body/form/table[2]/tbody/tr/td/table/tbody/tr[4]/td/div/table/tbody/tr[1]/td/div/div/table/tbody/tr[2]/td/bdo[2]"
-        eps_xpath = '//*[@id="ucAssemblyPRetainedEarning_grdAssemblyProportionedRetainedEarning_ctl17_Span1"]'
-        dps_xpath = '//*[@id="ucAssemblyPRetainedEarning_grdAssemblyProportionedRetainedEarning_ctl18_Span1"]'
-        capital_xpath = '//*[@id="ucAssemblyPRetainedEarning_grdAssemblyProportionedRetainedEarning_ctl19_Span1"]'
+            try:
+                dates.append(driver.find_element(By.XPATH, date_xpath).text)
+                eps.append(to_digits(driver.find_element(By.XPATH, eps_xpath).text))
+                dps.append(to_digits(driver.find_element(By.XPATH, dps_xpath).text))
+                capital.append(
+                    to_digits(driver.find_element(By.XPATH, capital_xpath).text)
+                )
 
-        try:
-            dates.append(driver.find_element(By.XPATH, date_xpath).text)
-            eps.append(to_digits(driver.find_element(By.XPATH, eps_xpath).text))
-            dps.append(to_digits(driver.find_element(By.XPATH, dps_xpath).text))
-            capital.append(to_digits(driver.find_element(By.XPATH, capital_xpath).text))
+            except:
+                dates.append("-")
+                eps.append("-")
+                dps.append("-")
+                capital.append("-")
 
-        except:
-            dates.append("-")
-            eps.append("-")
-            dps.append("-")
-            capital.append("-")
+            driver.close()
+            driver.switch_to.window(driver.window_handles[0])
 
-        driver.close()
-        driver.switch_to.window(driver.window_handles[0])
+        sleep(2 * break_time)
+        driver.implicitly_wait(wait_time)
 
-    sleep(2 * break_time)
-    driver.implicitly_wait(wait_time)
+        # set user n for data
+        dates = dates[:n]
+        eps = eps[:n]
+        dps = dps[:n]
+        capital = capital[:n]
 
-    # set user n for data
-    dates = dates[:n]
-    eps = eps[:n]
-    dps = dps[:n]
-    capital = capital[:n]
+        # create df of (years,dates,eps,dps,capital,capital_now)
+        df = pd.DataFrame()
+        df["year"] = years
+        df["date"] = dates
+        df["EPS"] = eps
+        df["DPS"] = dps
+        df["capital"] = capital
+        df["capital_now"] = [capital[0] for i in range((len(capital)))]
 
-    # create df of (years,dates,eps,dps,capital,capital_now)
-    df = pd.DataFrame()
-    df["year"] = years
-    df["date"] = dates
-    df["EPS"] = eps
-    df["DPS"] = dps
-    df["capital"] = capital
-    df["capital_now"] = [capital[0] for i in range((len(capital)))]
+        # export eps.xlsx
+        df.to_excel(
+            f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/eps.xlsx",
+            index=False,
+        )
 
-    # export eps.xlsx
-    df.to_excel(
-        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/eps.xlsx",
-        index=False,
-    )
+    except Exception as err:
+        print(f"cant download eps {stock_name} : {err}")
 
 
 def codal_statement(stock_name):
@@ -532,7 +537,7 @@ def bourseview_income_statement(stock_name, y=5, q=5):
                     f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/income/{time_type}/{money_options[money_type]}.xlsx"
                 )
     except Exception as err:
-        print(f"cant download income_statement {stock_name} : {err}")
+        print(f"cant download incomestatement {stock_name} : {err}")
 
 
 def bourseview_cashflow(stock_name, y=5, q=5):
@@ -658,7 +663,7 @@ def bourseview_product_revenue(stock_name, y=5, q=5, m=5):
         ).click()
         sleep(2 * break_time)
     except Exception as err:
-        print(f"cant download product_revenue {stock_name} : {err}")
+        print(f"cant download product {stock_name} : {err}")
 
 
 def bourseview_cost(stock_name, y=5, q=5):
@@ -715,7 +720,7 @@ def bourseview_cost(stock_name, y=5, q=5):
                 f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/cost/{time_type}.xlsx"
             )
     except Exception as err:
-        print(f"cant download cost of {stock_name} : {err}")
+        print(f"cant download cost {stock_name} : {err}")
 
 
 def bourseview_official(stock_name, y=5, q=5):
@@ -765,7 +770,7 @@ def bourseview_official(stock_name, y=5, q=5):
                 f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/official/{time_type}.xlsx"
             )
     except Exception as err:
-        print(f"cant download official of {stock_name} : {err}")
+        print(f"cant download official {stock_name} : {err}")
 
 
 def bourseview_price_history(stock_name, start=first_day, end=last_day):
@@ -787,7 +792,10 @@ def bourseview_price_history(stock_name, start=first_day, end=last_day):
         sleep(break_time)
 
         # send 'tarikh shoroea'
-        driver.find_element(By.XPATH, "//*[@id='stocks-content-body']/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/input").clear()
+        driver.find_element(
+            By.XPATH,
+            "//*[@id='stocks-content-body']/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/input",
+        ).clear()
         driver.find_element(
             By.XPATH,
             "//*[@id='stocks-content-body']/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/input",
@@ -795,7 +803,10 @@ def bourseview_price_history(stock_name, start=first_day, end=last_day):
         sleep(break_time)
 
         # send 'tarikh payan'
-        driver.find_element(By.XPATH, "//*[@id='stocks-content-body']/div[1]/div[2]/div[1]/div[1]/div[3]/div[1]/input").clear()
+        driver.find_element(
+            By.XPATH,
+            "//*[@id='stocks-content-body']/div[1]/div[2]/div[1]/div[1]/div[3]/div[1]/input",
+        ).clear()
         driver.find_element(
             By.XPATH,
             "//*[@id='stocks-content-body']/div[1]/div[2]/div[1]/div[1]/div[3]/div[1]/input",
@@ -947,5 +958,5 @@ def bourseview_macro(start=first_day, end=last_day):
 
         # replace last file
         move_last_file(f"{DB}/macro/macro.xlsx")
-    except:
-        print("cant download macro data")
+    except Exception as err:
+        print(f"cant download macro data : {err}")

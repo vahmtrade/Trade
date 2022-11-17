@@ -1184,14 +1184,16 @@ def delete_empty(df):
         c = 0
     df.drop(empty, axis=1, inplace=True)
 
+
 def remove_zero(df):
     for i in df.index:
         for j in df.columns:
-            if df.loc[i,j]==0:
-                df.loc[i,j]=0.01
+            if df.loc[i, j] == 0:
+                df.loc[i, j] = 0.01
 
-def search_df_month(df,fiscal_year,future_year,word):
-    count= 0
+
+def search_df_month(df, fiscal_year, future_year, word):
+    count = 0
     count_last = 0
     m = []
     # search in monthly product
@@ -1206,7 +1208,7 @@ def search_df_month(df,fiscal_year,future_year,word):
                 & (int(i.split("/")[1]) > fiscal_year)
             )
         ):
-            count+= df.loc[i][word]
+            count += df.loc[i][word]
             # month done from fiscal_year
             m.append(i)
 
@@ -1227,7 +1229,8 @@ def search_df_month(df,fiscal_year,future_year,word):
             last_index.append(s)
     for i in last_index:
         count_last += df.loc[i][word]
-    return [count,count_last]    
+    return [count, count_last]
+
 
 class DesiredPortfolio:
     def __init__(self, names, farsi, start, end):
@@ -4129,25 +4132,25 @@ class Stock:
                 price_revenue_com[i] = price_revenue[i] / price_revenue["جمع"]
         except:
             print(f"cant create price_revenuee_com {self.Name}")
-        #fillna
-        count_product.fillna(0,inplace=True)
-        count_revenue.fillna(0,inplace=True)
-        price_revenue.fillna(0,inplace=True)
+        # fillna
+        count_product.fillna(0, inplace=True)
+        count_revenue.fillna(0, inplace=True)
+        price_revenue.fillna(0, inplace=True)
         # create price_revenue major
-        price_revenue_com_major=pd.DataFrame(index=price_revenue_com.index)
+        price_revenue_com_major = pd.DataFrame(index=price_revenue_com.index)
         for i in price_revenue_com.index:
             for j in price_revenue_com.columns:
-                if price_revenue_com.loc[i,j]>0.005:
-                    price_revenue_com_major.loc[i,j]=price_revenue_com.loc[i,j]
-        price_revenue_com_major.drop('جمع',axis=1,inplace=True)
-        price_revenue_com_major['جمع']=price_revenue_com_major.sum(axis=1)
-        price_revenue_com_major.fillna(0,inplace=True)
-        price_revenue_major=price_revenue[price_revenue_com_major.columns]
-        count_revenue_major=count_revenue[ price_revenue_com_major.columns]
+                if price_revenue_com.loc[i, j] > 0.005:
+                    price_revenue_com_major.loc[i, j] = price_revenue_com.loc[i, j]
+        price_revenue_com_major.drop("جمع", axis=1, inplace=True)
+        price_revenue_com_major["جمع"] = price_revenue_com_major.sum(axis=1)
+        price_revenue_com_major.fillna(0, inplace=True)
+        price_revenue_major = price_revenue[price_revenue_com_major.columns]
+        count_revenue_major = count_revenue[price_revenue_com_major.columns]
         # create_rate
-        rate=price_revenue/count_revenue
-        rate_major=price_revenue_major/count_revenue_major
-        #count_product_major=count_product[ price_revenue_com_major.columns]            
+        rate = price_revenue / count_revenue
+        rate_major = price_revenue_major / count_revenue_major
+        # count_product_major=count_product[ price_revenue_com_major.columns]
         ########## create product_dataframe ################
         product = pd.DataFrame(columns=["Product"])
         product["Product"] = count_product["جمع"]
@@ -4203,35 +4206,35 @@ class Stock:
         if period == "yearly":
             self.count_product_yearly = count_product
             self.count_product_com_yearly = count_product_com
-            #self.count_product_major_yearly=count_product_major
-            
+            # self.count_product_major_yearly=count_product_major
+
             self.count_revenue_yearly = count_revenue
             self.count_revenue_com_yearly = count_revenue_com
-            self.count_revenue_major_yearly=count_revenue_major
-            
+            self.count_revenue_major_yearly = count_revenue_major
+
             self.price_revenue_yearly = price_revenue
             self.price_revenue_com_yearly = price_revenue_com
-            self.price_revenue_major_yearly=price_revenue_major
-            self.price_revenue_com_major_yearly=price_revenue_com_major
-            self.rate_yearly=rate
-            self.rate_major_yearly=rate_major
+            self.price_revenue_major_yearly = price_revenue_major
+            self.price_revenue_com_major_yearly = price_revenue_com_major
+            self.rate_yearly = rate
+            self.rate_major_yearly = rate_major
             self.product_yearly = product
 
         elif period == "monthly":
             self.count_product_monthly = count_product
             self.count_product_com_monthly = count_product_com
-            #self.count_product_major_monthly=count_product_major
-            
+            # self.count_product_major_monthly=count_product_major
+
             self.count_revenue_monthly = count_revenue
             self.count_revenue_com_monthly = count_revenue_com
-            self.count_revenue_major_monthly=count_revenue_major
-            
+            self.count_revenue_major_monthly = count_revenue_major
+
             self.price_revenue_monthly = price_revenue
             self.price_revenue_com_monthly = price_revenue_com
-            self.price_revenue_major_monthly=price_revenue_major
-            self.price_revenue_com_major_monthly=price_revenue_com_major
-            self.rate_monthly=rate
-            self.rate_major_monthly=rate
+            self.price_revenue_major_monthly = price_revenue_major
+            self.price_revenue_com_major_monthly = price_revenue_com_major
+            self.rate_monthly = rate
+            self.rate_major_monthly = rate
             self.product_monthly = product
         return product
 
@@ -4334,19 +4337,19 @@ class Stock:
         data.loc[self.future_year, "cpi_ret"] = 0.48
         compare_ret = data[["Net_Profit_ret", "Market_ret", "dollar_ret", "cpi_ret"]]
         compare_ret.dropna(inplace=True)
-        #create_cost_analyse
-        cost_analyse=self.pred_cost_unit_yearly.loc[1396:]
-        cost_analyse['dollar']=data['dollar']
-        cost_analyse['cpi']=data['cpi']
-        cost_analyse['rate']=cost_analyse['profit']+cost_analyse['total']
-        cost_analyse_ret=pd.DataFrame(columns=cost_analyse.columns)
+        # create_cost_analyse
+        cost_analyse = self.pred_cost_unit_yearly.loc[1396:]
+        cost_analyse["dollar"] = data["dollar"]
+        cost_analyse["cpi"] = data["cpi"]
+        cost_analyse["rate"] = cost_analyse["profit"] + cost_analyse["total"]
+        cost_analyse_ret = pd.DataFrame(columns=cost_analyse.columns)
         for i in cost_analyse.columns:
-            cost_analyse_ret[i]=cost_analyse[i].pct_change()
-        cost_analyse_ret.dropna(inplace=True)    
+            cost_analyse_ret[i] = cost_analyse[i].pct_change()
+        cost_analyse_ret.dropna(inplace=True)
         self.compare_ret = compare_ret
         self.data = data
-        self.cost_analyse=cost_analyse
-        self.cost_analyse_ret=cost_analyse_ret
+        self.cost_analyse = cost_analyse
+        self.cost_analyse_ret = cost_analyse_ret
         self.dollar_income = data
 
     def plot_compare(self):
