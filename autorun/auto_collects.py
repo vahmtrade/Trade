@@ -15,8 +15,6 @@ from statics.secrets import bourseview_user, bourseview_pass
 from statics.driver_setup import (
     driver_options,
     driver_capabilities,
-    break_time,
-    wait_time,
 )
 from statics.setting import (
     DB,
@@ -28,6 +26,16 @@ from statics.setting import (
     regex_per_timeid_y,
     regex_en_timeid_q,
 )
+
+wait_time = 120
+break_time = 1
+
+
+def increase_break_time():
+    global break_time
+    break_time += 1
+    global wait_time
+    wait_time += 60
 
 
 # create driver for Linux and Windows
@@ -470,7 +478,7 @@ def bourseview_balancesheet(stock_name, y=5, q=5):
                 f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/balancesheet/{time_type}.xlsx"
             )
     except Exception as err:
-        print(f"cant download balancesheet {stock_name}-{err}")
+        print(f"cant download balancesheet {stock_name} : {err}")
 
 
 def bourseview_income_statement(stock_name, y=5, q=5):
@@ -524,7 +532,7 @@ def bourseview_income_statement(stock_name, y=5, q=5):
                     f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/income/{time_type}/{money_options[money_type]}.xlsx"
                 )
     except Exception as err:
-        print(f"cant download income_statement {stock_name}-{err}")
+        print(f"cant download income_statement {stock_name} : {err}")
 
 
 def bourseview_cashflow(stock_name, y=5, q=5):
@@ -572,7 +580,7 @@ def bourseview_cashflow(stock_name, y=5, q=5):
                 f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/cashflow/{time_type}.xlsx"
             )
     except Exception as err:
-        print(f"cant download cashflow {stock_name}-{err}")
+        print(f"cant download cashflow {stock_name} : {err}")
 
 
 def bourseview_product_revenue(stock_name, y=5, q=5, m=5):
@@ -632,18 +640,16 @@ def bourseview_product_revenue(stock_name, y=5, q=5, m=5):
 
         # download base excels
         dl_excels()
-        sleep(2 * break_time)
 
         # click 'tafkik dakheli,khareji'
         driver.find_element(
             By.XPATH,
             "//*[@id='grid']/div/div[1]/span[1]/div[3]",
         ).click()
-        sleep(6 * break_time)
+        sleep(4 * break_time)
 
         # download seprated excels
         dl_excels("_seprated")
-        sleep(2 * break_time)
 
         # disable 'tafkik dakheli,khareji'
         driver.find_element(
@@ -652,7 +658,7 @@ def bourseview_product_revenue(stock_name, y=5, q=5, m=5):
         ).click()
         sleep(2 * break_time)
     except Exception as err:
-        print(f"cant download product_revenue {stock_name}-{err}")
+        print(f"cant download product_revenue {stock_name} : {err}")
 
 
 def bourseview_cost(stock_name, y=5, q=5):
@@ -709,7 +715,7 @@ def bourseview_cost(stock_name, y=5, q=5):
                 f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/cost/{time_type}.xlsx"
             )
     except Exception as err:
-        print(f"cant download cost of {stock_name}-{err}")
+        print(f"cant download cost of {stock_name} : {err}")
 
 
 def bourseview_official(stock_name, y=5, q=5):
@@ -759,7 +765,7 @@ def bourseview_official(stock_name, y=5, q=5):
                 f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/official/{time_type}.xlsx"
             )
     except Exception as err:
-        print(f"cant download official of {stock_name}-{err}")
+        print(f"cant download official of {stock_name} : {err}")
 
 
 def bourseview_price_history(stock_name, start=first_day, end=last_day):
