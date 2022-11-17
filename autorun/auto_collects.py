@@ -422,6 +422,7 @@ def bourseview_search(stock_name):
     """search stock in bourseview"""
 
     # search stock name
+    driver.find_element(By.XPATH, "//*[@id='input-0']").clear()
     sleep(break_time)
     driver.find_element(By.XPATH, "//*[@id='input-0']").send_keys(
         watchlist[stock_name]["token"]
@@ -786,6 +787,7 @@ def bourseview_price_history(stock_name, start=first_day, end=last_day):
         sleep(break_time)
 
         # send 'tarikh shoroea'
+        driver.find_element(By.XPATH, "//*[@id='stocks-content-body']/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/input").clear()
         driver.find_element(
             By.XPATH,
             "//*[@id='stocks-content-body']/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/input",
@@ -793,6 +795,7 @@ def bourseview_price_history(stock_name, start=first_day, end=last_day):
         sleep(break_time)
 
         # send 'tarikh payan'
+        driver.find_element(By.XPATH, "//*[@id='stocks-content-body']/div[1]/div[2]/div[1]/div[1]/div[3]/div[1]/input").clear()
         driver.find_element(
             By.XPATH,
             "//*[@id='stocks-content-body']/div[1]/div[2]/div[1]/div[1]/div[3]/div[1]/input",

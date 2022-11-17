@@ -1168,7 +1168,7 @@ def select_df(df, str1, str2):
     for i in resault.index:
         for j in resault.columns:
             if resault.loc[i, j] == "-":
-                resault.loc[i, j] = 1
+                resault.loc[i, j] = 0.01
     return resault
 
 
@@ -1177,13 +1177,57 @@ def delete_empty(df):
     empty = []
     for i in df.columns:
         for j in df[i]:
-            if (j == 1) | (j == 0):
+            if (j == 0.01) | (j == 0):
                 c += 1
         if c == len(df):
             empty.append(i)
         c = 0
     df.drop(empty, axis=1, inplace=True)
 
+def remove_zero(df):
+    for i in df.index:
+        for j in df.columns:
+            if df.loc[i,j]==0:
+                df.loc[i,j]=0.01
+
+def search_df_month(df,fiscal_year,future_year,word):
+    count= 0
+    count_last = 0
+    m = []
+    # search in monthly product
+    for i in df.index:
+        if (fiscal_year == 12) & (int(i.split("/")[0]) == future_year):
+            count += df.loc[i][word]
+            m.append(i[5:7])
+        if (fiscal_year != 12) & (
+            (int(i.split("/")[0]) == future_year)
+            | (
+                (int(i.split("/")[0]) == future_year - 1)
+                & (int(i.split("/")[1]) > fiscal_year)
+            )
+        ):
+            count+= df.loc[i][word]
+            # month done from fiscal_year
+            m.append(i)
+
+    if fiscal_year == 12:
+        last_index = ["1400" + "/" + f"{i}" for i in m]
+    else:
+        year = []
+        month = []
+        last_index = []
+        for i in m:
+            y = int(i.split("/")[0])
+            mon = i.split("/")[1]
+            month.append(mon)
+            year.append(y)
+        l = [i - 1 for i in year]
+        for i in range(len(l)):
+            s = f"{l[i]}" + "/" + f"{month[i]}"
+            last_index.append(s)
+    for i in last_index:
+        count_last += df.loc[i][word]
+    return [count,count_last]    
 
 class DesiredPortfolio:
     def __init__(self, names, farsi, start, end):
@@ -1945,7 +1989,7 @@ class Macro:
         )
         # extract price index
         price = history[["dollar", "cpi", "ppi", "land", "dollar_land", "stock"]]
-        price_90=price.loc[1390:]
+        price_90 = price.loc[1390:]
         # extract foreign exchange data
         exchange = history[
             [
@@ -1979,9 +2023,15 @@ class Macro:
         for i in data_1401.columns:
             data_1401_ret[i] = data_1401[i].pct_change()
         # add value to exchange
-        exchange['dollar_value_80']=(exchange['cpi']/exchange['cpi'].loc[1381])*exchange['dollar'].loc[1381]
-        exchange['dollar_value_90']=(exchange['cpi']/exchange['cpi'].loc[1390])*exchange['dollar'].loc[1390]
-        exchange['dollar_value_95']=(exchange['cpi']/exchange['cpi'].loc[1395])*exchange['dollar'].loc[1395]
+        exchange["dollar_value_80"] = (
+            exchange["cpi"] / exchange["cpi"].loc[1381]
+        ) * exchange["dollar"].loc[1381]
+        exchange["dollar_value_90"] = (
+            exchange["cpi"] / exchange["cpi"].loc[1390]
+        ) * exchange["dollar"].loc[1390]
+        exchange["dollar_value_95"] = (
+            exchange["cpi"] / exchange["cpi"].loc[1395]
+        ) * exchange["dollar"].loc[1395]
         exchange_ret = pd.DataFrame(columns=["dollar", "cpi"])
         exchange_ret["dollar"] = exchange["dollar"].pct_change()
         exchange_ret["gdp"] = exchange["constant_gdp"].pct_change()
@@ -1998,12 +2048,12 @@ class Macro:
         price_ret["dollar"] = price["dollar"].pct_change()
         price_ret["stock"] = price["stock"].pct_change()
         # create_uni var
-        price_uni=pd.DataFrame(columns=price.columns)
+        price_uni = pd.DataFrame(columns=price.columns)
         for i in price_uni.columns:
-            price_uni[i]=price[i]/price[i].iloc[0]
-        price_90_uni=pd.DataFrame(columns=price.columns)
+            price_uni[i] = price[i] / price[i].iloc[0]
+        price_90_uni = pd.DataFrame(columns=price.columns)
         for i in price_90_uni.columns:
-            price_90_uni[i]=price_90[i]/price_90[i].iloc[0]
+            price_90_uni[i] = price_90[i] / price_90[i].iloc[0]
         # dropna from data
         price_ret.dropna(inplace=True)
         # exchange_ret.dropna(inplace=True)
@@ -2020,9 +2070,9 @@ class Macro:
         self.data_1400_ret = data_1400_ret
         self.data_1401 = data_1401
         self.data_1401_ret = data_1401_ret
-        self.price_uni=price_uni
-        self.price_90=price_90
-        self.price_90_uni=price_90_uni
+        self.price_uni = price_uni
+        self.price_90 = price_90
+        self.price_90_uni = price_90_uni
 
     def get_como(self):
         como = pd.read_excel(
@@ -2054,13 +2104,13 @@ class Macro:
                 "Aluminum",
             ]
         ]
-        
+
         my_col = [
             "urea",
             "gold",
             "oil_average",
             "oil_dubai",
-            'oil_wti',
+            "oil_wti",
             "iron_ore",
             "gas_us",
             "gas_europe",
@@ -2070,15 +2120,16 @@ class Macro:
         ]
         # change column name
         for i in range(len(my_col)):
-            como.rename(columns={como.columns[i]:my_col[i]},inplace=True)
-          
+            como.rename(columns={como.columns[i]: my_col[i]}, inplace=True)
+
         # create como_uni
-        como_uni=pd.DataFrame(columns=como.columns)
+        como_uni = pd.DataFrame(columns=como.columns)
         for i in como.columns:
-            como_uni[i]=como[i]/como[i].iloc[0]
+            como_uni[i] = como[i] / como[i].iloc[0]
         # send data to self
-        self.como = como 
-        self.como_uni=como_uni    
+        self.como = como
+        self.como_uni = como_uni
+
 
 class Stock:
     def __init__(
@@ -3693,7 +3744,7 @@ class Stock:
 
     def plot_cost(self):
         plt.figure(figsize=[18, 15])
-        self.my_cost_yearly[
+        self.pred_cost_com_yearly.loc[1398:][
             ["salary", "material", "transport", "depreciation", "energy"]
         ].T.plot(kind="pie", subplots=True, figsize=[20, 18], autopct="%.2f")
 
@@ -4052,6 +4103,11 @@ class Stock:
         delete_empty(count_product)
         delete_empty(count_revenue)
         delete_empty(price_revenue)
+        # remove_zero from data
+        remove_zero(count_product)
+        remove_zero(count_revenue)
+        remove_zero(price_revenue)
+
         # create count_product_com
         count_product_com = pd.DataFrame(columns=count_product.columns)
         try:
@@ -4073,11 +4129,35 @@ class Stock:
                 price_revenue_com[i] = price_revenue[i] / price_revenue["جمع"]
         except:
             print(f"cant create price_revenuee_com {self.Name}")
+        #fillna
+        count_product.fillna(0,inplace=True)
+        count_revenue.fillna(0,inplace=True)
+        price_revenue.fillna(0,inplace=True)
+        # create price_revenue major
+        price_revenue_com_major=pd.DataFrame(index=price_revenue_com.index)
+        for i in price_revenue_com.index:
+            for j in price_revenue_com.columns:
+                if price_revenue_com.loc[i,j]>0.005:
+                    price_revenue_com_major.loc[i,j]=price_revenue_com.loc[i,j]
+        price_revenue_com_major.drop('جمع',axis=1,inplace=True)
+        price_revenue_com_major['جمع']=price_revenue_com_major.sum(axis=1)
+        price_revenue_com_major.fillna(0,inplace=True)
+        price_revenue_major=price_revenue[price_revenue_com_major.columns]
+        count_revenue_major=count_revenue[ price_revenue_com_major.columns]
+        # create_rate
+        rate=price_revenue/count_revenue
+        rate_major=price_revenue_major/count_revenue_major
+        #count_product_major=count_product[ price_revenue_com_major.columns]            
         ########## create product_dataframe ################
         product = pd.DataFrame(columns=["Product"])
         product["Product"] = count_product["جمع"]
         product["Count"] = count_revenue["جمع"]
         product["Revenue"] = price_revenue["جمع"]
+        # remove zero value from product
+        for i in product.index:
+            for j in product.columns:
+                if product.loc[i, j] == 0:
+                    product.loc[i, j] = -1
         product["Rate"] = product["Revenue"] / product["Count"]
         cycle, trend = hp_filter.hpfilter(product["Count"])
         product["cycle"] = cycle
@@ -4123,25 +4203,35 @@ class Stock:
         if period == "yearly":
             self.count_product_yearly = count_product
             self.count_product_com_yearly = count_product_com
-
+            #self.count_product_major_yearly=count_product_major
+            
             self.count_revenue_yearly = count_revenue
             self.count_revenue_com_yearly = count_revenue_com
-
+            self.count_revenue_major_yearly=count_revenue_major
+            
             self.price_revenue_yearly = price_revenue
             self.price_revenue_com_yearly = price_revenue_com
-
+            self.price_revenue_major_yearly=price_revenue_major
+            self.price_revenue_com_major_yearly=price_revenue_com_major
+            self.rate_yearly=rate
+            self.rate_major_yearly=rate_major
             self.product_yearly = product
 
         elif period == "monthly":
             self.count_product_monthly = count_product
             self.count_product_com_monthly = count_product_com
-
+            #self.count_product_major_monthly=count_product_major
+            
             self.count_revenue_monthly = count_revenue
             self.count_revenue_com_monthly = count_revenue_com
-
+            self.count_revenue_major_monthly=count_revenue_major
+            
             self.price_revenue_monthly = price_revenue
             self.price_revenue_com_monthly = price_revenue_com
-
+            self.price_revenue_major_monthly=price_revenue_major
+            self.price_revenue_com_major_monthly=price_revenue_com_major
+            self.rate_monthly=rate
+            self.rate_major_monthly=rate
             self.product_monthly = product
         return product
 
@@ -4244,9 +4334,19 @@ class Stock:
         data.loc[self.future_year, "cpi_ret"] = 0.48
         compare_ret = data[["Net_Profit_ret", "Market_ret", "dollar_ret", "cpi_ret"]]
         compare_ret.dropna(inplace=True)
+        #create_cost_analyse
+        cost_analyse=self.pred_cost_unit_yearly.loc[1396:]
+        cost_analyse['dollar']=data['dollar']
+        cost_analyse['cpi']=data['cpi']
+        cost_analyse['rate']=cost_analyse['profit']+cost_analyse['total']
+        cost_analyse_ret=pd.DataFrame(columns=cost_analyse.columns)
+        for i in cost_analyse.columns:
+            cost_analyse_ret[i]=cost_analyse[i].pct_change()
+        cost_analyse_ret.dropna(inplace=True)    
         self.compare_ret = compare_ret
         self.data = data
-
+        self.cost_analyse=cost_analyse
+        self.cost_analyse_ret=cost_analyse_ret
         self.dollar_income = data
 
     def plot_compare(self):
@@ -4301,8 +4401,9 @@ class Stock:
         k = self.k
         n = self.discounted_n
         value_d = eps1 / (1 + k) ** n + eps2 / (1 + k) ** (1 + n)
-        pe_terminal = (1 + g) / (k - g)
-        terminal_value = (eps2 * (1 + g) / (k - g)) / ((1 + k) ** (1 + n))
+        # pe_terminal = (1 + g) / (k - g)
+        pe_terminal = self.end_data["mean_price/eps"].median()
+        terminal_value = (eps2 * pe_terminal) / ((1 + k) ** (1 + n))
         value = value_d + terminal_value
         self.value_d = value_d
         self.terminal_value = terminal_value
