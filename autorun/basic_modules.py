@@ -6,6 +6,19 @@ from persiantools.jdatetime import JalaliDate
 from statics.setting import DB, watchlist
 
 
+base_folders = [
+    "balancesheet",
+    "income",
+    "cashflow",
+    "product",
+    "cost",
+    "official",
+    "pe",
+    "analyse",
+    "detail_trade",
+]
+
+
 def to_digits(string):
     """get a string like '(۲۵۴,۱۵۹,۳۴۷)' [negative] or '۴۳۹,۶۲۸,۱۹۸' [positive] and return a number"""
 
@@ -55,18 +68,6 @@ def best_table_id(data_tables):
 def create_database_structure():
     """create database folders based on watchlist"""
 
-    base_folders = [
-        "balancesheet",
-        "income",
-        "cashflow",
-        "product",
-        "cost",
-        "official",
-        "pe",
-        "analyse",
-        "detail_trade",
-    ]
-
     for stock, info in watchlist.items():
 
         for i in base_folders:
@@ -84,59 +85,74 @@ def create_database_structure():
 
 
 def list_stock_files(stock_name):
+    """return all folders and files of stock in database"""
+    stock_dirs = []
     stock_files = []
     for path, subdirs, files in os.walk(
         f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}"
     ):
+        for dir in subdirs:
+            stock_dirs.append(os.path.join(path, dir).replace("\\", "/"))
+
         for name in files:
             stock_files.append(os.path.join(path, name).replace("\\", "/"))
 
-    return stock_files
+    return stock_dirs, stock_files
 
 
 def update_stock_files(stock_name):
-    stock_folder = f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}"
+    """delete unnecessary and add deficiency data"""
 
     # files that must every stock have it
     base_files = [
-        f"{stock_folder}/balancesheet/quarterly.xlsx",
-        f"{stock_folder}/balancesheet/yearly.xlsx",
-        f"{stock_folder}/cashflow/quarterly.xlsx",
-        f"{stock_folder}/cashflow/yearly.xlsx",
-        f"{stock_folder}/cost/quarterly.xlsx",
-        f"{stock_folder}/cost/yearly.xlsx",
-        f"{stock_folder}/income/quarterly/dollar.xlsx",
-        f"{stock_folder}/income/quarterly/rial.xlsx",
-        f"{stock_folder}/income/yearly/dollar.xlsx",
-        f"{stock_folder}/income/yearly/rial.xlsx",
-        f"{stock_folder}/official/quarterly.xlsx",
-        f"{stock_folder}/official/yearly.xlsx",
-        f"{stock_folder}/pe/pe.xlsx",
-        f"{stock_folder}/pe/forward.xlsx",
-        f"{stock_folder}/product/monthly.xlsx",
-        f"{stock_folder}/product/monthly_seprated.xlsx",
-        f"{stock_folder}/product/quarterly.xlsx",
-        f"{stock_folder}/product/quarterly_seprated.xlsx",
-        f"{stock_folder}/product/yearly.xlsx",
-        f"{stock_folder}/product/yearly_seprated.xlsx",
-        f"{stock_folder}/eps.xlsx",
-        f"{stock_folder}/opt.xlsx",
+        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/balancesheet/quarterly.xlsx",
+        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/balancesheet/yearly.xlsx",
+        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/cashflow/quarterly.xlsx",
+        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/cashflow/yearly.xlsx",
+        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/cost/quarterly.xlsx",
+        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/cost/yearly.xlsx",
+        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/income/quarterly/dollar.xlsx",
+        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/income/quarterly/rial.xlsx",
+        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/income/yearly/dollar.xlsx",
+        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/income/yearly/rial.xlsx",
+        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/official/quarterly.xlsx",
+        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/official/yearly.xlsx",
+        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/pe/pe.xlsx",
+        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/pe/forward.xlsx",
+        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/product/monthly.xlsx",
+        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/product/monthly_seprated.xlsx",
+        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/product/quarterly.xlsx",
+        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/product/quarterly_seprated.xlsx",
+        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/product/yearly.xlsx",
+        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/product/yearly_seprated.xlsx",
+        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/eps.xlsx",
+        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/opt.xlsx",
     ]
+
+    all_files = list_stock_files(stock_name)
+
+    # delete unnecessary files
+    for file in all_files[1]:
+        if "/detail_trade" not in file and "/analyse" not in file:
+            if file not in base_files:
+                print("unnecessary file : ", file)
+                os.remove(file)
+
+    # delete empty folders
+    for dir in all_files[0]:
+        if "/detail_trade" not in dir and "/analyse" not in dir:
+            if len(os.listdir(dir)) == 0:
+                print("unnecessary folder : ", dir)
+                os.rmdir(dir)
 
     # show deficiency files
     for b in base_files:
-        if Path(b).exists() == False:
-            print("deficiency : ", b)
+        if "eps.xlsx" not in b and "opt.xlsx" not in b and "forward.xlsx" not in b:
+            if Path(b).exists() == False:
+                print("deficiency : ", b)
 
-    # show unnecessary files
-    all_files = list_stock_files(stock_name)
-    for a in all_files:
-        if a not in base_files:
-            print("unnecessary : ", a)
-
-    # show date files
+    # find date files
     for b in base_files:
         if Path(b).exists():
             # get creation time of file
             t = JalaliDate(datetime.fromtimestamp(os.path.getctime(b)))
-            print(f"{t} : {b}")

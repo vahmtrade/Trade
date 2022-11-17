@@ -42,7 +42,7 @@ watchlist = {
     'kehafez':{'indus':'kashi','token':'کحافظ','name':'کاشی و سرامیک حافظ'},
     'shaspa':{'indus':'ravankar','token':'شسپا','name':'نفت سپاهان'},
     'shepaksa':{'indus':'shoyande','token':'شپاکسا','name':'پاکسان'},
-    'ghefars':{'indus':'ghaza','token':'ghefars','name':'شير پاستوريزه پگاه فارس'},
+    'ghefars':{'indus':'ghaza','token':'غفارس','name':'شير پاستوريزه پگاه فارس'},
     'desobhan':{'indus':'darou','token':'دسبحان','name':'سبحان دارو'},
 }
 

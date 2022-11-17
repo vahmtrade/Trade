@@ -1,11 +1,6 @@
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
-
-# set 1 second for sleep and 2 minute wait time
-break_time = 1
-wait_time = 120
-
 # setup bourseview driver
 driver_options = Options()
 driver_capabilities = DesiredCapabilities.FIREFOX
