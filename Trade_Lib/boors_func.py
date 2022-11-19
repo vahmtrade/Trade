@@ -758,7 +758,7 @@ def get_income_yearly(stock, money_type):
     )
 
 
-def get_income_quarterly(stock, money_type, fisal_year):
+def get_income_quarterly(stock, money_type, fisal_year,my_year):
     industry = watchlist[stock]["indus"]
     if money_type == "rial":
         adress = f"{DB}/industries/{industry}/{stock}/income/quarterly/rial.xlsx"
@@ -775,7 +775,7 @@ def get_income_quarterly(stock, money_type, fisal_year):
     stock_income = pd.read_excel(adress, engine="openpyxl")
     all_time_id = re.findall(regex_en_timeid_q, str(stock_income.loc[6]))
     n = len(all_time_id)
-    my_year = int(all_time_id[-1][:4])
+
     my_month = int(all_time_id[-1][5:])
     my_Q = fiscal_dic[fisal_year][my_month]
     stock_income = pd.read_excel(adress, skiprows=7, engine="openpyxl")
@@ -1278,6 +1278,27 @@ def merge_similar_columns(df):
                 except:
                     pass    
     return df_c                
+
+def rename_columns_dfs(df1,df2):    
+    lst_min=[]
+    lst_max=[]
+    for i in df1.columns:
+        for j in df2.columns:
+            if i in j or j in i:
+                i,j = min(i,j),max(i,j)
+                lst_min.append(i)
+                lst_max.append(j)
+    dic=dict(zip(lst_max,lst_min))
+    try :
+        df1.rename(columns=dic,inplace=True)
+    except:
+        print('1 error')
+
+    try:
+        df2.rename(columns=dic,inplace=True)   
+    except:
+        print('2 error')  
+    return dic                   
 
 class DesiredPortfolio:
     def __init__(self, names, farsi, start, end):
@@ -2247,13 +2268,13 @@ class Stock:
             self.income_common_rial_quarterly,
             self.Risk_income_rial_quarterly,
             self.cagr_rial_quarterly,
-        ) = get_income_quarterly(self.Name, "rial", self.fiscal_year)
+        ) = get_income_quarterly(self.Name, "rial", self.fiscal_year,(self.last_year+1))
         (
             self.income_dollar_quarterly,
             self.income_common_dollar_quarterly,
             self.Risk_income_dollar_quarterly,
             self.cagr_dollar_quarterly,
-        ) = get_income_quarterly(self.Name, "dollar", self.fiscal_year)
+        ) = get_income_quarterly(self.Name, "dollar", self.fiscal_year,(self.last_year+1))
         self.Buy_Power = type_record(self.farsi)
         self.Buy_Power_w = self.Buy_Power.resample("W").mean()
         self.Buy_Power_m = self.Buy_Power.resample("M").mean()
@@ -2326,6 +2347,7 @@ class Stock:
             self.get_product("yearly")
             self.get_product("monthly")
             self.get_product('quarterly')
+            self.pre_process_product_data()
         except Exception as err:
             print(f"add prouct data {self.Name}--{err}")
 
@@ -4219,8 +4241,7 @@ class Stock:
         count_revenue['total']=count_revenue.sum(axis=1)-count_revenue['جمع']
         if (period=='quarterly')|(period=='yearly'):
             categ_cost['total']=categ_cost.sum(axis=1)-categ_cost['جمع']
-        # Merge similar columns
-        
+        # Merge similar columns        
         count_product=merge_similar_columns(count_product)
         count_revenue=merge_similar_columns(count_revenue)
         price_revenue=merge_similar_columns(price_revenue)
@@ -4229,7 +4250,7 @@ class Stock:
         # create categ cost unit
         if (period=='quarterly')|(period=='yearly'):
             categ_cost_unit=categ_cost/count_revenue
-            categ_cost_ratio=categ_cost
+            categ_cost_ratio=categ_cost.copy()
             for i in categ_cost.index:
                 categ_cost_ratio.loc[i]=categ_cost.loc[i]/categ_cost.loc[i]['total']
         
@@ -4378,7 +4399,6 @@ class Stock:
             self.rate_monthly=rate
             self.rate_major_monthly=rate
             self.product_monthly = product
-    
         
         if period == "quarterly":
             self.count_product_quarterly = count_product
@@ -4397,7 +4417,7 @@ class Stock:
             self.rate_quarterly=rate
             self.rate_major_quarterly=rate_major
             
-            self.categ_cost_quaretely=categ_cost
+            self.categ_cost_quarterly=categ_cost
             self.categ_cost_unit_quaretely=categ_cost_unit
             self.categ_cost_ratio_quarterly=categ_cost_ratio            
             self.product_quarterly = product            
@@ -4656,6 +4676,16 @@ class Stock:
         self.process_detail = process_detail
         return process_detail
 
+    def pre_process_product_data(self):
+        #rename_columns_monthly , yearly to same name
+        rename_columns_dfs(self.count_revenue_monthly,self.count_revenue_yearly)
+        rename_columns_dfs(self.price_revenue_monthly,self.price_revenue_yearly)
+        rename_columns_dfs(self.price_revenue_quarterly,self.price_revenue_yearly)
+        rename_columns_dfs(self.price_revenue_quarterly,self.price_revenue_yearly,)             
+        #create rate
+        self.rate_monthly=self.price_revenue_monthly/self.count_revenue_monthly
+        self.rate_yearly=self.price_revenue_yearly/self.count_revenue_yearly
+        self.rate_quarterly=self.price_revenue_quarterly/self.count_revenue_quarterly
 
 class OptPort:
     def __init__(self, stocks, y_s=1400, m_s=1, d_s=1, y_e=1401, m_e=6, d_e=1):
