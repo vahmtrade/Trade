@@ -570,7 +570,7 @@ class Economy:
             data["ppi"] = ppi_y["actual"].resample("M").mean()
             data["ir"] = ir["actual"].resample("M").mean()
             data["gdp"] = gdp_q["actual"].resample("M").mean()
-            data['manu_pmi']=manufacturing_pmi['actual'].resample('M').mean()
+            data["manu_pmi"] = manufacturing_pmi["actual"].resample("M").mean()
             data.fillna(method="ffill", inplace=True)
             data.dropna(inplace=True)
             self.all_data = data

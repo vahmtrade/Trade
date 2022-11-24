@@ -1,4 +1,5 @@
 import os
+import pandas as pd
 from pathlib import Path
 from datetime import datetime
 from persiantools.jdatetime import JalaliDate
@@ -104,29 +105,30 @@ def update_stock_files(stock_name):
     """delete unnecessary and add deficiency data"""
 
     # files that must every stock have it
+    stock_folder = f"{DB}/industries/{watchlist[stock_name]['indus']}"
     base_files = [
-        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/balancesheet/quarterly.xlsx",
-        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/balancesheet/yearly.xlsx",
-        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/cashflow/quarterly.xlsx",
-        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/cashflow/yearly.xlsx",
-        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/cost/quarterly.xlsx",
-        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/cost/yearly.xlsx",
-        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/income/quarterly/dollar.xlsx",
-        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/income/quarterly/rial.xlsx",
-        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/income/yearly/dollar.xlsx",
-        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/income/yearly/rial.xlsx",
-        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/official/quarterly.xlsx",
-        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/official/yearly.xlsx",
-        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/pe/pe.xlsx",
-        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/pe/forward.xlsx",
-        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/product/monthly.xlsx",
-        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/product/monthly_seprated.xlsx",
-        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/product/quarterly.xlsx",
-        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/product/quarterly_seprated.xlsx",
-        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/product/yearly.xlsx",
-        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/product/yearly_seprated.xlsx",
-        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/eps.xlsx",
-        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/opt.xlsx",
+        f"{stock_folder}/{stock_name}/balancesheet/quarterly.xlsx",
+        f"{stock_folder}/{stock_name}/balancesheet/yearly.xlsx",
+        f"{stock_folder}/{stock_name}/cashflow/quarterly.xlsx",
+        f"{stock_folder}/{stock_name}/cashflow/yearly.xlsx",
+        f"{stock_folder}/{stock_name}/cost/quarterly.xlsx",
+        f"{stock_folder}/{stock_name}/cost/yearly.xlsx",
+        f"{stock_folder}/{stock_name}/income/quarterly/dollar.xlsx",
+        f"{stock_folder}/{stock_name}/income/quarterly/rial.xlsx",
+        f"{stock_folder}/{stock_name}/income/yearly/dollar.xlsx",
+        f"{stock_folder}/{stock_name}/income/yearly/rial.xlsx",
+        f"{stock_folder}/{stock_name}/official/quarterly.xlsx",
+        f"{stock_folder}/{stock_name}/official/yearly.xlsx",
+        f"{stock_folder}/{stock_name}/pe/pe.xlsx",
+        f"{stock_folder}/{stock_name}/pe/forward.xlsx",
+        f"{stock_folder}/{stock_name}/product/monthly.xlsx",
+        f"{stock_folder}/{stock_name}/product/monthly_seprated.xlsx",
+        f"{stock_folder}/{stock_name}/product/quarterly.xlsx",
+        f"{stock_folder}/{stock_name}/product/quarterly_seprated.xlsx",
+        f"{stock_folder}/{stock_name}/product/yearly.xlsx",
+        f"{stock_folder}/{stock_name}/product/yearly_seprated.xlsx",
+        f"{stock_folder}/{stock_name}/eps.xlsx",
+        f"{stock_folder}/{stock_name}/opt.xlsx",
     ]
 
     all_files = list_stock_files(stock_name)
@@ -145,14 +147,26 @@ def update_stock_files(stock_name):
                 print("unnecessary folder : ", dir)
                 os.rmdir(dir)
 
-    # show deficiency files
+    # search in needed files
     for b in base_files:
-        if "eps.xlsx" not in b and "opt.xlsx" not in b and "forward.xlsx" not in b:
-            if Path(b).exists() == False:
-                print("deficiency : ", b)
+        if Path(b).exists() == False:
+            # show deficiency files
+            print("deficiency : ", b)
 
-    # find date files
-    for b in base_files:
-        if Path(b).exists():
+        else:
             # get creation time of file
             t = JalaliDate(datetime.fromtimestamp(os.path.getctime(b)))
+
+            # check sanity of bourseview excels
+            try:
+                if (
+                    "eps.xlsx" not in b
+                    and "opt.xlsx" not in b
+                    and "forward.xlsx" not in b
+                ):
+                    sample = pd.read_excel(b)["Unnamed: 1"][0]
+                    if sample != "Pouya Finance":
+                        print(b, sample)
+
+            except:
+                print(b)

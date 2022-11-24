@@ -4379,7 +4379,6 @@ class Stock:
             self.price_revenue_com_major_monthly = price_revenue_com_major
             self.rate_monthly = rate
             self.rate_major_monthly = rate
-
         if period == "quarterly":
             self.count_product_quarterly = count_product
             self.count_product_com_quarterly = count_product_com
