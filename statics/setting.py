@@ -48,7 +48,7 @@ watchlist = {
     'desobhan':{'indus':'darou','token':'دسبحان','name':'سبحان دارو'},
     'deshimi':{'indus':'darou','token':'دشیمی','name':'شیمی‌ داروئی‌ داروپخش'},
     'khedizel':{'indus':'khodro','token':'خدیزل','name':'بهمن دیزل'},
-    'fameli':{'indus':'felezat','token':'فملی','name':'ملی مس '},
+    'fameli':{'indus':'felezat','token':'فملی','name':' فملی '},
     'kechad':{'indus':'folad','token':'کچاد','name':'چادر ملو'},
     'fasmin':{'indus':'felezat','token':'فاسمین','name':'کالسیمین'},
 }
