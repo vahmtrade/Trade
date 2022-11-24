@@ -2767,6 +2767,7 @@ class Stock:
 
         pred_growth.drop(["جمع", "total"], axis=1, inplace=True)
         pred_growth = 1 + pred_growth
+
         if alpha_prod == 1:
             pred_growth = (2 + pred_growth) / 3
             pred_growth.loc[future_year + 1] = alpha_prod_next * np.ones(
@@ -2779,6 +2780,11 @@ class Stock:
             pred_growth.loc[future_year + 1] = alpha_prod_next * np.ones(
                 len(pred_growth.loc[future_year])
             )
+        # delete noise of pred growth
+        for i in pred_growth.index:
+            for j in pred_growth.columns:
+                if (pred_growth.loc[i,j]>2)| (pred_growth.loc[i,j]<0.5):
+                    pred_growth.loc[i,j]=1.01
         self.pred_growth = pred_growth
         pred_count_revenue = pd.DataFrame(columns=last_count_revenue.columns)
         pred_count_revenue.loc[future_year] = (
@@ -4728,6 +4734,15 @@ class Stock:
                 self.categ_cost_unit_quarterly.loc[i]
                 / self.categ_cost_unit_quarterly.loc[i]["total"]
             )
+        # delete noise from categ cost  unit ratio quarterly
+        for i in self.categ_cost_unit_ratio_quarterly.index:
+            for j in self.categ_cost_unit_ratio_quarterly.columns:
+                if (
+                    (self.categ_cost_unit_ratio_quarterly.loc[i, j] < 0)
+                    | (self.categ_cost_unit_ratio_quarterly.loc[i, j] == 0)
+                    | (self.categ_cost_unit_ratio_quarterly.loc[i, j] == 0.01)
+                ):
+                    self.categ_cost_unit_ratio_quarterly.loc[i,j] = np.nan
         # create rate
         self.rate_monthly = self.price_revenue_monthly / self.count_revenue_monthly
         self.rate_yearly = self.price_revenue_yearly / self.count_revenue_yearly
