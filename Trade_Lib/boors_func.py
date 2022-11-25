@@ -4261,6 +4261,8 @@ class Stock:
         # homonymization categ cost and count revenue
         if (period == "quarterly") | (period == "yearly"):
             rename_columns_dfs(categ_cost, count_revenue)
+            merge_same_columns(count_revenue)
+            merge_same_columns(categ_cost)
         # delete noise of categ_cost data
         if (period == "quarterly") | (period == "yearly"):
             for i in categ_cost.index:
