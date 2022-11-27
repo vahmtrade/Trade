@@ -1,7 +1,10 @@
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
-# setup bourseview driver
+
+break_time = 1
+wait_time = 120
+
 driver_options = Options()
 driver_capabilities = DesiredCapabilities.FIREFOX
 
@@ -12,11 +15,11 @@ driver_options.set_preference("browser.uiCustomization.state", driver_ui)
 driver_options.set_preference("browser.download.autohideButton", False)
 driver_options.set_preference("dom.security.https_only_mode", False)
 driver_options.accept_insecure_certs = True
+driver_options.headless = True
 
 driver_capabilities["marionette"] = True
 
 
-# driver_options.headless = True
 # driver_options.set_preference("browser.download.animateNotifications", False)
 # driver_options.set_preference("browser.download.alwaysOpenPanel", False)
 # driver_options.set_preference("browser.download.panel.shown", False)

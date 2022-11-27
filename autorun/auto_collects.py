@@ -15,6 +15,8 @@ from statics.secrets import bourseview_user, bourseview_pass
 from statics.driver_setup import (
     driver_options,
     driver_capabilities,
+    break_time,
+    wait_time,
 )
 from statics.setting import (
     DB,
@@ -24,18 +26,7 @@ from statics.setting import (
     first_day,
     last_day,
     regex_per_timeid_y,
-    regex_en_timeid_q,
 )
-
-wait_time = 120
-break_time = 1
-
-
-def increase_break_time():
-    global break_time
-    break_time += 1
-    global wait_time
-    wait_time += 60
 
 
 # create driver for Linux and Windows
@@ -55,12 +46,9 @@ if platform.system() == "Windows":
         capabilities=driver_capabilities,
     )
 
-# wait for load page
-driver.implicitly_wait(wait_time)
 
-# maximize driver
+driver.implicitly_wait(wait_time)
 driver.maximize_window()
-sleep(break_time)
 
 
 def move_last_file(new_path):
@@ -104,7 +92,7 @@ def codal_search(stock_name):
     # click searck button
     driver.find_element(
         By.XPATH,
-        "/html/body/form/div[3]/div[1]/div[1]/div[2]/div[1]/div/div[1]/div/div[2]/div[1]/div/div/a",
+        "//*[@id='collapse-search-1']/div[2]/div[1]/div/div",
     ).click()
     sleep(break_time)
 
@@ -120,7 +108,7 @@ def codal_search(stock_name):
     # select first choice
     driver.find_element(
         By.XPATH,
-        "/html/body/form/div[3]/div[1]/div[1]/div[2]/div[1]/div/div[1]/div/div[2]/div[1]/div/div/div/ul/li/ul/li/div",
+        "//*[@id='ui-select-choices-row-0-0']/div",
     ).click()
     sleep(break_time)
 
@@ -133,28 +121,28 @@ def codal_eps(stock_name, n=5):
         # davat_majamea
         driver.find_element(
             By.XPATH,
-            "/html/body/form/div[3]/div[1]/div[1]/div[2]/div[1]/div/div[1]/div/div[2]/div[3]/div/select/option[7]",
+            "//*[@id='reportType']/option[7]",
         ).click()
         sleep(break_time)
 
         # nooe_etelaye
         driver.find_element(
             By.XPATH,
-            "/html/body/form/div[3]/div[1]/div[1]/div[2]/div[1]/div/div[1]/div/div[2]/div[5]/div/div/a/span[2]",
+            "//*[@id='collapse-search-1']/div[2]/div[5]/div/div",
         ).click()
         sleep(break_time)
 
-        # tasmimat_majmae_omomi
+        # tasmimat_majmae_omomi_saliyane
         driver.find_element(
             By.XPATH,
-            "/html/body/form/div[3]/div[1]/div[1]/div[2]/div[1]/div/div[1]/div/div[2]/div[5]/div/div/div/ul/li/ul/li[5]/div/div",
+            "//*[@id='ui-select-choices-row-1-4']/div/div",
         ).click()
         sleep(break_time)
 
         # codal_jostojo
         driver.find_element(
             By.XPATH,
-            "/html/body/form/div[3]/div[1]/div[1]/div[2]/div[1]/div/div[3]/div[1]/input",
+            "//*[@id='aspnetForm']/div[3]/div[1]/div[1]/div[2]/div[1]/div/div[3]/div[1]/input",
         ).click()
         sleep(break_time)
 
@@ -191,7 +179,7 @@ def codal_eps(stock_name, n=5):
             driver.switch_to.window(driver.window_handles[1])
             driver.get(link)
 
-            date_xpath = "/html/body/form/table[2]/tbody/tr/td/table/tbody/tr[4]/td/div/table/tbody/tr[1]/td/div/div/table/tbody/tr[2]/td/bdo[2]"
+            date_xpath = "//*[@id='tblAssembly']/tbody/tr[2]/td/bdo[2]"
             eps_xpath = '//*[@id="ucAssemblyPRetainedEarning_grdAssemblyProportionedRetainedEarning_ctl17_Span1"]'
             dps_xpath = '//*[@id="ucAssemblyPRetainedEarning_grdAssemblyProportionedRetainedEarning_ctl18_Span1"]'
             capital_xpath = '//*[@id="ucAssemblyPRetainedEarning_grdAssemblyProportionedRetainedEarning_ctl19_Span1"]'
