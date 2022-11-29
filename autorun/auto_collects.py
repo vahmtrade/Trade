@@ -1,5 +1,7 @@
 import os
 import re
+import sys
+import shutil
 import platform
 import pandas as pd
 import win32com.client as win32
@@ -68,8 +70,18 @@ def move_last_file(new_path):
 
     sleep(2 * break_time)
     if platform.system() == "Windows":
+        try:
+            excel = win32.gencache.EnsureDispatch("Excel.Application")
+        except AttributeError:
+            # Remove cache and try again.
+            MODULE_LIST = [m.__name__ for m in sys.modules.values()]
+            for module in MODULE_LIST:
+                if re.match(r'win32com\.gen_py\..+', module):
+                    del sys.modules[module]
+            shutil.rmtree(os.path.join(os.environ.get('LOCALAPPDATA'), 'Temp', 'gen_py'))
+            excel = win32.gencache.EnsureDispatch("Excel.Application")
+
         # open and save excel file
-        excel = win32.gencache.EnsureDispatch("Excel.Application")
         excel.Workbooks.Open(new_path).Save()
         excel.Application.Quit()
 
@@ -118,28 +130,28 @@ def codal_eps(stock_name, n=5):
 
     try:
         codal_search(stock_name)
-        # davat_majamea
+        # click 'davat majamea'
         driver.find_element(
             By.XPATH,
             "//*[@id='reportType']/option[7]",
         ).click()
         sleep(break_time)
 
-        # nooe_etelaye
+        # select 'nooe etelaye'
         driver.find_element(
             By.XPATH,
             "//*[@id='collapse-search-1']/div[2]/div[5]/div/div",
         ).click()
         sleep(break_time)
 
-        # tasmimat_majmae_omomi_saliyane
+        # click 'tasmimat majmae omomi saliyane'
         driver.find_element(
             By.XPATH,
             "//*[@id='ui-select-choices-row-1-4']/div/div",
         ).click()
         sleep(break_time)
 
-        # codal_jostojo
+        # click 'jostojo'
         driver.find_element(
             By.XPATH,
             "//*[@id='aspnetForm']/div[3]/div[1]/div[1]/div[2]/div[1]/div/div[3]/div[1]/input",
@@ -234,41 +246,38 @@ def codal_statement(stock_name):
 
     codal_search(stock_name)
 
-    # select 'goroh etelaye'
-    # driver.find_element(By.XPATH, '//*[@id="reportType"]').click()
-
     # click 'sorathaye mali'
     driver.find_element(
         By.XPATH,
-        "/html/body/form/div[3]/div[1]/div[1]/div[2]/div[1]/div/div[1]/div/div[2]/div[3]/div/select/option[2]",
+        "//*[@id='reportType']/option[2]",
     ).click()
     sleep(break_time)
 
     # select 'nooe etelaye'
     driver.find_element(
         By.XPATH,
-        "/html/body/form/div[3]/div[1]/div[1]/div[2]/div[1]/div/div[1]/div/div[2]/div[5]/div/div/a/span[2]",
+        "//*[@id='collapse-search-1']/div[2]/div[5]/div/div",
     ).click()
     sleep(break_time)
 
     # click 'mian dorea'
     driver.find_element(
         By.XPATH,
-        "/html/body/form/div[3]/div[1]/div[1]/div[2]/div[1]/div/div[1]/div/div[2]/div[5]/div/div/div/ul/li/ul/li[2]/div/div",
+        "//*[@id='ui-select-choices-row-1-1']/div/div",
     ).click()
     sleep(break_time)
 
     # disable 'zirmajmoeha'
     driver.find_element(
         By.XPATH,
-        "/html/body/form/div[3]/div[1]/div[1]/div[2]/div[1]/div/div[2]/div/div/div[6]/div[1]/div",
+        "//*[@id='collapse-search-other']/div/div[6]/div[1]/div",
     ).click()
     sleep(break_time)
 
     # click 'jostojo'
     driver.find_element(
         By.XPATH,
-        "/html/body/form/div[3]/div[1]/div[1]/div[2]/div[1]/div/div[3]/div[1]/input",
+        "//*[@id='aspnetForm']/div[3]/div[1]/div[1]/div[2]/div[1]/div/div[3]/div[1]/input",
     ).click()
     sleep(break_time)
 
