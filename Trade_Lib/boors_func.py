@@ -23,6 +23,43 @@ import pickle
 plt.style.use("seaborn")
 
 
+def analyse_watchlist(date):
+    with open(f"{DB}/watchlist/{date}.pkl", "rb") as f:
+        data = pickle.load(f)
+    analyse = pd.DataFrame(
+        index=data.keys(),
+        columns=[
+            "price_ret",
+            "eps_ret",
+            "last_price/eps",
+            "pe_terminal",
+            "pot_g_val",
+            "margin",
+            "margin_var",
+            'sector',
+        ],
+    )
+    err = []
+    for stock in data.values():
+        try:
+            analyse.loc[stock.Name]["price_ret"] = stock.end_data["yearly_ret"].loc[
+                1401
+            ]
+            analyse.loc[stock.Name]["eps_ret"] = stock.end_data["eps_ret"].loc[1401]
+            analyse.loc[stock.Name]["last_price/eps"] = stock.end_data[
+                "last_price/eps"
+            ].loc[1401]
+            analyse.loc[stock.Name]["pe_terminal"] = stock.pe_terminal
+            analyse.loc[stock.Name]["pot_g_val"] = stock.potential_value_g
+            analyse.loc[stock.Name]["margin"] = stock.Risk_income_yearly[0]
+            analyse.loc[stock.Name]["margin_var"] = stock.Risk_income_yearly[1]
+            analyse.loc[stock.Name]["sector"] = stock.industry
+
+        except Exception as error:
+            err.append(f"{error}")
+    return analyse, data
+
+
 def analyse_detail_trade(adress):
     # read raw data
     df = pd.read_excel(adress)
@@ -748,6 +785,8 @@ def get_income_yearly(stock, money_type):
     risk_p_m = stock_common_size["Operating_Income"].std()
     a = stock_income["Total_Revenue"].pct_change()
     cagr = a.mean()
+    stock_income_cagr = stock_income.pct_change()
+    stock_income_cagr.dropna(inplace=True)
     return (
         stock_income,
         stock_common_size,
@@ -755,6 +794,7 @@ def get_income_yearly(stock, money_type):
         cagr,
         fiscal_year,
         year,
+        stock_income_cagr,
     )
 
 
@@ -856,7 +896,17 @@ def get_income_quarterly(stock, money_type, fisal_year, my_year):
     risk_p_m = stock_common_size["Operating_Income"].std()
     a = stock_income["Total_Revenue"].pct_change()
     cagr = a.mean()
-    return stock_income, stock_common_size, [mean_p_m, risk_p_m], cagr
+    stock_income_c = stock_income.copy()
+    stock_income_c.drop(["Realese_date"], axis=1, inplace=True)
+    stock_income_cagr = stock_income_c.pct_change()
+    stock_income_cagr.dropna(inplace=True)
+    return (
+        stock_income,
+        stock_common_size,
+        [mean_p_m, risk_p_m],
+        cagr,
+        stock_income_cagr,
+    )
 
 
 def type_record(nemad):
@@ -2300,6 +2350,7 @@ class Stock:
             self.cagr_rial_yearly,
             self.fiscal_year,
             self.last_year,
+            self.income_cagr_rial_yearly,
         ) = get_income_yearly(self.Name, "rial")
         (
             self.income_dollar_yearly,
@@ -2308,12 +2359,14 @@ class Stock:
             self.cagr_dollar_yearly,
             i,
             j,
+            self.income_cagr_dollar_yearly,
         ) = get_income_yearly(self.Name, "dollar")
         (
             self.income_rial_quarterly,
             self.income_common_rial_quarterly,
             self.Risk_income_rial_quarterly,
             self.cagr_rial_quarterly,
+            self.income_cagr_rial_quarterly,
         ) = get_income_quarterly(
             self.Name, "rial", self.fiscal_year, (self.last_year + 1)
         )
@@ -2322,6 +2375,7 @@ class Stock:
             self.income_common_dollar_quarterly,
             self.Risk_income_dollar_quarterly,
             self.cagr_dollar_quarterly,
+            self.income_cagr_dollar_quarterly,
         ) = get_income_quarterly(
             self.Name, "dollar", self.fiscal_year, (self.last_year + 1)
         )
@@ -2755,7 +2809,10 @@ class Stock:
         # create last_rate df
         d_r = {}
         for i in self.count_revenue_yearly.columns:
-            d_r[i] = find_rate(self.rate_monthly, i)
+            if self.industry != "palayesh":
+                d_r[i] = find_rate(self.rate_monthly, i)
+            if self.industry == "palayesh":
+                d_r[i] = find_rate(self.rate_quarterly, i)
         predict_rate = pd.DataFrame(d_r, index=[future_year])
         predict_rate.loc[future_year] = alpha_rate * predict_rate.loc[future_year]
         predict_rate.loc[future_year + 1] = (
@@ -2783,8 +2840,8 @@ class Stock:
         # delete noise of pred growth
         for i in pred_growth.index:
             for j in pred_growth.columns:
-                if (pred_growth.loc[i,j]>2)| (pred_growth.loc[i,j]<0.5):
-                    pred_growth.loc[i,j]=1.01
+                if (pred_growth.loc[i, j] > 2) | (pred_growth.loc[i, j] < 0.5):
+                    pred_growth.loc[i, j] = 1.01
         self.pred_growth = pred_growth
         pred_count_revenue = pd.DataFrame(columns=last_count_revenue.columns)
         pred_count_revenue.loc[future_year] = (
@@ -2797,9 +2854,11 @@ class Stock:
         )
         self.pred_count_revenue = pred_count_revenue
         # calculate count rev done
+
         count_revenue_done = self.search_df_quarterly_monthly(
             pred_count_revenue, self.count_revenue_quarterly, self.count_revenue_monthly
         )
+
         count_revenue_done.loc[future_year + 1] = np.zeros(
             len(count_revenue_done.loc[future_year])
         )
@@ -2816,6 +2875,7 @@ class Stock:
         price_revenue_residual = pd.DataFrame(
             index=[future_year, future_year + 1], columns=["revenue"]
         )
+
         price_revenue_residual.loc[future_year] = count_revenue_residual.loc[
             future_year
         ].dot(predict_rate.loc[future_year].T)
@@ -2830,6 +2890,7 @@ class Stock:
             price_revenue_residual["revenue"].values
             + price_revenue_done["total"].values
         )
+        self.price_revenue_residual = price_revenue_residual
         self.pred_revenue = pred_revenue
         # add income to data frame
         income_y.loc[future_year, "Total_Revenue"] = pred_revenue.loc[
@@ -2886,8 +2947,8 @@ class Stock:
         count_cost_done = pd.DataFrame(
             columns=pred_count_revenue.columns, index=[future_year, future_year + 1]
         )
-        cost_done.loc[future_year] = search_df_quarterly(
-            self.income_rial_quarterly, future_year, "Cost_of_Revenue"
+        cost_done.loc[future_year] = -search_df_quarterly(
+            self.my_cost_quarterly, future_year, "total"
         )[0]
         cost_done.loc[future_year + 1] = 0
         self.cost_done = cost_done
@@ -3839,18 +3900,10 @@ class Stock:
         self.sensitivity = df
 
     def plot_cost(self):
-        plt.figure(figsize=[18, 15])
-        self.pred_cost_com_yearly.loc[1398:][
+        np.abs(self.pred_categ_cost.iloc[[0]])[
             ["salary", "material", "transport", "depreciation", "energy"]
-        ].T.plot(kind="pie", subplots=True, figsize=[20, 18], autopct="%.2f")
-
-    def plot_export(self):
-        try:
-            self.product_yearly.iloc[1:][["Domestic", "Foreign"]].T.plot(
-                kind="pie", subplots=True, figsize=[20, 8], autopct="%.2f"
-            )
-        except:
-            print("data not available")
+        ].T.plot(kind="pie", subplots=True, figsize=[15, 5], autopct="%.2f")
+        plt.title(f"Cost of {self.Name}")
 
     def create_interest_data(self):
         tangible = pd.DataFrame(
@@ -3909,6 +3962,8 @@ class Stock:
         for i in interest.index:
             if interest.loc[i, "add_inv_ratio"] < 0:
                 interest.loc[i, "add_inv_ratio"] = 0
+            if interest.loc[i, "add_inv_ratio"] > 1:
+                interest.loc[i, "add_inv_ratio"] = 1
         interest["pay_ratio"] = interest["pay"] / (interest["first"] + interest["add"])
         interest["interest_ratio"] = interest["interest"] / (
             interest["first"] + interest["add"]
@@ -4082,6 +4137,7 @@ class Stock:
         price_last = []
         min_price = []
         max_price = []
+        price_ret = []
         for i in end_data.index:
             date_1 = pd.to_datetime(JalaliDate(i, 1, 1).to_gregorian())
             date_2 = pd.to_datetime(JalaliDate(i, 12, 29).to_gregorian())
@@ -4272,6 +4328,11 @@ class Stock:
                         | (count_revenue.loc[i, j] == 0.01)
                     ):
                         categ_cost.loc[i, j] = 0
+                    if (categ_cost.loc[i, j] == 0.01) & (
+                        (count_revenue.loc[i, j] != 0)
+                        & (count_revenue.loc[i, j] != 0.01)
+                    ):
+                        categ_cost.loc[i, j] = 0
         # create categ cost unit
         if (period == "quarterly") | (period == "yearly"):
             categ_cost_unit = pd.DataFrame(columns=categ_cost.columns)
@@ -4333,6 +4394,8 @@ class Stock:
         try:
             rate = price_revenue / count_revenue
             rate_major = price_revenue_major / count_revenue_major
+            rate_change = rate.pct_change()
+            rate_change.dropna(inplace=True)
         except Exception as err:
             print(f"cant create rate {self.Name} {period}--{err}")
             rate = 0
@@ -4361,7 +4424,7 @@ class Stock:
 
             self.rate_yearly = rate
             self.rate_major_yearly = rate_major
-
+            self.rate_change_yearly = rate_change
             self.categ_cost_yearly = categ_cost
             self.categ_cost_unit_yearly = categ_cost_unit
             self.categ_cost_ratio_yearly = categ_cost_ratio
@@ -4381,6 +4444,7 @@ class Stock:
             self.price_revenue_com_major_monthly = price_revenue_com_major
             self.rate_monthly = rate
             self.rate_major_monthly = rate
+            self.rate_change_monthly = rate_change
         if period == "quarterly":
             self.count_product_quarterly = count_product
             self.count_product_com_quarterly = count_product_com
@@ -4397,6 +4461,7 @@ class Stock:
 
             self.rate_quarterly = rate
             self.rate_major_quarterly = rate_major
+            self.rate_change_quarterly = rate_change
 
             self.categ_cost_quarterly = categ_cost
             self.categ_cost_unit_quarterly = categ_cost_unit
@@ -4605,8 +4670,12 @@ class Stock:
                 id = f"{self.future_year}/{month}"
             if m != 0:
                 try:
-                    dic_done[i] = q + df_m.loc[id:][i].sum()
-                    done[i].loc[self.future_year] = q + df_m.loc[id:][i].sum()
+                    if self.industry != "palayesh":
+                        dic_done[i] = q + df_m.loc[id:][i].sum()
+                        done[i].loc[self.future_year] = q + df_m.loc[id:][i].sum()
+                    if self.industry == "palayesh":
+                        dic_done[i] = q
+                        done[i].loc[self.future_year] = q
                 except:
                     done[i].loc[self.future_year] = q
             else:
@@ -4743,7 +4812,7 @@ class Stock:
                     | (self.categ_cost_unit_ratio_quarterly.loc[i, j] == 0)
                     | (self.categ_cost_unit_ratio_quarterly.loc[i, j] == 0.01)
                 ):
-                    self.categ_cost_unit_ratio_quarterly.loc[i,j] = np.nan
+                    self.categ_cost_unit_ratio_quarterly.loc[i, j] = np.nan
         # create rate
         self.rate_monthly = self.price_revenue_monthly / self.count_revenue_monthly
         self.rate_yearly = self.price_revenue_yearly / self.count_revenue_yearly
