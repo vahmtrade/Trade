@@ -2960,9 +2960,13 @@ class Stock:
         count_cost_residual = pred_count_revenue - count_cost_done
         self.count_cost_done = count_cost_done
         self.count_cost_residual = count_cost_residual
-        cost_residual = -self.count_cost_residual.dot(
+        cost_residual=pd.DataFrame(index=[future_year,future_year+1],columns=['total'])
+        cost_residual.loc[future_year] = -self.count_cost_residual.loc[future_year].dot(
             self.pred_categ_cost.iloc[1:][["total"]]
         )
+        cost_residual.loc[future_year+1] = -self.count_cost_residual.loc[future_year+1].dot(
+            self.pred_categ_cost_next.iloc[1:][["total"]]
+        )        
         pred_cost = cost_residual + cost_done.values
         self.cost_residual = cost_residual
         self.pred_cost = pred_cost
@@ -4323,19 +4327,25 @@ class Stock:
         if (period == "quarterly") | (period == "yearly"):
             for i in categ_cost.index:
                 for j in categ_cost.columns:
-                    if (categ_cost.loc[i, j] != 0) & (
-                        (count_revenue.loc[i, j] == 0)
-                        | (count_revenue.loc[i, j] == 0.01)
-                    ):
-                        categ_cost.loc[i, j] = 0
-                    if (categ_cost.loc[i, j] == 0.01) & (
-                        (count_revenue.loc[i, j] != 0)
-                        & (count_revenue.loc[i, j] != 0.01)
-                    ):
-                        categ_cost.loc[i, j] = 0
+                    try:
+                        if (categ_cost.loc[i, j] != 0) & (
+                            (count_revenue.loc[i, j] == 0)
+                            | (count_revenue.loc[i, j] == 0.01)
+                        ):
+                            categ_cost.loc[i, j] = 0
+                    except:
+                        pass        
+                    try:
+                        if (categ_cost.loc[i, j] == 0.01) & (
+                            (count_revenue.loc[i, j] != 0)
+                            & (count_revenue.loc[i, j] != 0.01)
+                        ):
+                            categ_cost.loc[i, j] = 0
+                    except:
+                        pass        
         # create categ cost unit
         if (period == "quarterly") | (period == "yearly"):
-            categ_cost_unit = pd.DataFrame(columns=categ_cost.columns)
+            categ_cost_unit = pd.DataFrame(columns=categ_cost.columns,index=categ_cost.index)
             for i in categ_cost.columns:
                 try:
                     categ_cost_unit[i] = categ_cost[i] / count_revenue[i]
@@ -4769,7 +4779,7 @@ class Stock:
         merge_same_columns(self.categ_cost_yearly)
         # create categ cost unit
         self.categ_cost_unit_yearly = pd.DataFrame(
-            columns=self.categ_cost_yearly.columns
+            columns=self.categ_cost_yearly.columns,index=self.categ_cost_yearly.index
         )
         for i in self.categ_cost_yearly.columns:
             try:
@@ -4781,7 +4791,7 @@ class Stock:
                     len(self.categ_cost_yearly[i])
                 )
         self.categ_cost_unit_quarterly = pd.DataFrame(
-            columns=self.categ_cost_quarterly.columns
+            columns=self.categ_cost_quarterly.columns,index=self.categ_cost_quarterly.index
         )
         for i in self.categ_cost_quarterly.columns:
             try:
