@@ -1,7 +1,6 @@
-from cmath import tan
-from itertools import cycle
 import os
 import re
+import pickle
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -12,20 +11,39 @@ import tse_index
 import seaborn as sns
 import pyswarm as ps
 import random
+
+from cmath import tan
+from itertools import cycle
 from persiantools.jdatetime import JalaliDate
 from statsmodels.tsa.filters import hp_filter
+from scipy import stats
+
 from Trade_Lib.strategy import SmaTester, TesterOneSide, TesterOneSidePrice
 from statics.setting import DB, watchlist, regex_en_timeid_q
 from autorun.basic_modules import to_digits
-from scipy import stats
-import pickle
 
 plt.style.use("seaborn")
+
+
+def save_watchlist(date):
+    data = {}
+    errs = {}
+
+    for stock in watchlist:
+        try:
+            data[stock] = Stock(stock)
+
+        except Exception as err:
+            errs[stock] = err
+
+    with open(f"{DB}/watchlist/{date}.pkl", "wb") as file:
+        pickle.dump(data, file)
 
 
 def analyse_watchlist(date):
     with open(f"{DB}/watchlist/{date}.pkl", "rb") as f:
         data = pickle.load(f)
+
     analyse = pd.DataFrame(
         index=data.keys(),
         columns=[
@@ -36,10 +54,10 @@ def analyse_watchlist(date):
             "pot_g_val",
             "margin",
             "margin_var",
-            'sector',
+            "sector",
         ],
     )
-    err = []
+    errs = {}
     for stock in data.values():
         try:
             analyse.loc[stock.Name]["price_ret"] = stock.end_data["yearly_ret"].loc[
@@ -55,8 +73,9 @@ def analyse_watchlist(date):
             analyse.loc[stock.Name]["margin_var"] = stock.Risk_income_yearly[1]
             analyse.loc[stock.Name]["sector"] = stock.industry
 
-        except Exception as error:
-            err.append(f"{error}")
+        except Exception as err:
+            errs[stock.Name] = err
+
     return analyse, data
 
 
@@ -2960,13 +2979,15 @@ class Stock:
         count_cost_residual = pred_count_revenue - count_cost_done
         self.count_cost_done = count_cost_done
         self.count_cost_residual = count_cost_residual
-        cost_residual=pd.DataFrame(index=[future_year,future_year+1],columns=['total'])
+        cost_residual = pd.DataFrame(
+            index=[future_year, future_year + 1], columns=["total"]
+        )
         cost_residual.loc[future_year] = -self.count_cost_residual.loc[future_year].dot(
             self.pred_categ_cost.iloc[1:][["total"]]
         )
-        cost_residual.loc[future_year+1] = -self.count_cost_residual.loc[future_year+1].dot(
-            self.pred_categ_cost_next.iloc[1:][["total"]]
-        )        
+        cost_residual.loc[future_year + 1] = -self.count_cost_residual.loc[
+            future_year + 1
+        ].dot(self.pred_categ_cost_next.iloc[1:][["total"]])
         pred_cost = cost_residual + cost_done.values
         self.cost_residual = cost_residual
         self.pred_cost = pred_cost
@@ -4334,7 +4355,7 @@ class Stock:
                         ):
                             categ_cost.loc[i, j] = 0
                     except:
-                        pass        
+                        pass
                     try:
                         if (categ_cost.loc[i, j] == 0.01) & (
                             (count_revenue.loc[i, j] != 0)
@@ -4342,10 +4363,12 @@ class Stock:
                         ):
                             categ_cost.loc[i, j] = 0
                     except:
-                        pass        
+                        pass
         # create categ cost unit
         if (period == "quarterly") | (period == "yearly"):
-            categ_cost_unit = pd.DataFrame(columns=categ_cost.columns,index=categ_cost.index)
+            categ_cost_unit = pd.DataFrame(
+                columns=categ_cost.columns, index=categ_cost.index
+            )
             for i in categ_cost.columns:
                 try:
                     categ_cost_unit[i] = categ_cost[i] / count_revenue[i]
@@ -4779,7 +4802,7 @@ class Stock:
         merge_same_columns(self.categ_cost_yearly)
         # create categ cost unit
         self.categ_cost_unit_yearly = pd.DataFrame(
-            columns=self.categ_cost_yearly.columns,index=self.categ_cost_yearly.index
+            columns=self.categ_cost_yearly.columns, index=self.categ_cost_yearly.index
         )
         for i in self.categ_cost_yearly.columns:
             try:
@@ -4791,7 +4814,8 @@ class Stock:
                     len(self.categ_cost_yearly[i])
                 )
         self.categ_cost_unit_quarterly = pd.DataFrame(
-            columns=self.categ_cost_quarterly.columns,index=self.categ_cost_quarterly.index
+            columns=self.categ_cost_quarterly.columns,
+            index=self.categ_cost_quarterly.index,
         )
         for i in self.categ_cost_quarterly.columns:
             try:
