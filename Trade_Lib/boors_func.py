@@ -830,6 +830,7 @@ def get_income_quarterly(stock, money_type, fisal_year, my_year):
         6: {9: 1, 12: 2, 3: 3, 6: 4},
         3: {6: 1, 9: 2, 12: 3, 3: 4},
         10: {1: 1, 4: 2, 7: 3, 10: 4},
+        8: {11: 1, 2: 2, 5: 3, 8: 4},
     }
     stock_income = pd.read_excel(adress, engine="openpyxl")
     all_time_id = re.findall(regex_en_timeid_q, str(stock_income.loc[6]))
@@ -2793,6 +2794,7 @@ class Stock:
             6: {1: 9, 2: 12, 3: 3, 4: 6},
             3: {1: 6, 2: 9, 3: 12, 4: 3},
             10: {1: 1, 2: 4, 3: 7, 4: 10},
+            8: {11: 1, 2: 2, 5: 3, 8: 4},
         }
         self.fiscal_dic = fiscal_dic
 

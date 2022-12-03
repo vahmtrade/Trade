@@ -490,7 +490,7 @@ def bourseview_search(stock_name):
     sleep(2 * break_time)
 
 
-def bourseview_balancesheet(stock_name, y=5, q=5):
+def bourseview_balancesheet(stock_name, y=10, q=10):
     """download 2 files : yearly,quarterly"""
     try:
         bourseview_search(stock_name)
@@ -534,7 +534,7 @@ def bourseview_balancesheet(stock_name, y=5, q=5):
         print(f"cant download balancesheet {stock_name} : {err}")
 
 
-def bourseview_income_statement(stock_name, y=5, q=5):
+def bourseview_income_statement(stock_name, y=10, q=10):
     """download 4 files : yearly,quarterly,rial,dollar"""
     try:
         bourseview_search(stock_name)
@@ -588,7 +588,7 @@ def bourseview_income_statement(stock_name, y=5, q=5):
         print(f"cant download incomestatement {stock_name} : {err}")
 
 
-def bourseview_cashflow(stock_name, y=5, q=5):
+def bourseview_cashflow(stock_name, y=10, q=10):
     """download 2 files : yearly,quarterly"""
 
     try:
@@ -636,7 +636,7 @@ def bourseview_cashflow(stock_name, y=5, q=5):
         print(f"cant download cashflow {stock_name} : {err}")
 
 
-def bourseview_product_revenue(stock_name, y=5, q=5, m=5):
+def bourseview_product_revenue(stock_name, y=10, q=10, m=50):
     """create 6 files : (yearly,quarterly,monthly) (seprated)
     <y = year : 5,10,20,50>
     <q = quarterly : 5,10,20,50>
@@ -714,7 +714,7 @@ def bourseview_product_revenue(stock_name, y=5, q=5, m=5):
         print(f"cant download product {stock_name} : {err}")
 
 
-def bourseview_cost(stock_name, y=5, q=5):
+def bourseview_cost(stock_name, y=10, q=10):
     """create 2 excel : yearly,quarterly
     <y = year : 5,10,20,50>
     <q = quarterly : 5,10,20,50>"""
@@ -771,7 +771,7 @@ def bourseview_cost(stock_name, y=5, q=5):
         print(f"cant download cost {stock_name} : {err}")
 
 
-def bourseview_official(stock_name, y=5, q=5):
+def bourseview_official(stock_name, y=10, q=10):
     """create 2 excel : yearly,quarterly
     <y = year : 5,10,20,50>
     <q = quarterly : 5,10,20,50>"""
@@ -1092,12 +1092,12 @@ def update_stock_files(stock_name):
 def download_database_files(lst=list(watchlist.keys())):
     bourseview_login()
     for i in lst:
-        bourseview_balancesheet(i, 10, 10)
-        bourseview_income_statement(i, 10, 10)
-        bourseview_cashflow(i, 10, 10)
-        bourseview_product_revenue(i, 10, 10, 50)
-        bourseview_cost(i, 10, 10)
-        bourseview_official(i, 10, 10)
+        bourseview_balancesheet(i)
+        bourseview_income_statement(i)
+        bourseview_cashflow(i)
+        bourseview_product_revenue(i)
+        bourseview_cost(i)
+        bourseview_official(i)
         bourseview_price_history(i)
 
     codal_login()
