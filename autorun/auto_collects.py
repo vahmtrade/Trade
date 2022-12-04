@@ -5,11 +5,13 @@ import shutil
 import platform
 import pandas as pd
 import win32com.client as win32
-from time import sleep
 
+from time import sleep
+from pathlib import Path
+from datetime import datetime
+from persiantools.jdatetime import JalaliDate
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
 
 from autorun.basic_modules import to_digits, best_table_id
@@ -48,9 +50,56 @@ if platform.system() == "Windows":
         capabilities=driver_capabilities,
     )
 
-
 driver.implicitly_wait(wait_time)
 driver.maximize_window()
+
+
+base_folders = [
+    "balancesheet",
+    "income",
+    "cashflow",
+    "product",
+    "cost",
+    "official",
+    "pe",
+    "analyse",
+    "detail_trade",
+]
+
+
+def create_database_structure():
+    """create database folders based on watchlist"""
+
+    for stock, info in watchlist.items():
+
+        for i in base_folders:
+
+            if i == "income":
+                for j in ("yearly", "quarterly"):
+                    Path(f"{DB}/industries/{info['indus']}/{stock}/{i}/{j}/").mkdir(
+                        parents=True, exist_ok=True
+                    )
+
+            else:
+                Path(f"{DB}/industries/{info['indus']}/{stock}/{i}/").mkdir(
+                    parents=True, exist_ok=True
+                )
+
+
+def list_stock_files(stock_name):
+    """return all folders and files of stock in database"""
+    stock_dirs = []
+    stock_files = []
+    for path, subdirs, files in os.walk(
+        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}"
+    ):
+        for dir in subdirs:
+            stock_dirs.append(os.path.join(path, dir).replace("\\", "/"))
+
+        for name in files:
+            stock_files.append(os.path.join(path, name).replace("\\", "/"))
+
+    return stock_dirs, stock_files
 
 
 def move_last_file(new_path):
@@ -73,12 +122,14 @@ def move_last_file(new_path):
         try:
             excel = win32.gencache.EnsureDispatch("Excel.Application")
         except AttributeError:
-            # Remove cache and try again.
+            # remove cache and try again
             MODULE_LIST = [m.__name__ for m in sys.modules.values()]
             for module in MODULE_LIST:
-                if re.match(r'win32com\.gen_py\..+', module):
+                if re.match(r"win32com\.gen_py\..+", module):
                     del sys.modules[module]
-            shutil.rmtree(os.path.join(os.environ.get('LOCALAPPDATA'), 'Temp', 'gen_py'))
+            shutil.rmtree(
+                os.path.join(os.environ.get("LOCALAPPDATA"), "Temp", "gen_py")
+            )
             excel = win32.gencache.EnsureDispatch("Excel.Application")
 
         # open and save excel file
@@ -439,7 +490,7 @@ def bourseview_search(stock_name):
     sleep(2 * break_time)
 
 
-def bourseview_balancesheet(stock_name, y=5, q=5):
+def bourseview_balancesheet(stock_name, y=10, q=10):
     """download 2 files : yearly,quarterly"""
     try:
         bourseview_search(stock_name)
@@ -483,7 +534,7 @@ def bourseview_balancesheet(stock_name, y=5, q=5):
         print(f"cant download balancesheet {stock_name} : {err}")
 
 
-def bourseview_income_statement(stock_name, y=5, q=5):
+def bourseview_income_statement(stock_name, y=10, q=10):
     """download 4 files : yearly,quarterly,rial,dollar"""
     try:
         bourseview_search(stock_name)
@@ -537,7 +588,7 @@ def bourseview_income_statement(stock_name, y=5, q=5):
         print(f"cant download incomestatement {stock_name} : {err}")
 
 
-def bourseview_cashflow(stock_name, y=5, q=5):
+def bourseview_cashflow(stock_name, y=10, q=10):
     """download 2 files : yearly,quarterly"""
 
     try:
@@ -585,7 +636,7 @@ def bourseview_cashflow(stock_name, y=5, q=5):
         print(f"cant download cashflow {stock_name} : {err}")
 
 
-def bourseview_product_revenue(stock_name, y=5, q=5, m=5):
+def bourseview_product_revenue(stock_name, y=10, q=10, m=50):
     """create 6 files : (yearly,quarterly,monthly) (seprated)
     <y = year : 5,10,20,50>
     <q = quarterly : 5,10,20,50>
@@ -663,7 +714,7 @@ def bourseview_product_revenue(stock_name, y=5, q=5, m=5):
         print(f"cant download product {stock_name} : {err}")
 
 
-def bourseview_cost(stock_name, y=5, q=5):
+def bourseview_cost(stock_name, y=10, q=10):
     """create 2 excel : yearly,quarterly
     <y = year : 5,10,20,50>
     <q = quarterly : 5,10,20,50>"""
@@ -720,7 +771,7 @@ def bourseview_cost(stock_name, y=5, q=5):
         print(f"cant download cost {stock_name} : {err}")
 
 
-def bourseview_official(stock_name, y=5, q=5):
+def bourseview_official(stock_name, y=10, q=10):
     """create 2 excel : yearly,quarterly
     <y = year : 5,10,20,50>
     <q = quarterly : 5,10,20,50>"""
@@ -957,3 +1008,98 @@ def bourseview_macro(start=first_day, end=last_day):
         move_last_file(f"{DB}/macro/macro.xlsx")
     except Exception as err:
         print(f"cant download macro data : {err}")
+
+
+def update_stock_files(stock_name):
+    """delete unnecessary and add deficiency data"""
+
+    # files that must every stock have it
+    stock_folder = f"{DB}/industries/{watchlist[stock_name]['indus']}"
+    base_files = [
+        f"{stock_folder}/{stock_name}/balancesheet/quarterly.xlsx",
+        f"{stock_folder}/{stock_name}/balancesheet/yearly.xlsx",
+        f"{stock_folder}/{stock_name}/cashflow/quarterly.xlsx",
+        f"{stock_folder}/{stock_name}/cashflow/yearly.xlsx",
+        f"{stock_folder}/{stock_name}/cost/quarterly.xlsx",
+        f"{stock_folder}/{stock_name}/cost/yearly.xlsx",
+        f"{stock_folder}/{stock_name}/income/quarterly/dollar.xlsx",
+        f"{stock_folder}/{stock_name}/income/quarterly/rial.xlsx",
+        f"{stock_folder}/{stock_name}/income/yearly/dollar.xlsx",
+        f"{stock_folder}/{stock_name}/income/yearly/rial.xlsx",
+        f"{stock_folder}/{stock_name}/official/quarterly.xlsx",
+        f"{stock_folder}/{stock_name}/official/yearly.xlsx",
+        f"{stock_folder}/{stock_name}/pe/pe.xlsx",
+        f"{stock_folder}/{stock_name}/pe/forward.xlsx",
+        f"{stock_folder}/{stock_name}/product/monthly.xlsx",
+        f"{stock_folder}/{stock_name}/product/monthly_seprated.xlsx",
+        f"{stock_folder}/{stock_name}/product/quarterly.xlsx",
+        f"{stock_folder}/{stock_name}/product/quarterly_seprated.xlsx",
+        f"{stock_folder}/{stock_name}/product/yearly.xlsx",
+        f"{stock_folder}/{stock_name}/product/yearly_seprated.xlsx",
+        f"{stock_folder}/{stock_name}/eps.xlsx",
+        f"{stock_folder}/{stock_name}/opt.xlsx",
+    ]
+
+    dirs, files = list_stock_files(stock_name)
+
+    def ignoreable(x):
+        if (
+            "/detail_trade" in x
+            or "/analyse" in x
+            or "eps.xlsx" in x
+            or "opt.xlsx" in x
+            or "forward.xlsx" in x
+        ):
+            return True
+        else:
+            return False
+
+    # delete unnecessary files
+    for file in files:
+        if not ignoreable(file):
+            if file not in base_files:
+                print("unnecessary file : ", file)
+                os.remove(file)
+
+    # delete empty folders
+    for dir in dirs:
+        if not ignoreable(dir):
+            if len(os.listdir(dir)) == 0:
+                os.rmdir(dir)
+
+    # search in needed files
+    for b in base_files:
+        if Path(b).exists():
+            # get creation time of file
+            t = JalaliDate(datetime.fromtimestamp(os.path.getctime(b)))
+
+        else:
+            # show deficiency files
+            if not ignoreable(b):
+                print("deficiency : ", b)
+
+        # check sanity of bourseview excels
+        try:
+            if not ignoreable(b):
+                sample = pd.read_excel(b)["Unnamed: 1"][0]
+                if sample != "Pouya Finance":
+                    print(b, sample)
+
+        except:
+            pass
+
+
+def download_database_files(lst=list(watchlist.keys())):
+    bourseview_login()
+    for i in lst:
+        bourseview_balancesheet(i)
+        bourseview_income_statement(i)
+        bourseview_cashflow(i)
+        bourseview_product_revenue(i)
+        bourseview_cost(i)
+        bourseview_official(i)
+        bourseview_price_history(i)
+
+    codal_login()
+    for i in lst:
+        codal_eps(i)

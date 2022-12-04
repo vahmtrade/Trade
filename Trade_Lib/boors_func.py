@@ -1,7 +1,6 @@
-from cmath import tan
-from itertools import cycle
 import os
 import re
+import pickle
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -12,20 +11,39 @@ import tse_index
 import seaborn as sns
 import pyswarm as ps
 import random
+
+from cmath import tan
+from itertools import cycle
 from persiantools.jdatetime import JalaliDate
 from statsmodels.tsa.filters import hp_filter
+from scipy import stats
+
 from Trade_Lib.strategy import SmaTester, TesterOneSide, TesterOneSidePrice
 from statics.setting import DB, watchlist, regex_en_timeid_q
 from autorun.basic_modules import to_digits
-from scipy import stats
-import pickle
 
 plt.style.use("seaborn")
+
+
+def save_watchlist(date):
+    data = {}
+    errs = {}
+
+    for stock in watchlist:
+        try:
+            data[stock] = Stock(stock)
+
+        except Exception as err:
+            errs[stock] = err
+
+    with open(f"{DB}/watchlist/{date}.pkl", "wb") as file:
+        pickle.dump(data, file)
 
 
 def analyse_watchlist(date):
     with open(f"{DB}/watchlist/{date}.pkl", "rb") as f:
         data = pickle.load(f)
+
     analyse = pd.DataFrame(
         index=data.keys(),
         columns=[
@@ -46,7 +64,7 @@ def analyse_watchlist(date):
             'price_sell',
         ],
     )
-    err = []
+    errs = {}
     for stock in data.values():
         try:
             analyse.loc[stock.Name]["price_ret"] = stock.end_data["yearly_ret"].loc[
@@ -834,6 +852,7 @@ def get_income_quarterly(stock, money_type, fisal_year, my_year):
         6: {9: 1, 12: 2, 3: 3, 6: 4},
         3: {6: 1, 9: 2, 12: 3, 3: 4},
         10: {1: 1, 4: 2, 7: 3, 10: 4},
+        8: {11: 1, 2: 2, 5: 3, 8: 4},
     }
     stock_income = pd.read_excel(adress, engine="openpyxl")
     all_time_id = re.findall(regex_en_timeid_q, str(stock_income.loc[6]))
@@ -2797,6 +2816,7 @@ class Stock:
             6: {1: 9, 2: 12, 3: 3, 4: 6},
             3: {1: 6, 2: 9, 3: 12, 4: 3},
             10: {1: 1, 2: 4, 3: 7, 4: 10},
+            8: {11: 1, 2: 2, 5: 3, 8: 4},
         }
         self.fiscal_dic = fiscal_dic
 
