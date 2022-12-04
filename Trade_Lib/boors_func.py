@@ -36,7 +36,14 @@ def analyse_watchlist(date):
             "pot_g_val",
             "margin",
             "margin_var",
-            'sector',
+            "sector",
+            "last_rate/mean_12",
+            "last_rate_change",
+            "last_rate/same_year",
+            "net_profit_change",
+            "net_profit/net_profit_same_last",
+            'price_buy',
+            'price_sell',
         ],
     )
     err = []
@@ -54,7 +61,23 @@ def analyse_watchlist(date):
             analyse.loc[stock.Name]["margin"] = stock.Risk_income_yearly[0]
             analyse.loc[stock.Name]["margin_var"] = stock.Risk_income_yearly[1]
             analyse.loc[stock.Name]["sector"] = stock.industry
-
+            analyse.loc[stock.Name]["last_rate/mean_12"] = (
+                stock.rate_monthly["total"].iloc[-1]
+                / stock.rate_monthly["total"].iloc[-12:].mean()
+            )
+            analyse.loc[stock.Name]["last_rate_change"] = stock.rate_change_monthly[
+                "total"
+            ].iloc[-1]
+            analyse.loc[stock.Name]["last_rate/same_year"]=stock.rate_monthly.iloc[-1]['total']/stock.rate_monthly.iloc[-13]['total'] 
+            analyse.loc[stock.Name]["net_profit_change"] = (
+                stock.income_rial_quarterly["Net_Profit"].pct_change().iloc[-1]
+            )
+            analyse.loc[stock.Name]["net_profit/net_profit_same_last"] = (
+                stock.income_rial_quarterly["Net_Profit"].iloc[-1]
+                / stock.income_rial_quarterly["Net_Profit"].iloc[-5]
+            )
+            analyse.loc[stock.Name]["price_buy"]=stock.my_tester.trade['Sig_Price_Buy'].iloc[-1]
+            analyse.loc[stock.Name]["price_sell"]=stock.my_tester.trade['Sig_Price_Sell'].iloc[-1]
         except Exception as error:
             err.append(f"{error}")
     return analyse, data
@@ -2960,13 +2983,15 @@ class Stock:
         count_cost_residual = pred_count_revenue - count_cost_done
         self.count_cost_done = count_cost_done
         self.count_cost_residual = count_cost_residual
-        cost_residual=pd.DataFrame(index=[future_year,future_year+1],columns=['total'])
+        cost_residual = pd.DataFrame(
+            index=[future_year, future_year + 1], columns=["total"]
+        )
         cost_residual.loc[future_year] = -self.count_cost_residual.loc[future_year].dot(
             self.pred_categ_cost.iloc[1:][["total"]]
         )
-        cost_residual.loc[future_year+1] = -self.count_cost_residual.loc[future_year+1].dot(
-            self.pred_categ_cost_next.iloc[1:][["total"]]
-        )        
+        cost_residual.loc[future_year + 1] = -self.count_cost_residual.loc[
+            future_year + 1
+        ].dot(self.pred_categ_cost_next.iloc[1:][["total"]])
         pred_cost = cost_residual + cost_done.values
         self.cost_residual = cost_residual
         self.pred_cost = pred_cost
@@ -3905,7 +3930,7 @@ class Stock:
 
     def plot_cost(self):
         np.abs(self.pred_categ_cost.iloc[[0]])[
-            ["salary", "material", "transport", "depreciation", "energy"]
+            ["salary", "material", "transport", "depreciation", "energy",'other']
         ].T.plot(kind="pie", subplots=True, figsize=[15, 5], autopct="%.2f")
         plt.title(f"Cost of {self.Name}")
 
@@ -3966,8 +3991,8 @@ class Stock:
         for i in interest.index:
             if interest.loc[i, "add_inv_ratio"] < 0:
                 interest.loc[i, "add_inv_ratio"] = 0
-            if interest.loc[i, "add_inv_ratio"] > 1:
-                interest.loc[i, "add_inv_ratio"] = 1
+            #if interest.loc[i, "add_inv_ratio"] > 1:
+                #interest.loc[i, "add_inv_ratio"] = 1
         interest["pay_ratio"] = interest["pay"] / (interest["first"] + interest["add"])
         interest["interest_ratio"] = interest["interest"] / (
             interest["first"] + interest["add"]
@@ -4334,7 +4359,7 @@ class Stock:
                         ):
                             categ_cost.loc[i, j] = 0
                     except:
-                        pass        
+                        pass
                     try:
                         if (categ_cost.loc[i, j] == 0.01) & (
                             (count_revenue.loc[i, j] != 0)
@@ -4342,10 +4367,12 @@ class Stock:
                         ):
                             categ_cost.loc[i, j] = 0
                     except:
-                        pass        
+                        pass
         # create categ cost unit
         if (period == "quarterly") | (period == "yearly"):
-            categ_cost_unit = pd.DataFrame(columns=categ_cost.columns,index=categ_cost.index)
+            categ_cost_unit = pd.DataFrame(
+                columns=categ_cost.columns, index=categ_cost.index
+            )
             for i in categ_cost.columns:
                 try:
                     categ_cost_unit[i] = categ_cost[i] / count_revenue[i]
@@ -4779,7 +4806,7 @@ class Stock:
         merge_same_columns(self.categ_cost_yearly)
         # create categ cost unit
         self.categ_cost_unit_yearly = pd.DataFrame(
-            columns=self.categ_cost_yearly.columns,index=self.categ_cost_yearly.index
+            columns=self.categ_cost_yearly.columns, index=self.categ_cost_yearly.index
         )
         for i in self.categ_cost_yearly.columns:
             try:
@@ -4791,7 +4818,8 @@ class Stock:
                     len(self.categ_cost_yearly[i])
                 )
         self.categ_cost_unit_quarterly = pd.DataFrame(
-            columns=self.categ_cost_quarterly.columns,index=self.categ_cost_quarterly.index
+            columns=self.categ_cost_quarterly.columns,
+            index=self.categ_cost_quarterly.index,
         )
         for i in self.categ_cost_quarterly.columns:
             try:
