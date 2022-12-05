@@ -26,6 +26,10 @@ plt.style.use("seaborn")
 
 
 def save_watchlist(date):
+    """save all stocks data in one file
+
+    /database/watchlist/date.pkl"""
+
     data = {}
     errs = {}
 
@@ -38,6 +42,8 @@ def save_watchlist(date):
 
     with open(f"{DB}/watchlist/{date}.pkl", "wb") as file:
         pickle.dump(data, file)
+
+    return errs
 
 
 def analyse_watchlist(date):
@@ -60,8 +66,8 @@ def analyse_watchlist(date):
             "last_rate/same_year",
             "net_profit_change",
             "net_profit/net_profit_same_last",
-            'price_buy',
-            'price_sell',
+            "price_buy",
+            "price_sell",
         ],
     )
     errs = {}
@@ -86,7 +92,10 @@ def analyse_watchlist(date):
             analyse.loc[stock.Name]["last_rate_change"] = stock.rate_change_monthly[
                 "total"
             ].iloc[-1]
-            analyse.loc[stock.Name]["last_rate/same_year"]=stock.rate_monthly.iloc[-1]['total']/stock.rate_monthly.iloc[-13]['total'] 
+            analyse.loc[stock.Name]["last_rate/same_year"] = (
+                stock.rate_monthly.iloc[-1]["total"]
+                / stock.rate_monthly.iloc[-13]["total"]
+            )
             analyse.loc[stock.Name]["net_profit_change"] = (
                 stock.income_rial_quarterly["Net_Profit"].pct_change().iloc[-1]
             )
@@ -94,11 +103,16 @@ def analyse_watchlist(date):
                 stock.income_rial_quarterly["Net_Profit"].iloc[-1]
                 / stock.income_rial_quarterly["Net_Profit"].iloc[-5]
             )
-            analyse.loc[stock.Name]["price_buy"]=stock.my_tester.trade['Sig_Price_Buy'].iloc[-1]
-            analyse.loc[stock.Name]["price_sell"]=stock.my_tester.trade['Sig_Price_Sell'].iloc[-1]
-        except Exception as error:
-            err.append(f"{error}")
-    return analyse, data
+            analyse.loc[stock.Name]["price_buy"] = stock.my_tester.trade[
+                "Sig_Price_Buy"
+            ].iloc[-1]
+            analyse.loc[stock.Name]["price_sell"] = stock.my_tester.trade[
+                "Sig_Price_Sell"
+            ].iloc[-1]
+        except Exception as err:
+            errs[stock.Name] = err
+
+    return analyse, data, errs
 
 
 def analyse_detail_trade(adress):
@@ -3950,7 +3964,7 @@ class Stock:
 
     def plot_cost(self):
         np.abs(self.pred_categ_cost.iloc[[0]])[
-            ["salary", "material", "transport", "depreciation", "energy",'other']
+            ["salary", "material", "transport", "depreciation", "energy", "other"]
         ].T.plot(kind="pie", subplots=True, figsize=[15, 5], autopct="%.2f")
         plt.title(f"Cost of {self.Name}")
 
@@ -4011,8 +4025,8 @@ class Stock:
         for i in interest.index:
             if interest.loc[i, "add_inv_ratio"] < 0:
                 interest.loc[i, "add_inv_ratio"] = 0
-            #if interest.loc[i, "add_inv_ratio"] > 1:
-                #interest.loc[i, "add_inv_ratio"] = 1
+            # if interest.loc[i, "add_inv_ratio"] > 1:
+            # interest.loc[i, "add_inv_ratio"] = 1
         interest["pay_ratio"] = interest["pay"] / (interest["first"] + interest["add"])
         interest["interest_ratio"] = interest["interest"] / (
             interest["first"] + interest["add"]
