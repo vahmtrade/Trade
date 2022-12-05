@@ -65,6 +65,7 @@ def analyse_watchlist(date):
         ],
     )
     errs = {}
+    err=[]
     for stock in data.values():
         try:
             analyse.loc[stock.Name]["price_ret"] = stock.end_data["yearly_ret"].loc[
@@ -872,6 +873,7 @@ def get_income_quarterly(stock, money_type, fisal_year, my_year):
                 stock_income.loc[i][j] = 0.1
     # data_Cleaning miladi tarikh_enteshar
     date_release = []
+  
     for i in stock_income.iloc[0][1:]:
         i = i[0:10]
         b = [int(j) for j in i.split("-")]
@@ -995,7 +997,7 @@ def read_index(Name, my_interval, start, end):
     return my_index
 
 
-def plot_marq(stocks, y_s=1400, m_s=1, d_s=1, y_e=1401, m_e=6, d_e=1):
+def plot_marq(stocks, y_s=1400, m_s=1, d_s=1, y_e=1401, m_e=12, d_e=1):
     start = pd.to_datetime(JalaliDate(y_s, m_s, d_s).to_gregorian())
     end = pd.to_datetime(JalaliDate(y_e, m_e, d_e).to_gregorian())
     stocks_ret = []
@@ -1096,7 +1098,7 @@ def plot_dollar_analyse(stocks):
     plt.title("Net_Profit_Dollar")
 
 
-def plot_stocks_ret(stocks, year_s, month_s, day_s, year_e, month_e, day_e):
+def plot_stocks_ret(stocks, year_s=1401, month_s=1, day_s=1, year_e=1401, month_e=12, day_e=1):
     start = pd.to_datetime(JalaliDate(year_s, month_s, day_s).to_gregorian())
     end = pd.to_datetime(JalaliDate(year_e, month_e, day_e).to_gregorian())
     plt.figure(figsize=[20, 8])
@@ -1143,12 +1145,19 @@ def plot_revenue_stocks(stocks):
     plt.figure(figsize=[20, 8])
 
 
-def plot_corr(df):
+def plot_corr(stocks,y_s=1401,m_s=1,y_e=1401,m_e=12):
+    d={}
+    date_1=pd.to_datetime(JalaliDate(y_s, m_s, 1).to_gregorian())
+    date_2=pd.to_datetime(JalaliDate(y_e, m_e, 1).to_gregorian())
+    for i in stocks:
+        d[i.Name]=i.Price[date_1:date_2]['Ret']
+    df=pd.DataFrame(d) 
+    df.dropna(inplace=True)   
     cor = df.corr()
     plt.figure(figsize=[20, 12], facecolor="white")
     sns.set(font_scale=1.5)
     sns.heatmap(cor, cmap="Reds", annot=True, annot_kws={"size": 12}, vmax=1, vmin=-1)
-
+    return df
 
 def plot_voloume_profile(price, start, n):
     vp, bin = voloume_profile(price, start, 100)
@@ -1281,7 +1290,7 @@ def remove_zero(df):
     for i in df.index:
         for j in df.columns:
             if df.loc[i, j] == 0:
-                df.loc[i, j] = 0.01
+                df.loc[i, j] = 0.01      
 
 
 def search_df_month(df, fiscal_year, future_year, word):
@@ -4363,6 +4372,7 @@ class Stock:
         if (period == "quarterly") | (period == "yearly"):
             categ_cost = merge_similar_columns(categ_cost)
 
+
         # homonymization categ cost and count revenue
         if (period == "quarterly") | (period == "yearly"):
             rename_columns_dfs(categ_cost, count_revenue)
@@ -4408,6 +4418,12 @@ class Stock:
                 categ_cost_unit_ratio.loc[i] = (
                     categ_cost_unit.loc[i] / categ_cost_unit.loc[i]["total"]
                 )
+        #delete noise of count_revenue and price_revenue
+        for i in count_revenue.index:
+            for j in count_revenue.columns:
+                if (count_revenue.loc[i,j]==0.01)&((price_revenue.loc[i,j]!=0)|(price_revenue.loc[i,j]!=0.01)):
+                    price_revenue.loc[i,j]=0.01
+
         # create count_product_com
         count_product_com = pd.DataFrame(columns=count_product.columns)
         try:
