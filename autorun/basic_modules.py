@@ -42,3 +42,24 @@ def best_table_id(data_tables):
             table_id = i
 
     return table_id
+
+
+def seprate_number(a, seprator=","):
+    """12345678 => 12,345,678"""
+    try:
+        a = str(int(float(a)))
+    except:
+        return a
+
+    l = len(a) % 3
+    b = ""
+    b += a[:l]
+    for i in range(len(a) // 3):
+        b += seprator
+        b += a[l : l + 3]
+        l += 3
+
+    if b[0] == seprator:
+        b = b[1:]
+
+    return b
