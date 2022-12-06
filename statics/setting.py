@@ -42,25 +42,30 @@ watchlist = {
     "kehafez": {"indus": "kashi", "token": "کحافظ", "name": "کاشی و سرامیک حافظ"},
     "shaspa": {"indus": "ravankar", "token": "شسپا", "name": "نفت سپاهان"},
     "shepaksa": {"indus": "shoyande", "token": "شپاکسا", "name": "پاکسان"},
-    "ghefars": {"indus": "ghaza", "token": "غفارس", "name": " پگاه فارس"},
+    "ghefars": {"indus": "ghaza", "token": "غفارس", "name": "پگاه فارس"},
     "bemoto": {"indus": "bargh", "token": "بموتو", "name": "موتوژن"},
     "gheshasfa": {"indus": "ghaza", "token": "غشصفا", "name": "پگاه اصفهان"},
     "desobhan": {"indus": "darou", "token": "دسبحان", "name": "سبحان دارو"},
     "deshimi": {"indus": "darou", "token": "دشیمی", "name": "شیمی دارویی داروپخش"},
     "khedizel": {"indus": "khodro", "token": "خدیزل", "name": "بهمن دیزل"},
-    "fameli": {"indus": "felezat", "token": "فملی", "name": " فملی "},
+    "fameli": {"indus": "felezat", "token": "فملی", "name": "فملی "},
     "kechad": {"indus": "folad", "token": "کچاد", "name": "معدنی و صنعتی چادرملو"},
     "fasmin": {"indus": "felezat", "token": "فاسمین", "name": "کالسیمین"},
     "shebandar": {"indus": "palayesh", "token": "شبندر", "name": "پالایش نفت بندر"},
     "shetran": {"indus": "palayesh", "token": "شتران", "name": "پالایش نفت تهران"},
     "gheshan": {"indus": "ghaza", "token": "غشان", "name": "پگاه خراسان"},
-    "deabid": {"indus": "darou", "token": "دعبید", "name": " دکتر عبیدی"},
+    "deabid": {"indus": "darou", "token": "دعبید", "name": "دکتر عبیدی"},
     "dekapsul": {"indus": "darou", "token": "دکپسول", "name": "کپسول ایران"},
     "gharn": {"indus": "shoyande", "token": "قرن", "name": "پدیده شیمی قرن"},
     "shekolor": {"indus": "methanol", "token": "شکلر", "name": "نیروکلر"},
     "shegol": {"indus": "shoyande", "token": "شگل", "name": "گلتاش"},
+<<<<<<< HEAD
     'ghesafha':{'indus':'ghand','token':'قصفها','name':'قند اصفهان'},
     'shavan':{'indus':'palayesh','token':'شاوان','name':'پالایش لاوان'},
+=======
+    "silam": {"indus": "siman", "token": "سیلام", "name": "سیمان ایلام"},
+    "ghesafha": {"indus": "ghand", "token": "قصفها", "name": "قند اصفهان"},
+>>>>>>> develop
 }
 
 ROOT_PATH = os.path.abspath(os.curdir).replace("\\", "/")
