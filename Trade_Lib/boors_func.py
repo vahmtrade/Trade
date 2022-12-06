@@ -3006,6 +3006,8 @@ class Stock:
                 ) * self.categ_cost_unit_ratio_quarterly[i].median()
             except:
                 pred_categ_cost_next.loc[i] = 0
+        pred_categ_cost.fillna(0,inplace=True)
+        pred_categ_cost_next.fillna(0,inplace=True)
         self.pred_categ_cost = pred_categ_cost
         self.pred_categ_cost_next = pred_categ_cost_next
         ### create_cost done
@@ -4435,7 +4437,7 @@ class Stock:
         #delete noise of count_revenue and price_revenue
         for i in count_revenue.index:
             for j in count_revenue.columns:
-                if (count_revenue.loc[i,j]==0.01)&((price_revenue.loc[i,j]!=0)|(price_revenue.loc[i,j]!=0.01)):
+                if (count_revenue.loc[i,j]<1)&((price_revenue.loc[i,j]!=0)|(price_revenue.loc[i,j]!=0.01)):
                     price_revenue.loc[i,j]=0.01
 
         # create count_product_com

@@ -1104,7 +1104,7 @@ def bourseview_macro(start=first_day, end=last_day):
         print(f"cant download macro data : {err}")
 
 
-def download_database_files(lst=list(watchlist.keys()), y=10, q=10, m=50):
+def download_database_files(lst=list(watchlist.keys()), y=5, q=5, m=50):
     '''download all of stock files'''
     create_database_structure()
     bourseview_login()
