@@ -591,7 +591,7 @@ def bourseview_search(stock_name):
     sleep(2 * break_time)
 
 
-def bourseview_balancesheet(stock_name, y=10, q=10):
+def bourseview_balancesheet(stock_name, y=5, q=5):
     """download 2 files : yearly,quarterly"""
     try:
         bourseview_search(stock_name)
@@ -635,7 +635,7 @@ def bourseview_balancesheet(stock_name, y=10, q=10):
         print(f"cant download balancesheet {stock_name} : {err}")
 
 
-def bourseview_income_statement(stock_name, y=10, q=10):
+def bourseview_income_statement(stock_name, y=5, q=5):
     """download 4 files : yearly,quarterly,rial,dollar"""
     try:
         bourseview_search(stock_name)
@@ -689,7 +689,7 @@ def bourseview_income_statement(stock_name, y=10, q=10):
         print(f"cant download incomestatement {stock_name} : {err}")
 
 
-def bourseview_cashflow(stock_name, y=10, q=10):
+def bourseview_cashflow(stock_name, y=5, q=5):
     """download 2 files : yearly,quarterly"""
 
     try:
@@ -737,7 +737,7 @@ def bourseview_cashflow(stock_name, y=10, q=10):
         print(f"cant download cashflow {stock_name} : {err}")
 
 
-def bourseview_product_revenue(stock_name, y=10, q=10, m=50):
+def bourseview_product_revenue(stock_name, y=5, q=5, m=50):
     """create 6 files : (yearly,quarterly,monthly) (seprated)
     <y = year : 5,10,20,50>
     <q = quarterly : 5,10,20,50>
@@ -815,7 +815,7 @@ def bourseview_product_revenue(stock_name, y=10, q=10, m=50):
         print(f"cant download product {stock_name} : {err}")
 
 
-def bourseview_cost(stock_name, y=10, q=10):
+def bourseview_cost(stock_name, y=5, q=5):
     """create 2 excel : yearly,quarterly
     <y = year : 5,10,20,50>
     <q = quarterly : 5,10,20,50>"""
@@ -872,7 +872,7 @@ def bourseview_cost(stock_name, y=10, q=10):
         print(f"cant download cost {stock_name} : {err}")
 
 
-def bourseview_official(stock_name, y=10, q=10):
+def bourseview_official(stock_name, y=5, q=5):
     """create 2 excel : yearly,quarterly
     <y = year : 5,10,20,50>
     <q = quarterly : 5,10,20,50>"""
@@ -1111,7 +1111,7 @@ def bourseview_macro(start=first_day, end=last_day):
         print(f"cant download macro data : {err}")
 
 
-def download_stock_files(lst, y=10, q=10, m=50):
+def download_stock_files(lst, y=5, q=5, m=50):
     '''download all of stock files'''
     create_database_structure()
     bourseview_login()
