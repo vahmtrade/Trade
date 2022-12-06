@@ -134,7 +134,7 @@ def check_stock_files(stock_name):
     dirs, files = list_stock_files(stock_name)
 
     def ignoreable(x):
-        # not unnecessary and not deficiency
+        # files that not unnecessary and not deficiency
         if (
             "/detail_trade" in x
             or "/analyse" in x
@@ -160,7 +160,11 @@ def check_stock_files(stock_name):
                 # check sanity of bourseview excels
                 try:
                     df = pd.read_excel(file)
-                    file_types = {
+                    excel_author = df["Unnamed: 1"][0]
+                    excel_type = df["Unnamed: 1"][4]
+                    excel_token = (df["Unnamed: 1"][3]).replace("\u200c","").split("-")[0]
+                    stock_type = file.split("/")[6]
+                    stock_types = {
                         "balancesheet": "Balance Sheet",
                         "income": "Income Statements",
                         "cashflow": "Cash Flow",
@@ -169,16 +173,19 @@ def check_stock_files(stock_name):
                         "official": "هزینه های عمومی و اداری",
                         "pe": "تاریخچه قیمت",
                     }
-                    file_type = file.split("/")[6]
 
-                    if df["Unnamed: 1"][0] != "Pouya Finance":
+                    if excel_author != "Pouya Finance":
                         print("not bourseview : ", file)
 
-                    if df["Unnamed: 1"][4] != file_types[file_type]:
+                    if excel_type != stock_types[stock_type]:
                         print("unmatch type : ", file)
+
+                    if excel_token != watchlist[stock_name]["token"]:
+                        print("unmatch name :",file)
 
                 except:
                     print("old format : ", file)
+                    to_useful_excel(file)
 
     for dir in dirs:
         if not ignoreable(dir) and len(os.listdir(dir)) == 0:
@@ -738,9 +745,8 @@ def bourseview_product_revenue(stock_name, y=10, q=10, m=50):
 
     try:
 
-        def dl_excels(new_name=""):
+        def download_product(new_name=""):
 
-            # download seprated excels
             for time_type in ("yearly", "quarterly", "monthly"):
 
                 if time_type == "yearly":
@@ -771,6 +777,7 @@ def bourseview_product_revenue(stock_name, y=10, q=10, m=50):
                 move_last_file(
                     f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/product/{time_type}{new_name}.xlsx"
                 )
+                sleep(break_time)
 
         bourseview_search(stock_name)
 
@@ -786,7 +793,7 @@ def bourseview_product_revenue(stock_name, y=10, q=10, m=50):
         sleep(break_time)
 
         # download base excels
-        dl_excels()
+        download_product()
 
         # click 'tafkik dakheli,khareji'
         driver.find_element(
@@ -796,7 +803,7 @@ def bourseview_product_revenue(stock_name, y=10, q=10, m=50):
         sleep(4 * break_time)
 
         # download seprated excels
-        dl_excels("_seprated")
+        download_product("_seprated")
 
         # disable 'tafkik dakheli,khareji'
         driver.find_element(
@@ -1104,7 +1111,7 @@ def bourseview_macro(start=first_day, end=last_day):
         print(f"cant download macro data : {err}")
 
 
-def download_database_files(lst=list(watchlist.keys()), y=10, q=10, m=50):
+def download_stock_files(lst, y=10, q=10, m=50):
     '''download all of stock files'''
     create_database_structure()
     bourseview_login()
@@ -1120,3 +1127,4 @@ def download_database_files(lst=list(watchlist.keys()), y=10, q=10, m=50):
     codal_login()
     for i in lst:
         codal_eps(i)
+        check_stock_files(i)
