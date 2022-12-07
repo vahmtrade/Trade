@@ -4400,10 +4400,10 @@ class Stock:
                 for j in categ_cost.columns:
                     try:
                         if (categ_cost.loc[i, j] != 0) & (
-                            (count_revenue.loc[i, j] == 0)
+                            (count_revenue.loc[i, j] < 1)
                             | (count_revenue.loc[i, j] == 0.01)
                         ):
-                            categ_cost.loc[i, j] = 0
+                            categ_cost.loc[i, j] = 0.01
                     except:
                         pass
                     try:
@@ -4411,7 +4411,7 @@ class Stock:
                             (count_revenue.loc[i, j] != 0)
                             & (count_revenue.loc[i, j] != 0.01)
                         ):
-                            categ_cost.loc[i, j] = 0
+                            categ_cost.loc[i, j] = 0.01
                     except:
                         pass
         # create categ cost unit
