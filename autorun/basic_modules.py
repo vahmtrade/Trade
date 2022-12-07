@@ -10,7 +10,7 @@ def to_digits(string):
     number = ""
     flag = 0
 
-    if "(" and ")" in string:
+    if "(" in string and ")" in string:
         flag = 1
 
     for s in string:
@@ -44,10 +44,29 @@ def best_table_id(data_tables):
     return table_id
 
 
-def seprate_number(a, seprator=","):
-    """12345678 => 12,345,678"""
+def clarify_number(a, seprator=",", n=2):
+    """12345678 => 12,345,678
+
+    -12345678 => (12,345,678)
+
+    12345678.1234 => 12,345,678.12"""
+
+    is_float = False
+    is_negative = False
+
     try:
-        a = str(int(float(a)))
+        a = float(a)
+
+        if int(a) != a:
+            is_float = True
+            float_part = str(round(a, n)).split(".")[1]
+
+        if a < 0:
+            is_negative = True
+            a = abs(a)
+
+        a = str(int(a))
+
     except:
         return a
 
@@ -61,5 +80,12 @@ def seprate_number(a, seprator=","):
 
     if b[0] == seprator:
         b = b[1:]
+
+    if is_float:
+        if n != 0:
+            b = b + "." + float_part
+
+    if is_negative:
+        b = "(" + b + ")"
 
     return b

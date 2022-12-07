@@ -61,8 +61,9 @@ watchlist = {
     "shegol": {"indus": "shoyande", "token": "شگل", "name": "گلتاش"},
     "silam": {"indus": "siman", "token": "سیلام", "name": "سیمان ایلام"},
     "ghesafha": {"indus": "ghand", "token": "قصفها", "name": "قند اصفهان"},
-    'shavan':{'indus':'palayesh','token':'شاوان', 'name':'پالایش نفت لاوان'},
+    "shavan": {"indus": "palayesh", "token": "شاوان", "name": "پالایش نفت لاوان"},
     "defara": {"indus": "darou", "token": "دفارا", "name": "داروسازی فارابی"},
+    "dalber": {"indus": "darou", "token": "دالبر", "name": "البرز دارو"},
 }
 
 ROOT_PATH = os.path.abspath(os.curdir).replace("\\", "/")
