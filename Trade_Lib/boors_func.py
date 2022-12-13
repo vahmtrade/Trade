@@ -1168,11 +1168,16 @@ def plot_corr(stocks, y_s=1401, m_s=1, y_e=1401, m_e=12):
     for i in stocks:
         d[i.Name] = i.Price[date_1:date_2]["Ret"]
     df = pd.DataFrame(d)
-    df.dropna(inplace=True)
-    cor = df.corr()
-    plt.figure(figsize=[20, 12], facecolor="white")
-    sns.set(font_scale=1.5)
-    sns.heatmap(cor, cmap="Reds", annot=True, annot_kws={"size": 12}, vmax=1, vmin=-1)
+    df.fillna(0,inplace=True)
+    corr = df.corr()
+    # plt.figure(figsize=[20, 12], facecolor="white")
+    # sns.set(font_scale=1.5)
+    # sns.heatmap(cor, cmap="Reds", annot=True, annot_kws={"size": 12}, vmax=1, vmin=-1)
+    mask = np.zeros_like(corr)
+    mask[np.triu_indices_from(mask)] = True
+    with sns.axes_style("white"):
+        f, ax = plt.subplots(figsize=(7, 5))
+        ax = sns.heatmap(corr, mask=mask, vmax=.4, square=True, annot=True, cmap='RdYlGn')    
     return df
 
 
@@ -4734,12 +4739,11 @@ class Stock:
         ##### calculate expected_return #####
         k_capm=rf+beta*erp
         k_historical = re_historical - 1
-        k=np.average([k_capm,k_historical])
+        k=np.average([k_capm,k_historical],weights=[1,min(years/10,1)])
         self.k_historical = k_historical
         self.k_capm=k_capm
         self.k=k
-        g = 0.02 + rf
-        self.g = g
+
         ### calculate aggregate growth #######
         value_d = eps1 / (1 + k) ** n + eps2 / (1 + k) ** (1 + n)
         rate_aggr = self.rate_yearly["total"] / self.rate_yearly["total"].iloc[0]
@@ -4763,6 +4767,13 @@ class Stock:
         cagr_profit = math.pow(profit_aggr.iloc[-1], 1 / (len(profit_aggr) - 1))
         self.profit_aggr = profit_aggr
         self.cagr_profit = cagr_profit
+        ###### Calculate G #######
+        g_economy = 0.02 + rf
+        g_stock=(cagr_count-1)+(cagr_rate-1)
+        self.g_economy = g_economy
+        self.g_stock=g_stock
+        g=min(g_stock,g_economy)
+        self.g=g
         ##### estimate eps of ngrowth year ######
         i = 3
         while i < 3 + n_g:
@@ -4775,7 +4786,7 @@ class Stock:
         self.pe_terminal_historical = pe_terminal_historical
         pe_terminal_capm = (1 + g) / (k - g)
         self.pe_terminal_capm = pe_terminal_capm
-        pe_terminal = np.average([pe_terminal_historical, pe_terminal_capm])
+        pe_terminal = np.average([pe_terminal_historical, pe_terminal_capm],weights=[2,1])
         ###### Calculate terminal value #######
         terminal_value = (vars()[f"eps{i-1}"] * pe_terminal) / ((1 + k) ** (i - 2 + n))
         value = value_d + terminal_value
