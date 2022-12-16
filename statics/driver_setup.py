@@ -3,7 +3,7 @@ from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
 
 break_time = 1
-wait_time = 120
+wait_time = 10
 
 driver_options = Options()
 driver_capabilities = DesiredCapabilities.FIREFOX
