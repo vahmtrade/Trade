@@ -11,7 +11,7 @@ import tse_index
 import seaborn as sns
 import pyswarm as ps
 import random
-
+import math
 from cmath import tan
 from itertools import cycle
 from persiantools.jdatetime import JalaliDate
@@ -1185,11 +1185,16 @@ def plot_corr(stocks, y_s=1401, m_s=1, y_e=1401, m_e=12):
     for i in stocks:
         d[i.Name] = i.Price[date_1:date_2]["Ret"]
     df = pd.DataFrame(d)
-    df.dropna(inplace=True)
-    cor = df.corr()
-    plt.figure(figsize=[20, 12], facecolor="white")
-    sns.set(font_scale=1.5)
-    sns.heatmap(cor, cmap="Reds", annot=True, annot_kws={"size": 12}, vmax=1, vmin=-1)
+    df.fillna(0,inplace=True)
+    corr = df.corr()
+    # plt.figure(figsize=[20, 12], facecolor="white")
+    # sns.set(font_scale=1.5)
+    # sns.heatmap(cor, cmap="Reds", annot=True, annot_kws={"size": 12}, vmax=1, vmin=-1)
+    mask = np.zeros_like(corr)
+    mask[np.triu_indices_from(mask)] = True
+    with sns.axes_style("white"):
+        f, ax = plt.subplots(figsize=(7, 5))
+        ax = sns.heatmap(corr, mask=mask, vmax=.4, square=True, annot=True, cmap='RdYlGn')    
     return df
 
 
@@ -2395,13 +2400,9 @@ class Stock:
         year_tester_end=1401,
         month_tester_s=1,
         month_tester_end=12,
-        g=0.2,
-        k=0.35,
         discounted_n=0.7,
     ):
 
-        self.g = g
-        self.k = k
         self.discounted_n = discounted_n
         self.Name = Name
         self.industry = watchlist[Name]["indus"]
@@ -4596,6 +4597,9 @@ class Stock:
         dep_g_next_update=1,
         transport_g_next_update=1,
         other_g_next_update=1,
+        rf=0.35,
+        erp=0.15,
+        n_g=2
     ):
         self.create_interest_data()
         self.predict_income(
@@ -4619,7 +4623,7 @@ class Stock:
         self.predict_balance_sheet()
         self.predict_interst()
         self.create_fcfe()
-        self.predict_value()
+        self.predict_value(n_g,rf,erp)
 
     def plot_margin(self):
         plt.figure(figsize=[20, 8])
@@ -4636,13 +4640,14 @@ class Stock:
         # macro economic data
         macro = Macro()
         df = macro.exchange[["dollar", "cpi", "cash"]][-(self.n + 1) :]
-        df["total_cost"] = self.my_cost_unit_yearly["total"]
-        df["profit"] = self.my_cost_unit_yearly["profit"]
+        # df["total_cost"] = self.my_cost_unit_yearly["total"]
+        # df["profit"] = self.my_cost_unit_yearly["profit"]
         df_ret = macro.exchange_ret[["dollar", "cpi", "cash"]][-(self.n + 1) :]
-        df_ret["profit"] = self.my_cost_unit_yearly["profit"].pct_change()
-        df_ret["total_cost"] = self.my_cost_unit_yearly["total"].pct_change()
+        # df_ret["profit"] = self.my_cost_unit_yearly["profit"].pct_change()
+        # df_ret["total_cost"] = self.my_cost_unit_yearly["total"].pct_change()
         # df_ret.dropna(inplace=True)
         self.macro = df
+        self.shakhes=macro.shakhes_kol
         self.macro_ret = df_ret
         # return net profit and market
         # compare returns
@@ -4677,20 +4682,8 @@ class Stock:
         data.loc[self.future_year, "cpi_ret"] = 0.48
         compare_ret = data[["Net_Profit_ret", "Market_ret", "dollar_ret", "cpi_ret"]]
         compare_ret.dropna(inplace=True)
-        # create_cost_analyse
-        cost_analyse = self.pred_cost_unit_yearly.loc[1396:]
-        cost_analyse["dollar"] = data["dollar"]
-        cost_analyse["cpi"] = data["cpi"]
-        cost_analyse["rate"] = cost_analyse["profit"] + cost_analyse["total"]
-        cost_analyse_ret = pd.DataFrame(columns=cost_analyse.columns)
-        for i in cost_analyse.columns:
-            cost_analyse_ret[i] = cost_analyse[i].pct_change()
-        cost_analyse_ret.dropna(inplace=True)
         self.compare_ret = compare_ret
         self.data = data
-        self.cost_analyse = cost_analyse
-        self.cost_analyse_ret = cost_analyse_ret
-        self.dollar_income = data
 
     def plot_compare(self):
         plt.figure(figsize=[20, 15])
@@ -4737,16 +4730,82 @@ class Stock:
         )
         plt.legend()
 
-    def predict_value(self):
+    def predict_value(self, n_g=2,rf=0.35,erp=0.15):
         eps1 = self.pred_income.loc[self.future_year, "EPS_Capital"]
         eps2 = self.pred_income.loc[self.future_year + 1, "EPS_Capital"]
-        g = self.g
-        k = self.k
+        ## number of mounth to majma
         n = self.discounted_n
+        ## calculate historical expected_return
+        delta = self.Price["Close"].index[-1] - self.Price["Close"].index[0]
+        years = delta.days / 365
+        re_historical = (
+            self.Price["Close"].iloc[-1] / self.Price["Close"].iloc[0]
+        ) ** (1 / years)
+        self.re_historical = re_historical
+        ### calculate Beta ####
+        data_shakhes=pd.concat([self.Price['Close'],self.shakhes['Close']],axis=1)
+        data_shakhes.columns=['stock','shakhes']
+        data_shakhes.dropna(inplace=True)
+        data_shakhes=np.log(data_shakhes/data_shakhes.shift(1))
+        data_shakhes.dropna(inplace=True)
+        cov=data_shakhes.cov().iloc[0,1]
+        var=data_shakhes['shakhes'].var()
+        beta=cov/var
+        self.beta=beta
+        self.data_shakhes=data_shakhes
+        ##### calculate expected_return #####
+        k_capm=rf+beta*erp
+        k_historical = re_historical - 1
+        k=np.average([k_capm,k_historical],weights=[1,min(years/10,1)])
+        self.k_historical = k_historical
+        self.k_capm=k_capm
+        self.k=k
+
+        ### calculate aggregate growth #######
         value_d = eps1 / (1 + k) ** n + eps2 / (1 + k) ** (1 + n)
-        # pe_terminal = (1 + g) / (k - g)
-        pe_terminal = self.end_data["mean_price/eps"].median()
-        terminal_value = (eps2 * pe_terminal) / ((1 + k) ** (1 + n))
+        rate_aggr = self.rate_yearly["total"] / self.rate_yearly["total"].iloc[0]
+        cagr_rate = math.pow(
+            (self.rate_yearly["total"] / self.rate_yearly["total"].iloc[0]).iloc[-1],
+            1 / (len(self.rate_yearly) - 1),
+        )
+        self.rate_aggr = rate_aggr
+        self.cagr_rate = cagr_rate
+        count_aggr = (
+            self.count_revenue_yearly["total"]
+            / self.count_revenue_yearly["total"].iloc[0]
+        )
+        cagr_count = math.pow(count_aggr.iloc[-1], 1 / (len(count_aggr) - 1))
+        self.count_aggr = count_aggr
+        self.cagr_count = cagr_count
+        profit_aggr = (
+            self.income_rial_yearly["Net_Profit"]
+            / self.income_rial_yearly["Net_Profit"].iloc[0]
+        )
+        cagr_profit = math.pow(profit_aggr.iloc[-1], 1 / (len(profit_aggr) - 1))
+        self.profit_aggr = profit_aggr
+        self.cagr_profit = cagr_profit
+        ###### Calculate G #######
+        g_economy = 0.02 + rf
+        g_stock=(cagr_count-1)+(cagr_rate-1)
+        self.g_economy = g_economy
+        self.g_stock=g_stock
+        g=min(g_stock,g_economy)
+        self.g=g
+        ##### estimate eps of ngrowth year ######
+        i = 3
+        while i < 3 + n_g:
+            vars()[f"eps{i}"] = cagr_profit * vars()[f"eps{i-1}"]
+            self.__dict__[f"eps{i}"] = vars()[f"eps{i}"]
+            value_d += vars()[f"eps{i}"] / (1 + k) ** (i - 1 + n)
+            i += 1
+        ##### Calculate terminal p/e ##########
+        pe_terminal_historical = self.end_data["mean_price/eps"].median()
+        self.pe_terminal_historical = pe_terminal_historical
+        pe_terminal_capm = (1 + g) / (k - g)
+        self.pe_terminal_capm = pe_terminal_capm
+        pe_terminal = np.average([pe_terminal_historical, pe_terminal_capm],weights=[2,1])
+        ###### Calculate terminal value #######
+        terminal_value = (vars()[f"eps{i-1}"] * pe_terminal) / ((1 + k) ** (i - 2 + n))
         value = value_d + terminal_value
         self.value_d = value_d
         self.terminal_value = terminal_value
