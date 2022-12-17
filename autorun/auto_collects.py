@@ -1,36 +1,18 @@
 import os
 import re
-import sys
-import shutil
 import platform
 import pandas as pd
-import win32com.client as win32
 
 from time import sleep
 from pathlib import Path
-from datetime import datetime
-from persiantools.jdatetime import JalaliDate
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 
-from autorun.basic_modules import to_digits, best_table_id
-from statics.secrets import bourseview_user, bourseview_pass
-from statics.driver_setup import (
-    driver_options,
-    driver_capabilities,
-    break_time,
-    wait_time,
-)
-from statics.setting import (
-    DB,
-    WINDOWS_FIREFOX_DRIVER_PATH,
-    LINUX_FIREFOX_DRIVER_PATH,
-    watchlist,
-    first_day,
-    last_day,
-    regex_per_timeid_y,
-)
+from statics.setting import *
+from statics.secrets import *
+from statics.driver_setup import *
+from preprocess.basic_modules import *
 
 
 # create driver for Linux and Windows
@@ -52,190 +34,6 @@ if platform.system() == "Windows":
 
 driver.implicitly_wait(wait_time)
 driver.maximize_window()
-
-
-def create_database_structure():
-    """create database folders based on watchlist"""
-
-    base_folders = [
-        "balancesheet",
-        "income",
-        "cashflow",
-        "product",
-        "cost",
-        "official",
-        "pe",
-        "analyse",
-        "detail_trade",
-    ]
-
-    for stock, info in watchlist.items():
-
-        for i in base_folders:
-
-            if i == "income":
-                for j in ("yearly", "quarterly"):
-                    Path(f"{DB}/industries/{info['indus']}/{stock}/{i}/{j}/").mkdir(
-                        parents=True, exist_ok=True
-                    )
-
-            else:
-                Path(f"{DB}/industries/{info['indus']}/{stock}/{i}/").mkdir(
-                    parents=True, exist_ok=True
-                )
-
-
-def list_stock_files(stock_name):
-    """return all folders and files of stock in database"""
-    stock_dirs = []
-    stock_files = []
-    for path, subdirs, files in os.walk(
-        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}"
-    ):
-        for dir in subdirs:
-            stock_dirs.append(os.path.join(path, dir).replace("\\", "/"))
-
-        for name in files:
-            stock_files.append(os.path.join(path, name).replace("\\", "/"))
-
-    return stock_dirs, stock_files
-
-
-def check_stock_files(stock_name):
-    """check sanity,deficiency,unnecessary data"""
-
-    # files that must every stock have it
-    stock_folder = f"{DB}/industries/{watchlist[stock_name]['indus']}"
-    base_files = [
-        f"{stock_folder}/{stock_name}/balancesheet/quarterly.xlsx",
-        f"{stock_folder}/{stock_name}/balancesheet/yearly.xlsx",
-        f"{stock_folder}/{stock_name}/cashflow/quarterly.xlsx",
-        f"{stock_folder}/{stock_name}/cashflow/yearly.xlsx",
-        f"{stock_folder}/{stock_name}/cost/quarterly.xlsx",
-        f"{stock_folder}/{stock_name}/cost/yearly.xlsx",
-        f"{stock_folder}/{stock_name}/income/quarterly/dollar.xlsx",
-        f"{stock_folder}/{stock_name}/income/quarterly/rial.xlsx",
-        f"{stock_folder}/{stock_name}/income/yearly/dollar.xlsx",
-        f"{stock_folder}/{stock_name}/income/yearly/rial.xlsx",
-        f"{stock_folder}/{stock_name}/official/quarterly.xlsx",
-        f"{stock_folder}/{stock_name}/official/yearly.xlsx",
-        f"{stock_folder}/{stock_name}/pe/pe.xlsx",
-        f"{stock_folder}/{stock_name}/pe/forward.xlsx",
-        f"{stock_folder}/{stock_name}/product/monthly.xlsx",
-        f"{stock_folder}/{stock_name}/product/monthly_seprated.xlsx",
-        f"{stock_folder}/{stock_name}/product/quarterly.xlsx",
-        f"{stock_folder}/{stock_name}/product/quarterly_seprated.xlsx",
-        f"{stock_folder}/{stock_name}/product/yearly.xlsx",
-        f"{stock_folder}/{stock_name}/product/yearly_seprated.xlsx",
-        f"{stock_folder}/{stock_name}/eps.xlsx",
-        f"{stock_folder}/{stock_name}/opt.xlsx",
-    ]
-
-    dirs, files = list_stock_files(stock_name)
-
-    def ignoreable(x):
-        # files that not unnecessary and not deficiency
-        if (
-            "/detail_trade" in x
-            or "/analyse" in x
-            or "eps.xlsx" in x
-            or "opt.xlsx" in x
-            or "forward.xlsx" in x
-        ):
-            return True
-        else:
-            return False
-
-    # all files
-    for file in files:
-        # get creation time of file
-        t = JalaliDate(datetime.fromtimestamp(os.path.getctime(file)))
-        if not ignoreable(file):
-            if file not in base_files:
-                # delete unnecessary files
-                print("unnecessary file : ", file)
-                os.remove(file)
-
-            else:
-                # check sanity of bourseview excels
-                try:
-                    df = pd.read_excel(file)
-                    excel_author = df["Unnamed: 1"][0]
-                    excel_type = df["Unnamed: 1"][4]
-                    excel_token = (df["Unnamed: 1"][3]).replace("\u200c","").split("-")[0]
-                    stock_type = file.split("/")[6]
-                    stock_types = {
-                        "balancesheet": "Balance Sheet",
-                        "income": "Income Statements",
-                        "cashflow": "Cash Flow",
-                        "product": "تولید و فروش",
-                        "cost": "بهای تمام شده",
-                        "official": "هزینه های عمومی و اداری",
-                        "pe": "تاریخچه قیمت",
-                    }
-
-                    if excel_author != "Pouya Finance":
-                        print("not bourseview : ", file)
-
-                    if excel_type != stock_types[stock_type]:
-                        print("unmatch type : ", file)
-
-                    if excel_token != watchlist[stock_name]["token"]:
-                        print("unmatch name :",file)
-
-                except:
-                    print("old format : ", file)
-                    to_useful_excel(file)
-
-    for dir in dirs:
-        if not ignoreable(dir) and len(os.listdir(dir)) == 0:
-            # delete empty folders
-            os.rmdir(dir)
-
-    # needed files
-    for file in base_files:
-        if not ignoreable(file) and not Path(file).exists():
-            # show deficiency files
-            print("deficiency : ", file)
-
-
-def to_useful_excel(file_path):
-    """convert bourseview excel to new excel that pandas use it"""
-    try:
-        excel = win32.gencache.EnsureDispatch("Excel.Application")
-    except AttributeError:
-        # remove cache and try again
-        MODULE_LIST = [m.__name__ for m in sys.modules.values()]
-        for module in MODULE_LIST:
-            if re.match(r"win32com\.gen_py\..+", module):
-                del sys.modules[module]
-        shutil.rmtree(os.path.join(os.environ.get("LOCALAPPDATA"), "Temp", "gen_py"))
-        excel = win32.gencache.EnsureDispatch("Excel.Application")
-
-    # open and save excel file
-    excel.Workbooks.Open(file_path).Save()
-    excel.Application.Quit()
-
-
-def move_last_file(new_path):
-    """move last DB file to new_path"""
-    # find latest downloaded file
-    sleep(2 * break_time)
-    filename = max(
-        [f for f in os.listdir(DB)],
-        key=lambda x: os.path.getctime(os.path.join(DB, x)),
-    )
-
-    # replace last file
-    if ".xlsx" in filename:
-        os.replace(
-            f"{DB}/{filename}",
-            new_path,
-        )
-
-    sleep(2 * break_time)
-    if platform.system() == "Windows":
-        to_useful_excel(new_path)
 
 
 def codal_login():
@@ -278,10 +76,9 @@ def codal_search(stock_name):
 
 
 def codal_eps(stock_name, n=5):
-    """create eps.xlsx"""
+    """create eps"""
 
     try:
-        codal_search(stock_name)
         # click 'davat majamea'
         driver.find_element(
             By.XPATH,
@@ -336,8 +133,6 @@ def codal_eps(stock_name, n=5):
         dps = []
         capital = []
 
-        driver.implicitly_wait(10)
-
         for link in links:
             driver.execute_script("window.open('');")
             driver.switch_to.window(driver.window_handles[1])
@@ -366,7 +161,6 @@ def codal_eps(stock_name, n=5):
             driver.switch_to.window(driver.window_handles[0])
 
         sleep(2 * break_time)
-        driver.implicitly_wait(wait_time)
 
         # set user n for data
         dates = dates[:n]
@@ -383,9 +177,9 @@ def codal_eps(stock_name, n=5):
         df["capital"] = capital
         df["capital_now"] = [capital[0] for i in range((len(capital)))]
 
-        # export eps.xlsx
+        # export eps
         df.to_excel(
-            f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/eps.xlsx",
+            f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{structure['eps']}",
             index=False,
         )
 
@@ -395,8 +189,6 @@ def codal_eps(stock_name, n=5):
 
 def codal_statement(stock_name):
     """create 3 files : income,balancesheet,cashflow"""
-
-    codal_search(stock_name)
 
     # click 'sorathaye mali'
     driver.find_element(
@@ -533,7 +325,7 @@ def tse_buy_sell_volume(stock_name):
     # export excel
     df = pd.DataFrame([buy_sell[a : a + 6] for a in range(0, len(buy_sell), 6)])
     df.to_excel(
-        f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/buy_sell_volume.xlsx",
+        f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/buy_sell_volume.xlsx",
         index=False,
     )
 
@@ -591,21 +383,24 @@ def bourseview_search(stock_name):
     sleep(2 * break_time)
 
 
-def bourseview_balancesheet(stock_name, y=5, q=5):
+def bourseview_balancesheet(stock_name, y=5, q=5, time_types=["yearly", "quarterly"]):
     """download 2 files : yearly,quarterly"""
     try:
-        bourseview_search(stock_name)
 
         # select 'tarazname'
-        driver.find_element(By.XPATH, "//*[@id='stocks-sub-menu']/ul/li[2]").click()
+        driver.find_element(
+            By.XPATH, "//*[@id='stocks-sub-menu']/ul/li[2]/a[2]"
+        ).click()
+        driver.find_element(
+            By.XPATH, "//*[@id='stocks-sub-menu']/ul/li[2]/a[2]"
+        ).click()
         sleep(break_time)
 
         # click blanck page
         driver.find_element(By.XPATH, "/html").click()
         sleep(break_time)
 
-        # download 2 excels
-        for time_type in ("yearly", "quarterly"):
+        for time_type in time_types:
 
             if time_type == "yearly":
                 n = y
@@ -615,11 +410,11 @@ def bourseview_balancesheet(stock_name, y=5, q=5):
 
             # select 'nooe'
             driver.find_element(By.XPATH, f"//option[@value='{time_type}']").click()
-            sleep(2 * break_time)
+            sleep(break_time)
 
             # select 'dore'
             driver.find_element(By.XPATH, f"//option[@value='{n}']").click()
-            sleep(4 * break_time)
+            sleep(8 * break_time)
 
             # click download excel
             driver.find_element(
@@ -628,28 +423,33 @@ def bourseview_balancesheet(stock_name, y=5, q=5):
             sleep(2 * break_time)
 
             # replace last file
-            move_last_file(
-                f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/balancesheet/{time_type}.xlsx"
-            )
+            new_path = f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{structure['balance'][time_type]}"
+            move_last_file(new_path)
+            to_useful_excel(new_path)
+
     except Exception as err:
         print(f"cant download balancesheet {stock_name} : {err}")
 
 
-def bourseview_income_statement(stock_name, y=5, q=5):
+def bourseview_income_statement(
+    stock_name,
+    y=5,
+    q=5,
+    time_types=["yearly", "quarterly"],
+    money_types=["rial", "dollar"],
+):
     """download 4 files : yearly,quarterly,rial,dollar"""
     try:
-        bourseview_search(stock_name)
 
         # select 'sood va zian'
         driver.find_element(By.XPATH, "//*[@id='stocks-sub-menu']/ul/li[3]").click()
-        sleep(break_time)
+        driver.find_element(By.XPATH, "//*[@id='stocks-sub-menu']/ul/li[3]").click()
 
         # click blank page
-        driver.find_element(By.XPATH, "/html").click()
-        sleep(break_time)
+        driver.find_element(By.XPATH, "//*[@id='overal_step2']/div[1]/div/div").click()
 
         # download 4 excels
-        for time_type in ("yearly", "quarterly"):
+        for time_type in time_types:
 
             if time_type == "yearly":
                 n = y
@@ -659,19 +459,20 @@ def bourseview_income_statement(stock_name, y=5, q=5):
 
             # select 'nooe'
             driver.find_element(By.XPATH, f"//option[@value='{time_type}']").click()
-            sleep(2 * break_time)
+            sleep(break_time)
 
             # select 'dore'
             driver.find_element(By.XPATH, f"//option[@value='{n}']").click()
-            sleep(2 * break_time)
+            sleep(break_time)
 
-            for money_type in ("IRR", "USDf"):
+            for money_type in money_types:
 
                 # click 'rial','dollar azad'
+                money_options = {"rial": "IRR", "dollar": "USDf"}
                 driver.find_element(
-                    By.XPATH, f"//option[@value='{money_type}']"
+                    By.XPATH, f"//option[@value='{money_options[money_type]}']"
                 ).click()
-                sleep(6 * break_time)
+                sleep(8 * break_time)
 
                 # click download excel
                 driver.find_element(
@@ -681,24 +482,25 @@ def bourseview_income_statement(stock_name, y=5, q=5):
                 sleep(2 * break_time)
 
                 # replace last file
-                money_options = {"IRR": "rial", "USDf": "dollar"}
-                move_last_file(
-                    f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/income/{time_type}/{money_options[money_type]}.xlsx"
-                )
+                new_path = f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{structure['income'][time_type][money_type]}"
+                move_last_file(new_path)
+                to_useful_excel(new_path)
+
     except Exception as err:
         print(f"cant download incomestatement {stock_name} : {err}")
 
 
-def bourseview_cashflow(stock_name, y=5, q=5):
+def bourseview_cashflow(stock_name, y=5, q=5, time_types=["yearly", "quarterly"]):
     """download 2 files : yearly,quarterly"""
 
     try:
-        bourseview_search(stock_name)
 
         # select 'jaryan vojoh naghd'
         driver.find_element(
-            By.XPATH,
-            "//*[@id='stocks-sub-menu']/ul/li[4]",
+            By.XPATH, "//*[@id='stocks-sub-menu']/ul/li[4]/a[2]"
+        ).click()
+        driver.find_element(
+            By.XPATH, "//*[@id='stocks-sub-menu']/ul/li[4]/a[2]"
         ).click()
         sleep(break_time)
 
@@ -707,7 +509,7 @@ def bourseview_cashflow(stock_name, y=5, q=5):
         sleep(break_time)
 
         # download 2 file
-        for time_type in ("yearly", "quarterly"):
+        for time_type in time_types:
 
             if time_type == "yearly":
                 n = y
@@ -717,11 +519,11 @@ def bourseview_cashflow(stock_name, y=5, q=5):
 
             # select 'nooe'
             driver.find_element(By.XPATH, f"//option[@value='{time_type}']").click()
-            sleep(2 * break_time)
+            sleep(break_time)
 
             # select 'dore'
             driver.find_element(By.XPATH, f"//option[@value='{n}']").click()
-            sleep(4 * break_time)
+            sleep(8 * break_time)
 
             # click download excel
             driver.find_element(
@@ -730,24 +532,55 @@ def bourseview_cashflow(stock_name, y=5, q=5):
             sleep(2 * break_time)
 
             # replace last file
-            move_last_file(
-                f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/cashflow/{time_type}.xlsx"
-            )
+            new_path = f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{structure['cash'][time_type]}"
+            move_last_file(new_path)
+            to_useful_excel(new_path)
+
     except Exception as err:
         print(f"cant download cashflow {stock_name} : {err}")
 
 
-def bourseview_product_revenue(stock_name, y=5, q=5, m=50):
-    """create 6 files : (yearly,quarterly,monthly) (seprated)
+def bourseview_product_revenue(
+    stock_name,
+    y=5,
+    q=5,
+    m=50,
+    time_types=["yearly", "quarterly", "monthly"],
+    money_types=["_seprated", ""],
+):
+    """download 6 files : (yearly,quarterly,monthly) (_seprated)
     <y = year : 5,10,20,50>
     <q = quarterly : 5,10,20,50>
     <m = month : 5,10,20,50>"""
 
     try:
 
-        def download_product(new_name=""):
+        # select 'tolid va frosh'
+        driver.find_element(
+            By.XPATH,
+            "//*[@id='stocks-sub-menu']/ul/li[8]/a[2]",
+        ).click()
+        driver.find_element(
+            By.XPATH,
+            "//*[@id='stocks-sub-menu']/ul/li[8]/a[2]",
+        ).click()
+        sleep(break_time)
 
-            for time_type in ("yearly", "quarterly", "monthly"):
+        # click blanck page
+        driver.find_element(By.XPATH, "/html").click()
+        sleep(break_time)
+
+        for money_type in money_types:
+
+            # click 'tafkik dakheli,khareji'
+            driver.find_element(
+                By.XPATH,
+                "//*[@id='grid']/div/div[1]/span[1]/div[3]",
+            ).click()
+            sleep(break_time)
+
+            # download base excels
+            for time_type in time_types:
 
                 if time_type == "yearly":
                     n = y
@@ -760,11 +593,11 @@ def bourseview_product_revenue(stock_name, y=5, q=5, m=50):
 
                 # select 'nooe'
                 driver.find_element(By.XPATH, f"//option[@value='{time_type}']").click()
-                sleep(2 * break_time)
+                sleep(break_time)
 
                 # select 'dore'
                 driver.find_element(By.XPATH, f"//option[@value='{n}']").click()
-                sleep(4 * break_time)
+                sleep(8 * break_time)
 
                 # click download excel
                 driver.find_element(
@@ -774,65 +607,36 @@ def bourseview_product_revenue(stock_name, y=5, q=5, m=50):
                 sleep(2 * break_time)
 
                 # replace last file
-                move_last_file(
-                    f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/product/{time_type}{new_name}.xlsx"
-                )
-                sleep(break_time)
+                new_path = f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{structure['product'][time_type+money_type]}"
+                move_last_file(new_path)
+                to_useful_excel(new_path)
 
-        bourseview_search(stock_name)
-
-        # select 'tolid va frosh'
-        driver.find_element(
-            By.XPATH,
-            "//*[@id='stocks-sub-menu']/ul/li[8]",
-        ).click()
-        sleep(break_time)
-
-        # click blanck page
-        driver.find_element(By.XPATH, "/html").click()
-        sleep(break_time)
-
-        # download base excels
-        download_product()
-
-        # click 'tafkik dakheli,khareji'
-        driver.find_element(
-            By.XPATH,
-            "//*[@id='grid']/div/div[1]/span[1]/div[3]",
-        ).click()
-        sleep(4 * break_time)
-
-        # download seprated excels
-        download_product("_seprated")
-
-        # disable 'tafkik dakheli,khareji'
-        driver.find_element(
-            By.XPATH,
-            "//*[@id='grid']/div/div[1]/span[1]/div[3]",
-        ).click()
-        sleep(2 * break_time)
     except Exception as err:
         print(f"cant download product {stock_name} : {err}")
 
 
-def bourseview_cost(stock_name, y=5, q=5):
+def bourseview_cost(stock_name, y=5, q=5, time_types=["yearly", "quarterly"]):
     """create 2 excel : yearly,quarterly
     <y = year : 5,10,20,50>
     <q = quarterly : 5,10,20,50>"""
 
     try:
-        bourseview_search(stock_name)
 
         # select 'bahaye tamam shode'
-        driver.find_element(By.XPATH, "//*[@id='stocks-sub-menu']/ul/li[13]").click()
+        driver.find_element(
+            By.XPATH, "//*[@id='stocks-sub-menu']/ul/li[13]/a[2]"
+        ).click()
+        driver.find_element(
+            By.XPATH, "//*[@id='stocks-sub-menu']/ul/li[13]/a[2]"
+        ).click()
         sleep(break_time)
 
-        # click blanck page
+        # click blank page
         driver.find_element(By.XPATH, "/html").click()
         sleep(break_time)
 
         # download excel
-        for time_type in ("yearly", "quarterly"):
+        for time_type in time_types:
 
             if time_type == "yearly":
                 n = y
@@ -842,21 +646,19 @@ def bourseview_cost(stock_name, y=5, q=5):
 
             # select 'nooe'
             driver.find_element(By.XPATH, f"//option[@value='{time_type}']").click()
-            sleep(2 * break_time)
+            sleep(break_time)
 
             # select 'dore'
             driver.find_element(By.XPATH, f"//option[@value='{n}']").click()
-            sleep(4 * break_time)
+            sleep(8 * break_time)
 
             # click 'hameye' data
             driver.find_element(
                 By.XPATH, "//*[@id='grid-cogs']/div/div[4]/div/div[1]"
             ).click()
-            sleep(2 * break_time)
 
             # go top of page
             driver.find_element(By.TAG_NAME, "body").send_keys(Keys.CONTROL + Keys.HOME)
-            sleep(4 * break_time)
 
             # click download excel
             driver.find_element(
@@ -865,25 +667,29 @@ def bourseview_cost(stock_name, y=5, q=5):
             sleep(2 * break_time)
 
             # replace last file
-            move_last_file(
-                f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/cost/{time_type}.xlsx"
-            )
+            new_path = f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{structure['cost'][time_type]}"
+            move_last_file(new_path)
+            to_useful_excel(new_path)
+
     except Exception as err:
         print(f"cant download cost {stock_name} : {err}")
 
 
-def bourseview_official(stock_name, y=5, q=5):
+def bourseview_official(stock_name, y=5, q=5, time_types=["yearly", "quarterly"]):
     """create 2 excel : yearly,quarterly
     <y = year : 5,10,20,50>
     <q = quarterly : 5,10,20,50>"""
 
     try:
-        bourseview_search(stock_name)
 
         # select 'hazine haye omomi edari'
         driver.find_element(
             By.XPATH,
-            "//*[@id='stocks-sub-menu']/ul/li[16]",
+            "//*[@id='stocks-sub-menu']/ul/li[16]/a[2]",
+        ).click()
+        driver.find_element(
+            By.XPATH,
+            "//*[@id='stocks-sub-menu']/ul/li[16]/a[2]",
         ).click()
         sleep(break_time)
 
@@ -892,7 +698,7 @@ def bourseview_official(stock_name, y=5, q=5):
         sleep(break_time)
 
         # 'salane','fasli'
-        for time_type in ("yearly", "quarterly"):
+        for time_type in time_types:
 
             if time_type == "yearly":
                 n = y
@@ -902,11 +708,11 @@ def bourseview_official(stock_name, y=5, q=5):
 
             # select 'nooe'
             driver.find_element(By.XPATH, f"//option[@value='{time_type}']").click()
-            sleep(2 * break_time)
+            sleep(break_time)
 
             # select 'dore'
             driver.find_element(By.XPATH, f"//option[@value='{n}']").click()
-            sleep(6 * break_time)
+            sleep(8 * break_time)
 
             # click download excel
             driver.find_element(
@@ -915,26 +721,30 @@ def bourseview_official(stock_name, y=5, q=5):
             sleep(2 * break_time)
 
             # replace last file
-            move_last_file(
-                f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/official/{time_type}.xlsx"
-            )
+            new_path = f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{structure['official'][time_type]}"
+            move_last_file(new_path)
+            to_useful_excel(new_path)
+
     except Exception as err:
         print(f"cant download official {stock_name} : {err}")
 
 
 def bourseview_price_history(stock_name, start=first_day, end=last_day):
-    """download pe.xlsx
+    """download pe
     <start : 1390/01/01>
     <end : 1400/01/01>"""
     try:
-        bourseview_search(stock_name)
+
         # select 'tarikhche gheimat'
         driver.find_element(
             By.XPATH,
-            "//*[@id='stocks-sub-menu']/ul/li[21]",
+            "//*[@id='stocks-sub-menu']/ul/li[21]/a[2]",
         ).click()
-
-        sleep(4 * break_time)
+        driver.find_element(
+            By.XPATH,
+            "//*[@id='stocks-sub-menu']/ul/li[21]/a[2]",
+        ).click()
+        sleep(break_time)
 
         # click blank page
         driver.find_element(By.XPATH, "/html").click()
@@ -967,7 +777,7 @@ def bourseview_price_history(stock_name, start=first_day, end=last_day):
             By.XPATH,
             "//*[@id='stocks-content-body']/div[1]/div[2]/div[1]/div[1]/button",
         ).click()
-        sleep(2 * break_time)
+        sleep(4 * break_time)
 
         # click download excel
         driver.find_element(
@@ -977,15 +787,16 @@ def bourseview_price_history(stock_name, start=first_day, end=last_day):
         sleep(2 * break_time)
 
         # replace last file
-        move_last_file(
-            f"{DB}/industries/{watchlist[stock_name]['indus']}/{stock_name}/pe/pe.xlsx"
-        )
+        new_path = f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{structure['pe']['pe']}"
+        move_last_file(new_path)
+        to_useful_excel(new_path)
+
     except:
         print(f"cant download price history of {stock_name}")
 
 
 def bourseview_macro(start=first_day, end=last_day):
-    """download macro.xlsx
+    """download macro
     <start : 1390/01/01>
     <end : 1400/01/01>"""
     try:
@@ -1092,7 +903,7 @@ def bourseview_macro(start=first_day, end=last_day):
             By.XPATH,
             "//*[@id='collapseExample']/div/div/div[3]/div[1]/input",
         ).send_keys(end)
-        sleep(break_time)
+        sleep(2 * break_time)
 
         # click download button
         driver.find_element(
@@ -1106,25 +917,139 @@ def bourseview_macro(start=first_day, end=last_day):
         sleep(break_time)
 
         # replace last file
-        move_last_file(f"{DB}/macro/macro.xlsx")
+        Path(f"{DB}/{MACRO_PATH.split('/')[0]}").mkdir(parents=True, exist_ok=True)
+        move_last_file(f"{DB}/{MACRO_PATH}")
+
     except Exception as err:
         print(f"cant download macro data : {err}")
 
 
-def download_stock_files(lst, y=5, q=5, m=50):
-    '''download all of stock files'''
+def update_database(
+    stocks=list(watchlist.keys()),
+    yearly=False,
+    quarterly=False,
+    monthly=False,
+):
     create_database_structure()
     bourseview_login()
-    for i in lst:
-        bourseview_balancesheet(i, y, q)
-        bourseview_income_statement(i, y, q)
-        bourseview_cashflow(i, y, q)
-        bourseview_product_revenue(i, y, q, m)
-        bourseview_cost(i, y, q)
-        bourseview_official(i, y, q)
-        bourseview_price_history(i)
+
+    t = []
+    if yearly:
+        t.append("yearly")
+
+    if quarterly:
+        t.append("quarterly")
+
+    t2 = t.copy()
+    if monthly:
+        t2.append("monthly")
+
+    for stock_name in stocks:
+        bourseview_search(stock_name)
+        print(f"download {stock_name} ...")
+        bourseview_balancesheet(stock_name, time_types=t)
+        bourseview_income_statement(stock_name, time_types=t)
+        bourseview_cashflow(stock_name, time_types=t)
+        bourseview_product_revenue(stock_name, time_types=t2)
+        bourseview_cost(stock_name, time_types=t)
+        bourseview_official(stock_name, time_types=t)
+        bourseview_price_history(stock_name)
 
     codal_login()
-    for i in lst:
-        codal_eps(i)
-        check_stock_files(i)
+    for stock_name in stocks:
+        codal_search(stock_name)
+        codal_eps(stock_name)
+
+
+def check_database(stocks=list(watchlist.keys())):
+    create_database_structure()
+    bourseview_login()
+
+    for stock_name in stocks:
+        bourseview_search(stock_name)
+        # files that must every stock have it
+        base_files = []
+        base_folders = []
+        for s in all_dict_values(structure):
+            if ".xlsx" in s:
+                base_files.append(
+                    f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{s}"
+                )
+            else:
+                base_folders.append(s)
+
+        # dirs, files = list_stock_files(stock_name)
+        # for file in files:
+        #     if file not in base_files:
+        #         for b in base_folders:
+        #             if b not in file:
+        #                 # delete unnecessary files
+        #                 print("unnecessary file : ", file)
+        #                 os.remove(file)
+
+        for file in base_files:
+
+            if Path(file).exists():
+                # check sanity of bourseview excels
+                try:
+                    df = pd.read_excel(file)
+                except:
+                    print("old format : ", file)
+                    to_useful_excel(file)
+
+                try:
+                    excel_author = df["Unnamed: 1"][0]
+                    excel_type = df["Unnamed: 1"][4]
+                    excel_token = (
+                        (df["Unnamed: 1"][3]).replace("\u200c", "").split("-")[0]
+                    )
+
+                    stock_type = file.split("/")[6]
+                    stock_types = {
+                        "balancesheet": "Balance Sheet",
+                        "income": "Income Statements",
+                        "cashflow": "Cash Flow",
+                        "product": "تولید و فروش",
+                        "cost": "بهای تمام شده",
+                        "official": "هزینه های عمومی و اداری",
+                        "pe": "تاریخچه قیمت",
+                    }
+
+                    if excel_author != "Pouya Finance":
+                        print("not bourseview : ", file)
+                        os.remove(file)
+
+                    if excel_type != stock_types[stock_type]:
+                        print("unmatch type : ", file)
+                        os.remove(file)
+
+                    if excel_token != watchlist[stock_name]["token"]:
+                        print("unmatch name :", file)
+                        os.remove(file)
+
+                except:
+                    pass
+
+            else:
+                print("deficiency : ", file)
+
+                if stock_type == "balancesheet":
+                    bourseview_balancesheet(stock_name)
+
+                if stock_type == "income":
+                    bourseview_income_statement(stock_name)
+
+                if stock_type == "cashflow":
+                    bourseview_cashflow(stock_name)
+
+                if stock_type == "product":
+                    bourseview_product_revenue(stock_name)
+
+                if stock_type == "cost":
+                    bourseview_cost(stock_name)
+
+                if stock_type == "official":
+                    bourseview_official(stock_name)
+
+                if file.split("/")[7] == "pe.xlsx":
+                    bourseview_price_history(stock_name)

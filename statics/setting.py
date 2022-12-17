@@ -64,10 +64,53 @@ watchlist = {
     "shavan": {"indus": "palayesh", "token": "شاوان", "name": "پالایش نفت لاوان"},
     "defara": {"indus": "darou", "token": "دفارا", "name": "داروسازی فارابی"},
     "dalber": {"indus": "darou", "token": "دالبر", "name": "البرز دارو"},
+    "kimia": {
+        "indus": "felezat",
+        "token": "کیمیا",
+        "name": "معدنی کیمیای زنجان گستران",
+    },
+}
+
+structure = {
+    "analyse": "analyse/",
+    "detail": "detail_trade/",
+    "balance": {
+        "yearly": "balancesheet/yearly.xlsx",
+        "quarterly": "balancesheet/quarterly.xlsx",
+    },
+    "income": {
+        "yearly": {
+            "rial": "income/yearly/rial.xlsx",
+            "dollar": "income/yearly/dollar.xlsx",
+        },
+        "quarterly": {
+            "rial": "income/quarterly/rial.xlsx",
+            "dollar": "income/quarterly/dollar.xlsx",
+        },
+    },
+    "product": {
+        "yearly": "product/yearly.xlsx",
+        "yearly_seprated": "product/yearly_seprated.xlsx",
+        "quarterly": "product/quarterly.xlsx",
+        "quarterly_seprated": "product/quarterly_seprated.xlsx",
+        "monthly": "product/monthly.xlsx",
+        "monthly_seprated": "product/monthly_seprated.xlsx",
+    },
+    "official": {
+        "yearly": "official/yearly.xlsx",
+        "quarterly": "official/quarterly.xlsx",
+    },
+    "cash": {"yearly": "cashflow/yearly.xlsx", "quarterly": "cashflow/quarterly.xlsx"},
+    "cost": {"yearly": "cost/yearly.xlsx", "quarterly": "cost/quarterly.xlsx"},
+    "pe": {"pe": "pe/pe.xlsx", "forward": "pe/forward.xlsx"},
+    "eps": "eps.xlsx",
+    "opt": "opt.xlsx",
 }
 
 ROOT_PATH = os.path.abspath(os.curdir).replace("\\", "/")
 DB = f"{ROOT_PATH}/database"
+INDUSTRIES_PATH = f"{DB}/industries"
+MACRO_PATH = "macro/macro.xlsx"
 WINDOWS_FIREFOX_DRIVER_PATH = f"{ROOT_PATH}/statics/geckodriver.exe"
 LINUX_FIREFOX_DRIVER_PATH = f"{ROOT_PATH}/statics/geckodriver"
 

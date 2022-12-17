@@ -3,10 +3,12 @@ import pandas as pd
 import requests
 import matplotlib.pyplot as plt
 import yfinance as yf
-from fredapi import Fred
-from statics.setting import *
-from statsmodels.tsa.filters import hp_filter
 import seaborn as sns
+
+from fredapi import Fred
+from statsmodels.tsa.filters import hp_filter
+
+from statics.setting import *
 
 plt.style.use("seaborn")
 fred_apikey = "8bb5a2c9d4aac422def9c007fade8795"

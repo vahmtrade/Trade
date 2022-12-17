@@ -1,7 +1,9 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+
 from itertools import product
+
 from statics.setting import *
 
 plt.style.use("seaborn")
@@ -87,7 +89,7 @@ class TesterOneSide:
         df["Performance"] = resault
         industry = watchlist[self.name]["indus"]
         df = df.sort_values("Performance", ascending=False)
-        df.to_excel(f"{DB}/industries/{industry}/{self.name}/opt.xlsx")
+        df.to_excel(f"{INDUSTRIES_PATH}/{industry}/{self.name}/opt.xlsx")
         return df
 
     def plot_position(self):
@@ -95,14 +97,14 @@ class TesterOneSide:
         plt.plot(self.df["Close"], alpha=0.25)
         plt.plot(self.df["SMA_s"], alpha=0.5)
         plt.plot(self.df["SMA_l"], alpha=0.5)
-        plt.title(f'position of {self.name}')
+        plt.title(f"position of {self.name}")
         plt.scatter(self.df.index, self.df["Sig_Price_Buy"], marker="^", color="green")
         plt.scatter(self.df.index, self.df["Sig_Price_Sell"], marker="v", color="red")
         plt.figure(figsize=[20, 8])
         plt.plot(self.df["Value"], alpha=0.25)
         plt.plot(self.df["VMA_s"], alpha=0.5)
         plt.plot(self.df["VMA_l"], alpha=0.5)
-        plt.title(f' Volume position of {self.name}')
+        plt.title(f" Volume position of {self.name}")
         plt.scatter(self.df.index, self.df["Sig_Price_Buy"], marker="^", color="green")
         plt.scatter(self.df.index, self.df["Sig_Price_Sell"], marker="v", color="red")
 
@@ -111,7 +113,8 @@ class TesterOneSide:
         plt.plot(self.df["Cret"])
         plt.plot(self.Close_trade["Cret_net"], marker="o")
         plt.plot(self.Close_trade["Cret"], marker="o")
-        plt.title(f'resault of {self.name}')
+        plt.title(f"resault of {self.name}")
+
 
 class SmaTester:
     def __init__(self, data, start, end, tc):
