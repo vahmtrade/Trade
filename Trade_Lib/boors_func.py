@@ -4582,7 +4582,9 @@ class Stock:
         other_g_next_update=1,
         rf=0.35,
         erp=0.15,
-        n_g=2
+        n_g=2,
+        g=1,
+        pe_terminal=1,
     ):
         self.create_interest_data()
         self.predict_income(
@@ -4606,7 +4608,7 @@ class Stock:
         self.predict_balance_sheet()
         self.predict_interst()
         self.create_fcfe()
-        self.predict_value(n_g,rf,erp)
+        self.predict_value(n_g,rf,erp,g,pe_terminal)
 
     def plot_margin(self):
         plt.figure(figsize=[20, 8])
@@ -4713,7 +4715,7 @@ class Stock:
         )
         plt.legend()
 
-    def predict_value(self, n_g=2,rf=0.35,erp=0.15):
+    def predict_value(self, n_g=2,rf=0.35,erp=0.15,g=1,pe_terminal=1):
         eps1 = self.pred_income.loc[self.future_year, "EPS_Capital"]
         eps2 = self.pred_income.loc[self.future_year + 1, "EPS_Capital"]
         ## number of mounth to majma
@@ -4768,32 +4770,35 @@ class Stock:
         self.profit_aggr = profit_aggr
         self.cagr_profit = cagr_profit
         ###### Calculate G #######
-        g_economy = 0.02 + rf
-        g_stock=(cagr_count-1)+(cagr_rate-1)
-        self.g_economy = g_economy
-        self.g_stock=g_stock
-        g=min(g_stock,g_economy)
+        if g==1:
+            g_economy = 0.02 + rf
+            g_stock=(cagr_count-1)+(cagr_rate-1)
+            self.g_economy = g_economy
+            self.g_stock=g_stock
+            g=min(g_stock,g_economy)
         self.g=g
         ##### estimate eps of ngrowth year ######
         i = 3
         while i < 3 + n_g:
             vars()[f"eps{i}"] = cagr_profit * vars()[f"eps{i-1}"]
+            #setattr(self,f"eps{i}",)
             self.__dict__[f"eps{i}"] = vars()[f"eps{i}"]
             value_d += vars()[f"eps{i}"] / (1 + k) ** (i - 1 + n)
             i += 1
         ##### Calculate terminal p/e ##########
-        pe_terminal_historical = self.end_data["mean_price/eps"].median()
-        self.pe_terminal_historical = pe_terminal_historical
-        pe_terminal_capm = (1 + g) / (k - g)
-        self.pe_terminal_capm = pe_terminal_capm
-        pe_terminal = np.average([pe_terminal_historical, pe_terminal_capm],weights=[2,1])
+        if pe_terminal==1:
+            pe_terminal_historical = self.end_data["mean_price/eps"].median()
+            self.pe_terminal_historical = pe_terminal_historical
+            pe_terminal_capm = (1 + g) / (k - g)
+            self.pe_terminal_capm = pe_terminal_capm
+            pe_terminal = np.average([pe_terminal_historical, pe_terminal_capm],weights=[2,1])
+        self.pe_terminal = pe_terminal
         ###### Calculate terminal value #######
         terminal_value = (vars()[f"eps{i-1}"] * pe_terminal) / ((1 + k) ** (i - 2 + n))
+        self.terminal_value = terminal_value        
         value = value_d + terminal_value
-        self.value_d = value_d
-        self.terminal_value = terminal_value
+        self.value_d = value_d        
         self.value = value
-        self.pe_terminal = pe_terminal
         self.potential_value_g = (value / self.Price["Close"].iloc[-1]) - 1
 
     # save your analyse
