@@ -3,83 +3,12 @@ import sys
 import shutil
 import re
 import platform
+import pandas as pd
 import win32com.client as win32
 
 from pathlib import Path
-
+from collections import defaultdict
 from statics.setting import *
-
-
-def all_dict_values(d: dict):
-    for v in d.values():
-        if isinstance(v, dict):
-            yield from all_dict_values(v)
-        else:
-            yield v
-
-
-def list_stock_files(stock_name):
-    """return all folders and files of stock in database"""
-    stock_dirs = []
-    stock_files = []
-    for path, subdirs, files in os.walk(
-        f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}"
-    ):
-        for dir in subdirs:
-            stock_dirs.append(os.path.join(path, dir).replace("\\", "/"))
-
-        for name in files:
-            stock_files.append(os.path.join(path, name).replace("\\", "/"))
-
-    return stock_dirs, stock_files
-
-
-def create_database_structure():
-    """create database folders based on watchlist"""
-    for stock, info in watchlist.items():
-        for file in all_dict_values(structure):
-            s = ""
-            for i in file.split("/")[:-1]:
-                s += "/" + i
-
-            Path(f"{INDUSTRIES_PATH}/{info['indus']}/{stock}{s}").mkdir(
-                parents=True, exist_ok=True
-            )
-
-
-def to_useful_excel(file_path):
-    """convert bourseview excel to new excel that pandas use it"""
-    if platform.system() == "Windows":
-        try:
-            excel = win32.gencache.EnsureDispatch("Excel.Application")
-        except AttributeError:
-            # remove cache and try again
-            MODULE_LIST = [m.__name__ for m in sys.modules.values()]
-            for module in MODULE_LIST:
-                if re.match(r"win32com\.gen_py\..+", module):
-                    del sys.modules[module]
-            shutil.rmtree(os.path.join(os.environ.get("LOCALAPPDATA"), "Temp", "gen_py"))
-            excel = win32.gencache.EnsureDispatch("Excel.Application")
-
-        # open and save excel file
-        excel.Workbooks.Open(file_path).Save()
-        excel.Application.Quit()
-
-
-def move_last_file(new_path):
-    """move last DB file to new_path"""
-    # find latest downloaded file
-    filename = max(
-        [f for f in os.listdir(DB)],
-        key=lambda x: os.path.getctime(os.path.join(DB, x)),
-    )
-
-    # replace last file
-    if ".xlsx" in filename:
-        os.replace(
-            f"{DB}/{filename}",
-            new_path,
-        )
 
 
 def clarify_number(a, seprator=",", n=2):
@@ -173,3 +102,110 @@ def best_table_id(data_tables):
             table_id = i
 
     return table_id
+
+
+def to_useful_excel(file_path):
+    """convert bourseview excel to new excel that pandas use it"""
+    if platform.system() == "Windows":
+        try:
+            excel = win32.gencache.EnsureDispatch("Excel.Application")
+        except AttributeError:
+            # remove cache and try again
+            MODULE_LIST = [m.__name__ for m in sys.modules.values()]
+            for module in MODULE_LIST:
+                if re.match(r"win32com\.gen_py\..+", module):
+                    del sys.modules[module]
+            shutil.rmtree(
+                os.path.join(os.environ.get("LOCALAPPDATA"), "Temp", "gen_py")
+            )
+            excel = win32.gencache.EnsureDispatch("Excel.Application")
+
+        # open and save excel file
+        excel.Workbooks.Open(file_path).Save()
+        excel.Application.Quit()
+
+
+def move_last_file(new_path):
+    """move last DB file to new_path"""
+    # find latest downloaded file
+    filename = max(
+        [f for f in os.listdir(DB)],
+        key=lambda x: os.path.getctime(os.path.join(DB, x)),
+    )
+
+    # replace last file
+    if ".xlsx" in filename:
+        os.replace(
+            f"{DB}/{filename}",
+            new_path,
+        )
+
+
+def all_dict_values(data: dict):
+    for v in data.values():
+        if isinstance(v, dict):
+            yield from all_dict_values(v)
+        else:
+            yield v
+
+
+def list_stock_files(stock_name):
+    """return all folders and files of stock in database"""
+    stock_dirs = []
+    stock_files = []
+    for path, subdirs, files in os.walk(
+        f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}"
+    ):
+        for dir in subdirs:
+            stock_dirs.append(os.path.join(path, dir).replace("\\", "/"))
+
+        for name in files:
+            stock_files.append(os.path.join(path, name).replace("\\", "/"))
+
+    return stock_dirs, stock_files
+
+
+def create_database_structure():
+    """create database folders based on watchlist"""
+    for stock, info in watchlist.items():
+        for file in all_dict_values(structure):
+            s = "/".join(file.split("/")[:-1])
+
+            Path(f"{INDUSTRIES_PATH}/{info['indus']}/{stock}{s}").mkdir(
+                parents=True, exist_ok=True
+            )
+
+
+def find_deficiencies(stock_name):
+
+    base_files = [
+        f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{s}"
+        for s in all_dict_values(structure)
+        if ".xlsx" in s
+    ]
+
+    deficiencies = defaultdict(list)
+    stock_types, time_types = [], []
+    eps, opt, pe = "", "", ""
+
+    files = [file for file in base_files if not Path(file).exists()]
+    for file in files:
+        if "eps.xlsx" in file:
+            eps = stock_name
+        elif "opt.xlsx" in file:
+            opt = stock_name
+        elif "pe.xlsx" in file:
+            pe = stock_name
+
+        else:
+            stock_types.append(file.split("/")[6].split(".")[0])
+            time_types.append(file.split("/")[7].split(".")[0].split("_")[0])
+
+    for key, value in zip(stock_types, time_types):
+        deficiencies[key].append(value)
+    deficiencies = dict(deficiencies)
+
+    for i in deficiencies:
+        deficiencies[i] = list(set(deficiencies[i]))
+
+    return eps, opt, pe, deficiencies
