@@ -53,38 +53,23 @@ def analyse_watchlist(date):
     analyse = pd.DataFrame(
         index=data.keys(),
         columns=[
-            "price_ret",
-            "eps_ret",
-            "last_price/eps",
-            "pe_terminal",
-            "pot_g_val",
+            "sector",
             "margin",
             "margin_var",
-            "sector",
             "last_rate/mean_12",
             "last_rate_change",
             "last_rate/same_year",
             "net_profit_change",
             "net_profit/net_profit_same_last",
-            "price_buy",
-            "price_sell",
         ],
     )
     errs = {}
     for stock in data.values():
         try:
-            analyse.loc[stock.Name]["price_ret"] = stock.end_data["yearly_ret"].loc[
-                1401
-            ]
-            analyse.loc[stock.Name]["eps_ret"] = stock.end_data["eps_ret"].loc[1401]
-            analyse.loc[stock.Name]["last_price/eps"] = stock.end_data[
-                "last_price/eps"
-            ].loc[1401]
-            analyse.loc[stock.Name]["pe_terminal"] = stock.pe_terminal
-            analyse.loc[stock.Name]["pot_g_val"] = stock.potential_value_g
+
+            analyse.loc[stock.Name]["sector"] = stock.industry
             analyse.loc[stock.Name]["margin"] = stock.Risk_income_yearly[0]
             analyse.loc[stock.Name]["margin_var"] = stock.Risk_income_yearly[1]
-            analyse.loc[stock.Name]["sector"] = stock.industry
             analyse.loc[stock.Name]["last_rate/mean_12"] = (
                 stock.rate_monthly["total"].iloc[-1]
                 / stock.rate_monthly["total"].iloc[-12:].mean()
@@ -103,16 +88,65 @@ def analyse_watchlist(date):
                 stock.income_rial_quarterly["Net_Profit"].iloc[-1]
                 / stock.income_rial_quarterly["Net_Profit"].iloc[-5]
             )
-            analyse.loc[stock.Name]["price_buy"] = stock.my_tester.trade[
+
+        except Exception as err:
+            errs[stock.Name] = err
+        technical = pd.DataFrame(
+            columns=["sector", "price", "sig_buy", "sig_sell"], index=data.keys()
+        )
+    for stock in data.values():
+        try:
+            technical.loc[stock.Name]["sector"] = stock.industry
+            technical.loc[stock.Name]["price"] = stock.Price["Close"].iloc[-1]
+            technical.loc[stock.Name]["sig_buy"] = stock.my_tester.trade[
                 "Sig_Price_Buy"
             ].iloc[-1]
-            analyse.loc[stock.Name]["price_sell"] = stock.my_tester.trade[
+            technical.loc[stock.Name]["sig_sell"] = stock.my_tester.trade[
                 "Sig_Price_Sell"
             ].iloc[-1]
         except Exception as err:
             errs[stock.Name] = err
-
-    return analyse, data, errs
+    value = pd.DataFrame(
+        columns=[
+            "sector",
+            "price",
+            "value",
+            "pe_terminal_historical",
+            "pe_terminal_capm",
+            "pe_terminal",
+            "pe_fw",
+            "g_stock",
+            "g_longterm",
+            "expected_return_historical",
+            "expected_return_capm",
+            "expected_return",
+            'beta',
+        ]
+        ,index=data.keys()
+    )
+    for stock in data.values():
+        try:
+            value.loc[stock.Name]["sector"] = stock.industry
+            value.loc[stock.Name]["price"] = stock.Price["Close"].iloc[-1]
+            value.loc[stock.Name]["value"] = stock.value
+            value.loc[stock.Name][
+                "pe_terminal_historical"
+            ] = stock.pe_terminal_historical
+            value.loc[stock.Name]["pe_terminal_capm"] = stock.pe_terminal_capm
+            value.loc[stock.Name]["pe_terminal"] = stock.pe_terminal
+            value.loc[stock.Name]["pe_fw"] = stock.end_data["last_price/eps"].loc[
+                stock.future_year
+            ]
+            value.loc[stock.Name]["g_stock"] = stock.g_stock
+            value.loc[stock.Name]["g_longterm"] = stock.g_economy
+            value.loc[stock.Name]["expected_return_historical"] = stock.k_historical
+            value.loc[stock.Name]["expected_return_capm"] = stock.k_capm
+            value.loc[stock.Name]["expected_return"] = stock.k
+            value.loc[stock.Name]["beta"] = stock.beta
+        except Exception as err:
+            errs[stock.Name] = err
+    d={'analyse':analyse,'technical':technical,'value':value,'data':data,'err':errs}
+    return d
 
 
 def update_watchlist(data):
@@ -790,10 +824,7 @@ def history(Broker, owner):
 
 def get_income_yearly(stock, money_type):
     industry = watchlist[stock]["indus"]
-    if money_type == "rial":
-        adress = f"{INDUSTRIES_PATH}/{industry}/{stock}/income/yearly/rial.xlsx"
-    elif money_type == "dollar":
-        adress = f"{INDUSTRIES_PATH}/{industry}/{stock}/income/yearly/dollar.xlsx"
+    adress=f"{INDUSTRIES_PATH}/{industry}/{stock}/{structure['income']['yearly'][money_type]}"
     # read raw data
     stock_income = pd.read_excel(adress, engine="openpyxl")
     all_time_id = re.findall(regex_en_timeid_q, str(stock_income.loc[6]))
@@ -873,11 +904,7 @@ def get_income_yearly(stock, money_type):
 
 def get_income_quarterly(stock, money_type, fisal_year, my_year):
     industry = watchlist[stock]["indus"]
-    if money_type == "rial":
-        adress = f"{INDUSTRIES_PATH}/{industry}/{stock}/income/quarterly/rial.xlsx"
-    if money_type == "dollar":
-        adress = f"{INDUSTRIES_PATH}/{industry}/{stock}/income/quarterly/dollar.xlsx"
-
+    adress=f"{INDUSTRIES_PATH}/{industry}/{stock}/{structure['income']['quarterly'][money_type]}"
     fiscal_dic = {
         12: {3: 1, 6: 2, 9: 3, 12: 4},
         9: {12: 1, 3: 2, 6: 3, 9: 4},
@@ -1185,7 +1212,7 @@ def plot_corr(stocks, y_s=1401, m_s=1, y_e=1401, m_e=12):
     for i in stocks:
         d[i.Name] = i.Price[date_1:date_2]["Ret"]
     df = pd.DataFrame(d)
-    df.fillna(0,inplace=True)
+    df.fillna(0, inplace=True)
     corr = df.corr()
     # plt.figure(figsize=[20, 12], facecolor="white")
     # sns.set(font_scale=1.5)
@@ -1194,7 +1221,9 @@ def plot_corr(stocks, y_s=1401, m_s=1, y_e=1401, m_e=12):
     mask[np.triu_indices_from(mask)] = True
     with sns.axes_style("white"):
         f, ax = plt.subplots(figsize=(7, 5))
-        ax = sns.heatmap(corr, mask=mask, vmax=.4, square=True, annot=True, cmap='RdYlGn')    
+        ax = sns.heatmap(
+            corr, mask=mask, vmax=0.4, square=True, annot=True, cmap="RdYlGn"
+        )
     return df
 
 
@@ -1245,26 +1274,17 @@ def mix_portfolio(names, prices, start, end):
     return data
 
 
-def get_pe_data(name, kind):
+def get_pe_data(name):
 
-    if kind == "stock":
-        adress = f"{INDUSTRIES_PATH}/{watchlist[name]['indus']}/{name}/pe/pe.xlsx"
-        pe = pd.read_excel(
-            adress,
-            engine="openpyxl",
-            usecols="B,C,S,R,Q",
-            skiprows=7,
-            parse_dates=["تاریخ میلادی"],
-        )
-    elif kind == "index":
-        adress = f"{INDUSTRIES_PATH}/{name}/index.xlsx"
-        pe = pd.read_excel(
-            adress,
-            engine="openpyxl",
-            usecols="B,C,K,L,M",
-            skiprows=7,
-            parse_dates=["تاریخ میلادی"],
-        )
+
+    adress = f"{INDUSTRIES_PATH}/{watchlist[name]['indus']}/{name}/{structure['pe']}"
+    pe = pd.read_excel(
+        adress,
+        engine="openpyxl",
+        usecols="B,C,S,R,Q",
+        skiprows=7,
+        parse_dates=["تاریخ میلادی"],
+    )
     pe.rename(columns={"تاریخ میلادی": "Date", "تاریخ شمسی": "Jdate"}, inplace=True)
     pe.set_index("Date", inplace=True)
     for i in pe.index:
@@ -2528,8 +2548,11 @@ class Stock:
             self.Price, self.tester_start, self.tester_end, self.tc
         )
         ############ Load_P/E Historical #############
-        self.pe, self.pe_n, self.pe_u = get_pe_data(self.Name, "stock")
-        self.dollar_azad, self.dollar_nima = read_dollar(self.start_date, self.end_date)
+        try:
+            self.pe, self.pe_n, self.pe_u = get_pe_data(self.Name)
+            self.dollar_azad, self.dollar_nima = read_dollar(self.start_date, self.end_date)
+        except:
+            pass    
         mean_dollar = []
         mean_market = []
         ############ load product ###############
@@ -2554,7 +2577,9 @@ class Stock:
             pass
         ########## Load  Optimize_Strategy file ############
         try:
-            opt = pd.read_excel(f"{INDUSTRIES_PATH}/{self.industry}/{self.Name}/opt.xlsx")
+            opt = pd.read_excel(
+                f"{INDUSTRIES_PATH}/{self.industry}/{self.Name}/{structure[opt]}"
+            )
             # simulate with opt file
             self.my_tester.test_strategy(
                 opt["SMA_s"].iloc[0],
@@ -3249,7 +3274,7 @@ class Stock:
         plt.title("Quarterly rate")
 
     def create_eps_data(self):
-        adress = f"{INDUSTRIES_PATH}/{self.industry}/{self.Name}/eps.xlsx"
+        adress = f"{INDUSTRIES_PATH}/{self.industry}/{self.Name}/{structure['eps']}"
         df = pd.read_excel(adress, engine="openpyxl", index_col="year")
         df = df[::-1]
         # normalize_eps ans dps data
@@ -3350,14 +3375,11 @@ class Stock:
 
     def get_balance_sheet(self, periode):
         # create adress and coloumns proper tp peride
+        adress = f"{INDUSTRIES_PATH}/{self.industry}/{self.Name}/{structure['balance'][periode]}"
         if periode == "yearly":
-            adress = (
-                f"{INDUSTRIES_PATH}/{self.industry}/{self.Name}/balancesheet/yearly.xlsx"
-            )
             my_col = list(self.income_rial_yearly.index)
             my_col.insert(0, "Data")
         elif periode == "quarterly":
-            adress = f"{INDUSTRIES_PATH}/{self.industry}/{self.Name}/balancesheet/quarterly.xlsx"
             my_col = list(self.income_rial_quarterly.index)
             my_col.insert(0, "Data")
         # create raw data
@@ -3491,14 +3513,15 @@ class Stock:
             self.inv_balance_com_quarterly = inv_balance_com
 
     def get_cash_flow(self, preiode):
+        
+        adress = (
+            f"{INDUSTRIES_PATH}/{self.industry}/{self.Name}/{structure['cash'][preiode]}"
+        )        
         if preiode == "yearly":
-            adress = f"{INDUSTRIES_PATH}/{self.industry}/{self.Name}/cashflow/yearly.xlsx"
+
             my_col = list(self.income_rial_yearly.index)
             my_col.insert(0, "Data")
         elif preiode == "quarterly":
-            adress = (
-                f"{INDUSTRIES_PATH}/{self.industry}/{self.Name}/cashflow/quarterly.xlsx"
-            )
             my_col = list(self.income_rial_quarterly.index)
             my_col.insert(0, "Data")
         cash_flow_original = pd.read_excel(adress)
@@ -3798,14 +3821,15 @@ class Stock:
 
     def get_cost(self, period):
         # read cost data
+        cost_dl = pd.read_excel(
+            f"{INDUSTRIES_PATH}/{self.industry}/{self.Name}/{structure['cost'][period]}"
+        )
+        official_dl = pd.read_excel(
+            f"{INDUSTRIES_PATH}/{self.industry}/{self.Name}/{structure['official'][period]}"
+        )        
         if period == "yearly":
             # all data is cost_dl
-            cost_dl = pd.read_excel(
-                f"{INDUSTRIES_PATH}/{self.industry}/{self.Name}/cost/yearly.xlsx"
-            )
-            official_dl = pd.read_excel(
-                f"{INDUSTRIES_PATH}/{self.industry}/{self.Name}/official/yearly.xlsx"
-            )
+
             # select desired data
             cost = select_df(cost_dl, "بهای تمام شده", "جمع بهای تمام شده")
             overhead = select_df(cost_dl, "هزینه سربار", "جمع")
@@ -3817,12 +3841,6 @@ class Stock:
             my_col.insert(0, "Data")
 
         elif period == "quarterly":
-            cost_dl = pd.read_excel(
-                f"{INDUSTRIES_PATH}/{self.industry}/{self.Name}/cost/quarterly.xlsx"
-            )
-            official_dl = pd.read_excel(
-                f"{INDUSTRIES_PATH}/{self.industry}/{self.Name}/official/quarterly.xlsx"
-            )
             # select desired data
             cost = select_df(cost_dl, "بهای تمام شده", "جمع بهای تمام شده")
             overhead = select_df(cost_dl, "هزینه سربار", "جمع")
@@ -4283,11 +4301,10 @@ class Stock:
         self.p_fcfe = self.pe_fw / self.fcfe.loc[self.future_year]["ratio"]
 
     def get_product(self, period):
+        product_dl = pd.read_excel(
+            f"{INDUSTRIES_PATH}/{self.industry}/{self.Name}/{structure['product'][period]}"
+        )        
         if period == "yearly":
-            # all data
-            product_dl = pd.read_excel(
-                f"{INDUSTRIES_PATH}/{self.industry}/{self.Name}/product/yearly.xlsx"
-            )
             # select desired data
             count_product = select_df(product_dl, "مقدار تولید", "جمع")
             count_revenue = select_df(product_dl, "مقدار فروش", "جمع")
@@ -4299,10 +4316,6 @@ class Stock:
             my_col.insert(1, "unit")
 
         if period == "monthly":
-            # all data
-            product_dl = pd.read_excel(
-                f"{INDUSTRIES_PATH}/{self.industry}/{self.Name}/product/monthly.xlsx"
-            )
             # selece desired data
             count_product = select_df(product_dl, "مقدار تولید", "جمع")
             count_revenue = select_df(product_dl, "مقدار فروش", "جمع")
@@ -4313,10 +4326,6 @@ class Stock:
             my_col.insert(0, "Data")
             my_col.insert(1, "unit")
         if period == "quarterly":
-            # all data
-            product_dl = pd.read_excel(
-                f"{INDUSTRIES_PATH}/{self.industry}/{self.Name}/product/quarterly.xlsx"
-            )
             # select desired data
             count_product = select_df(product_dl, "مقدار تولید", "جمع")
             count_revenue = select_df(product_dl, "مقدار فروش", "جمع")
@@ -4625,7 +4634,7 @@ class Stock:
         self.predict_balance_sheet()
         self.predict_interst()
         self.create_fcfe()
-        self.predict_value(n_g,rf,erp,g,pe_terminal)
+        self.predict_value(n_g, rf, erp, g, pe_terminal)
 
     def plot_margin(self):
         plt.figure(figsize=[20, 8])
@@ -4649,7 +4658,7 @@ class Stock:
         # df_ret["total_cost"] = self.my_cost_unit_yearly["total"].pct_change()
         # df_ret.dropna(inplace=True)
         self.macro = df
-        self.shakhes=macro.shakhes_kol
+        self.shakhes = macro.shakhes_kol
         self.macro_ret = df_ret
         # return net profit and market
         # compare returns
@@ -4732,7 +4741,7 @@ class Stock:
         )
         plt.legend()
 
-    def predict_value(self, n_g=2,rf=0.35,erp=0.15,g=1,pe_terminal=1):
+    def predict_value(self, n_g=2, rf=0.35, erp=0.15, g=1, pe_terminal=1):
         eps1 = self.pred_income.loc[self.future_year, "EPS_Capital"]
         eps2 = self.pred_income.loc[self.future_year + 1, "EPS_Capital"]
         ## number of mounth to majma
@@ -4745,23 +4754,23 @@ class Stock:
         ) ** (1 / years)
         self.re_historical = re_historical
         ### calculate Beta ####
-        data_shakhes=pd.concat([self.Price['Close'],self.shakhes['Close']],axis=1)
-        data_shakhes.columns=['stock','shakhes']
+        data_shakhes = pd.concat([self.Price["Close"], self.shakhes["Close"]], axis=1)
+        data_shakhes.columns = ["stock", "shakhes"]
         data_shakhes.dropna(inplace=True)
-        data_shakhes=np.log(data_shakhes/data_shakhes.shift(1))
+        data_shakhes = np.log(data_shakhes / data_shakhes.shift(1))
         data_shakhes.dropna(inplace=True)
-        cov=data_shakhes.cov().iloc[0,1]
-        var=data_shakhes['shakhes'].var()
-        beta=cov/var
-        self.beta=beta
-        self.data_shakhes=data_shakhes
+        cov = data_shakhes.cov().iloc[0, 1]
+        var = data_shakhes["shakhes"].var()
+        beta = cov / var
+        self.beta = beta
+        self.data_shakhes = data_shakhes
         ##### calculate expected_return #####
-        k_capm=rf+beta*erp
+        k_capm = rf + beta * erp
         k_historical = re_historical - 1
-        k=np.average([k_capm,k_historical],weights=[1,min(years/10,1)])
+        k = np.average([k_capm, k_historical], weights=[1, min(years / 10, 1)])
         self.k_historical = k_historical
-        self.k_capm=k_capm
-        self.k=k
+        self.k_capm = k_capm
+        self.k = k
 
         ### calculate aggregate growth #######
         value_d = eps1 / (1 + k) ** n + eps2 / (1 + k) ** (1 + n)
@@ -4787,34 +4796,36 @@ class Stock:
         self.profit_aggr = profit_aggr
         self.cagr_profit = cagr_profit
         ###### Calculate G #######
-        if g==1:
+        if g == 1:
             g_economy = 0.02 + rf
-            g_stock=(cagr_count-1)+(cagr_rate-1)
+            g_stock = (cagr_count - 1) + (cagr_rate - 1)
             self.g_economy = g_economy
-            self.g_stock=g_stock
-            g=min(g_stock,g_economy)
-        self.g=g
+            self.g_stock = g_stock
+            g = min(g_stock, g_economy)
+        self.g = g
         ##### estimate eps of ngrowth year ######
         i = 3
         while i < 3 + n_g:
             vars()[f"eps{i}"] = cagr_profit * vars()[f"eps{i-1}"]
-            #setattr(self,f"eps{i}",)
+            # setattr(self,f"eps{i}",)
             self.__dict__[f"eps{i}"] = vars()[f"eps{i}"]
             value_d += vars()[f"eps{i}"] / (1 + k) ** (i - 1 + n)
             i += 1
         ##### Calculate terminal p/e ##########
-        if pe_terminal==1:
+        if pe_terminal == 1:
             pe_terminal_historical = self.end_data["mean_price/eps"].median()
             self.pe_terminal_historical = pe_terminal_historical
             pe_terminal_capm = (1 + g) / (k - g)
             self.pe_terminal_capm = pe_terminal_capm
-            pe_terminal = np.average([pe_terminal_historical, pe_terminal_capm],weights=[2,1])
+            pe_terminal = np.average(
+                [pe_terminal_historical, pe_terminal_capm], weights=[2, 1]
+            )
         self.pe_terminal = pe_terminal
         ###### Calculate terminal value #######
         terminal_value = (vars()[f"eps{i-1}"] * pe_terminal) / ((1 + k) ** (i - 2 + n))
-        self.terminal_value = terminal_value        
+        self.terminal_value = terminal_value
         value = value_d + terminal_value
-        self.value_d = value_d        
+        self.value_d = value_d
         self.value = value
         self.potential_value_g = (value / self.Price["Close"].iloc[-1]) - 1
 

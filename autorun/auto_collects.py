@@ -955,6 +955,8 @@ def update_database(
         bourseview_official(stock_name, time_types=t)
         bourseview_price_history(stock_name)
 
+    bourseview_macro()
+
     codal_login()
     for stock_name in stocks:
         codal_search(stock_name)
@@ -966,7 +968,6 @@ def check_database(stocks=list(watchlist.keys())):
     bourseview_login()
 
     for stock_name in stocks:
-        bourseview_search(stock_name)
         # files that must every stock have it
         base_files = []
         base_folders = []
@@ -978,16 +979,20 @@ def check_database(stocks=list(watchlist.keys())):
             else:
                 base_folders.append(s)
 
-        # dirs, files = list_stock_files(stock_name)
-        # for file in files:
-        #     if file not in base_files:
-        #         for b in base_folders:
-        #             if b not in file:
-        #                 # delete unnecessary files
-        #                 print("unnecessary file : ", file)
-        #                 os.remove(file)
-
+        deficiencies = {}
+        lst_time = []
+        lst_stock_type = []
         for file in base_files:
+            stock_types = {
+                "balancesheet": "Balance Sheet",
+                "income": "Income Statements",
+                "cashflow": "Cash Flow",
+                "product": "تولید و فروش",
+                "cost": "بهای تمام شده",
+                "official": "هزینه های عمومی و اداری",
+                "pe": "تاریخچه قیمت",
+            }
+            stock_type = file.split("/")[6]
 
             if Path(file).exists():
                 # check sanity of bourseview excels
@@ -995,7 +1000,7 @@ def check_database(stocks=list(watchlist.keys())):
                     df = pd.read_excel(file)
                 except:
                     print("old format : ", file)
-                    to_useful_excel(file)
+                    # to_useful_excel(file)
 
                 try:
                     excel_author = df["Unnamed: 1"][0]
@@ -1003,17 +1008,6 @@ def check_database(stocks=list(watchlist.keys())):
                     excel_token = (
                         (df["Unnamed: 1"][3]).replace("\u200c", "").split("-")[0]
                     )
-
-                    stock_type = file.split("/")[6]
-                    stock_types = {
-                        "balancesheet": "Balance Sheet",
-                        "income": "Income Statements",
-                        "cashflow": "Cash Flow",
-                        "product": "تولید و فروش",
-                        "cost": "بهای تمام شده",
-                        "official": "هزینه های عمومی و اداری",
-                        "pe": "تاریخچه قیمت",
-                    }
 
                     if excel_author != "Pouya Finance":
                         print("not bourseview : ", file)
@@ -1031,25 +1025,50 @@ def check_database(stocks=list(watchlist.keys())):
                     pass
 
             else:
-                print("deficiency : ", file)
+                # file : "E:\Trade\database\industries\ghaza\gheshahdab\balancesheet\quarterly.xlsx"
+                if stock_type not in ["eps.xlsx", "opt.xlsx"]:
+                    time_type = (file.split("/")[7]).split(".")[0]
+                    lst_time.append(time_type)
+                    lst_stock_type.append(stock_type)
 
-                if stock_type == "balancesheet":
-                    bourseview_balancesheet(stock_name)
 
-                if stock_type == "income":
-                    bourseview_income_statement(stock_name)
+                    flag_change=False
+                    flag_end=False
+                    for i in range(len(lst_stock_type)):
+                        if (i == len(lst_stock_type) - 1):
+                            flag_end=True
+                        else:
+                            if lst_stock_type[i]!= lst_stock_type[i+1]:   
+                                flag_change = True
+                                deficiencies[lst_stock_type[i+1]] = [lst_time[i+1]]
+                                deficiencies[lst_stock_type[i]] = lst_time.copy()[0:i+1] 
+                                lst_time.clear()   
+                                lst_stock_type.clear() 
+                                break                                                         
+                        if (flag_end) and not(flag_change):
+                            deficiencies[lst_stock_type[i]] = lst_time.copy() 
 
-                if stock_type == "cashflow":
-                    bourseview_cashflow(stock_name)
+        print(deficiencies)
 
-                if stock_type == "product":
-                    bourseview_product_revenue(stock_name)
+        for i in deficiencies:
+            bourseview_search(stock_name)
+            if i == "balancesheet":
+                bourseview_balancesheet(stock_name,time_types=deficiencies[i])
 
-                if stock_type == "cost":
-                    bourseview_cost(stock_name)
+            if i == "income":
+                bourseview_income_statement(stock_name,time_types=deficiencies[i])
 
-                if stock_type == "official":
-                    bourseview_official(stock_name)
+            if i == "cashflow":
+                bourseview_cashflow(stock_name,time_types=deficiencies[i])
 
-                if file.split("/")[7] == "pe.xlsx":
-                    bourseview_price_history(stock_name)
+            if i == "product":
+                bourseview_product_revenue(stock_name,time_types=deficiencies[i])
+
+            if i == "cost":
+                bourseview_cost(stock_name,time_types=deficiencies[i])
+
+            if i == "official":
+                bourseview_official(stock_name,time_types=deficiencies[i])
+
+        # if file.split("/")[7] == "pe.xlsx":
+        #     bourseview_price_history(stock_name,time_types=deficiencies[i])

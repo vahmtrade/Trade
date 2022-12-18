@@ -69,8 +69,17 @@ watchlist = {
         "token": "کیمیا",
         "name": "معدنی کیمیای زنجان گستران",
     },
-}
+    'gheshahdab':{'indus':'ghaza','token':'غشهداب','name':'کشت و صنعت شهداب'},
+    'ghepino':{'indus':'ghaza','token':'غپینو','name':'پارس مینو'},
+    'simorgh':{'indus':'zeraat','token':'سیمرغ','name':'سیمرغ'},
+    'save':{'indus':'siman','token':'ساوه','name':'سیمان ساوه'},
+    'shamla':{'indus':'chemical','token':'شاملا','name':'معدنی املاح ایران'},
+    'dejaber':{'indus':'darou','token':'دجابر','name':'داروسازی جابر ابن حیان'},
+    'feghadir':{'indus':'folad','token':'فغدیر','name':'آهن و فولاد غدیر ایرانیان'},
+    'kimiatec':{'indus':'shoyande','token':'کیمیاتک','name':'آریان کیمیا تک'},
 
+
+}
 structure = {
     "analyse": "analyse/",
     "detail": "detail_trade/",
@@ -102,9 +111,9 @@ structure = {
     },
     "cash": {"yearly": "cashflow/yearly.xlsx", "quarterly": "cashflow/quarterly.xlsx"},
     "cost": {"yearly": "cost/yearly.xlsx", "quarterly": "cost/quarterly.xlsx"},
-    "pe": {"pe": "pe/pe.xlsx", "forward": "pe/forward.xlsx"},
+    "pe": "pe/pe.xlsx",
     "eps": "eps.xlsx",
-    "opt": "opt.xlsx",
+    "opt":"opt.xlsx"
 }
 
 ROOT_PATH = os.path.abspath(os.curdir).replace("\\", "/")
