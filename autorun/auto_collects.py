@@ -787,7 +787,7 @@ def bourseview_price_history(stock_name, start=first_day, end=last_day):
         sleep(2 * break_time)
 
         # replace last file
-        new_path = f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{structure['pe']['pe']}"
+        new_path = f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{structure['pe']}"
         move_last_file(new_path)
         to_useful_excel(new_path)
 
@@ -1053,3 +1053,38 @@ def check_database(stocks=list(watchlist.keys())):
 
                 if file.split("/")[7] == "pe.xlsx":
                     bourseview_price_history(stock_name)
+
+
+def integrate_database(stocks=list(watchlist.keys())):
+    print(f"login to bourseview")
+    bourseview_login()
+    for stock_name in stocks:
+        eps, opt, pe, deficiencies = find_deficiencies(stock_name)
+
+        if deficiencies != {}:
+            bourseview_search(stock_name)
+
+            for d in deficiencies:
+                print(f"download {stock_name} {d} {deficiencies[d]}")
+
+                if d == "balancesheet":
+                    bourseview_balancesheet(stock_name, time_types=deficiencies[d])
+                if d == "income":
+                    bourseview_income_statement(stock_name, time_types=deficiencies[d])
+                if d == "product":
+                    bourseview_product_revenue(stock_name, time_types=deficiencies[d])
+                if d == "official":
+                    bourseview_official(stock_name, time_types=deficiencies[d])
+                if d == "cashflow":
+                    bourseview_cashflow(stock_name, time_types=deficiencies[d])
+                if d == "cost":
+                    bourseview_cost(stock_name, time_types=deficiencies[d])
+
+        if pe == stock_name:
+            print(stock_name, "pe")
+
+        if eps == stock_name:
+            print(stock_name, "eps")
+
+        if opt == stock_name:
+            print(stock_name, "opt")

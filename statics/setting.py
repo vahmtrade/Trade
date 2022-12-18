@@ -72,8 +72,6 @@ watchlist = {
 }
 
 structure = {
-    "analyse": "analyse/",
-    "detail": "detail_trade/",
     "balance": {
         "yearly": "balancesheet/yearly.xlsx",
         "quarterly": "balancesheet/quarterly.xlsx",
@@ -102,7 +100,9 @@ structure = {
     },
     "cash": {"yearly": "cashflow/yearly.xlsx", "quarterly": "cashflow/quarterly.xlsx"},
     "cost": {"yearly": "cost/yearly.xlsx", "quarterly": "cost/quarterly.xlsx"},
-    "pe": {"pe": "pe/pe.xlsx", "forward": "pe/forward.xlsx"},
+    "analyse": "analyse/",
+    "detail": "detail_trade/",
+    "pe": "pe/pe.xlsx",
     "eps": "eps.xlsx",
     "opt": "opt.xlsx",
 }
