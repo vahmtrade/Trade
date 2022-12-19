@@ -171,9 +171,54 @@ def create_database_structure():
         for file in all_dict_values(structure):
             s = "/".join(file.split("/")[:-1])
 
-            Path(f"{INDUSTRIES_PATH}/{info['indus']}/{stock}{s}").mkdir(
+            Path(f"{INDUSTRIES_PATH}/{info['indus']}/{stock}/{s}").mkdir(
                 parents=True, exist_ok=True
             )
+
+
+def check_stock_files(stock_name):
+    base_files = [
+        f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{s}"
+        for s in all_dict_values(structure)
+        if ".xlsx" in s
+    ]
+
+    stock_types = {
+        "balancesheet": "Balance Sheet",
+        "income": "Income Statements",
+        "cashflow": "Cash Flow",
+        "product": "تولید و فروش",
+        "cost": "بهای تمام شده",
+        "official": "هزینه های عمومی و اداری",
+        "pe": "تاریخچه قیمت",
+    }
+
+    for file in base_files:
+        stock_type = file.split("/")[6]
+
+        if Path(file).exists():
+            try:
+                df = pd.read_excel(file)
+            except:
+                print("old format : ", file)
+
+            try:
+                excel_author = df["Unnamed: 1"][0]
+                excel_type = df["Unnamed: 1"][4]
+                excel_token = (df["Unnamed: 1"][3]).replace("\u200c", "").split("-")[0]
+
+                if excel_author != "Pouya Finance":
+                    print("not bourseview : ", file)
+
+                if excel_type != stock_types[stock_type]:
+                    print("unmatch type : ", file)
+
+                if excel_token != watchlist[stock_name]["token"]:
+                    print("unmatch name :", file)
+
+            except:
+                if "opt.xlsx" not in file and "eps.xlsx" not in file:
+                    print("unmatch file :", file)
 
 
 def find_deficiencies(stock_name):
@@ -184,18 +229,20 @@ def find_deficiencies(stock_name):
         if ".xlsx" in s
     ]
 
+    files = [file for file in base_files if not Path(file).exists()]
     deficiencies = defaultdict(list)
     stock_types, time_types = [], []
-    eps, opt, pe = "", "", ""
+    pe = False
+    opt = False
+    eps = False
 
-    files = [file for file in base_files if not Path(file).exists()]
     for file in files:
         if "eps.xlsx" in file:
-            eps = stock_name
+            eps = True
         elif "opt.xlsx" in file:
-            opt = stock_name
+            opt = True
         elif "pe.xlsx" in file:
-            pe = stock_name
+            pe = True
 
         else:
             stock_types.append(file.split("/")[6].split(".")[0])
@@ -208,4 +255,4 @@ def find_deficiencies(stock_name):
     for i in deficiencies:
         deficiencies[i] = list(set(deficiencies[i]))
 
-    return eps, opt, pe, deficiencies
+    return deficiencies, pe, opt, eps
