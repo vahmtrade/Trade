@@ -324,7 +324,7 @@ def tse_buy_sell_volume(stock_name):
     # export excel
     df = pd.DataFrame([buy_sell[a : a + 6] for a in range(0, len(buy_sell), 6)])
     df.to_excel(
-        f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/buy_sell_volume.xlsx",
+        f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}.xlsx",
         index=False,
     )
 
@@ -916,8 +916,8 @@ def bourseview_macro(start=first_day, end=last_day):
         sleep(break_time)
 
         # replace last file
-        Path(f"{DB}/{MACRO_PATH.split('/')[0]}").mkdir(parents=True, exist_ok=True)
-        move_last_file(f"{DB}/{MACRO_PATH}")
+        Path(MACRO_PATH).mkdir(parents=True, exist_ok=True)
+        move_last_file(f"{MACRO_PATH}/macro.xlsx")
 
     except Exception as err:
         print(f"cant download macro data : {err}")

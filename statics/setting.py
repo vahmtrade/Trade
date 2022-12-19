@@ -120,10 +120,14 @@ structure = {
 
 ROOT_PATH = os.path.abspath(os.curdir).replace("\\", "/")
 DB = f"{ROOT_PATH}/database"
-INDUSTRIES_PATH = f"{DB}/industries"
-MACRO_PATH = "macro/macro.xlsx"
 WINDOWS_FIREFOX_DRIVER_PATH = f"{ROOT_PATH}/statics/geckodriver.exe"
 LINUX_FIREFOX_DRIVER_PATH = f"{ROOT_PATH}/statics/geckodriver"
+
+INDUSTRIES_PATH = f"{DB}/industries"
+MACRO_PATH = f"{DB}/macro"
+FOREX_PATH = f"{DB}/forex"
+PICKLES_PATH = f"{DB}/watchlist"
+
 
 today = JalaliDate.today()
 first_day = f"{today.year-10:02d}/{today.month:02d}/{today.day-1:02d}"
