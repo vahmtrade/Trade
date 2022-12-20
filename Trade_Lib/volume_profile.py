@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from statics.setting import DB
+from statics.setting import *
 
 
 def volume_profile(stock, date_start, bins):

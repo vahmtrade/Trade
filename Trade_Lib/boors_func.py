@@ -25,7 +25,7 @@ from Trade_Lib.strategy import SmaTester, TesterOneSide, TesterOneSidePrice
 plt.style.use("seaborn")
 
 
-def save_watchlist(date):
+def save_watchlist(date=today_8digit):
     """save all stocks data in one file"""
 
     data = {}
@@ -4871,7 +4871,7 @@ class Stock:
     def analyse_detail_trade(self, date):
         # read raw data
         df = pd.read_excel(
-            f"{INDUSTRIES_PATH}/{self.industry}/{self.Name}/detail_trade/{date}.xlsx"
+            f"{INDUSTRIES_PATH}/{self.industry}/{self.Name}/{structure['detail']}{date}.xlsx"
         )
         # select desired data
         data = df[["Unnamed: 2", "Unnamed: 3", "Unnamed: 4", "Unnamed: 5"]]

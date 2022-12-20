@@ -175,6 +175,10 @@ def create_database_structure():
                 parents=True, exist_ok=True
             )
 
+    Path(MACRO_PATH).mkdir(parents=True, exist_ok=True)
+    Path(FOREX_PATH).mkdir(parents=True, exist_ok=True)
+    Path(PICKLES_PATH).mkdir(parents=True, exist_ok=True)
+
 
 def check_stock_files(stock_name):
     base_files = [

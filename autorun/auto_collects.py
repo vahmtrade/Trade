@@ -13,6 +13,7 @@ from statics.setting import *
 from statics.secrets import *
 from statics.driver_setup import *
 from preprocess.basic_modules import *
+from Trade_Lib.strategy import TesterOneSide
 
 # create driver for Linux and Windows
 if platform.system() == "Linux":
@@ -37,46 +38,51 @@ driver.maximize_window()
 
 def codal_login():
     """login into codal"""
+    try:
+        # get page
+        driver.get("https://www.codal.ir")
+        sleep(break_time)
 
-    # get page
-    driver.get("https://www.codal.ir")
-    sleep(break_time)
+        # select 'jostojoye etelaye'
+        driver.find_element(By.XPATH, '//*[@id="aSearch"]').click()
+        sleep(break_time)
 
-    # select 'jostojoye etelaye'
-    driver.find_element(By.XPATH, '//*[@id="aSearch"]').click()
-    sleep(break_time)
+    except Exception as err:
+        print(f"cant login into codal : {err}")
 
 
 def codal_search(stock_name):
     """search stock in codal"""
+    try:
+        # click searck button
+        driver.find_element(
+            By.XPATH,
+            "//*[@id='collapse-search-1']/div[2]/div[1]/div/div",
+        ).click()
+        sleep(break_time)
 
-    # click searck button
-    driver.find_element(
-        By.XPATH,
-        "//*[@id='collapse-search-1']/div[2]/div[1]/div/div",
-    ).click()
-    sleep(break_time)
+        # send stock name
+        driver.find_element(By.XPATH, '//*[@id="txtSymbol"]').clear()
+        sleep(break_time)
 
-    # send stock name
-    driver.find_element(By.XPATH, '//*[@id="txtSymbol"]').clear()
-    sleep(break_time)
+        driver.find_element(By.XPATH, '//*[@id="txtSymbol"]').send_keys(
+            watchlist[stock_name]["name"]
+        )
+        sleep(break_time)
 
-    driver.find_element(By.XPATH, '//*[@id="txtSymbol"]').send_keys(
-        watchlist[stock_name]["name"]
-    )
-    sleep(break_time)
+        # select first choice
+        driver.find_element(
+            By.XPATH,
+            "//*[@id='ui-select-choices-row-0-0']/div",
+        ).click()
+        sleep(break_time)
 
-    # select first choice
-    driver.find_element(
-        By.XPATH,
-        "//*[@id='ui-select-choices-row-0-0']/div",
-    ).click()
-    sleep(break_time)
+    except Exception as err:
+        print(f"cant codal search {stock_name} : {err}")
 
 
 def codal_eps(stock_name, n=5):
     """create eps"""
-
     try:
         # click 'davat majamea'
         driver.find_element(
@@ -332,54 +338,68 @@ def tse_buy_sell_volume(stock_name):
 def bourseview_login():
     """login into bourseview panel"""
 
-    # get page
-    driver.get("https://www.bourseview.com/home/#/account/login")
-    sleep(break_time)
-
-    # go to login page
-    driver.find_element(
-        By.XPATH, "//a[@class='web-app-log-in-mobile web-app-log-in-btn']"
-    ).click()
-    sleep(break_time)
-
-    # send username
-    driver.find_element(By.XPATH, "//input[@id='Username']").send_keys(bourseview_user)
-    sleep(break_time)
-
-    # send password
-    driver.find_element(By.XPATH, "//input[@id='Password']").send_keys(bourseview_pass)
-    sleep(break_time)
-
-    # login
-    driver.find_element(By.XPATH, "//*[@id='submit_btn']").click()
-    sleep(6 * break_time)
-
     try:
-        # block pop-ups
-        driver.find_element(By.XPATH, "//*[@id='dialog_1']/div[1]/div[1]/span").click()
+        # get page
+        driver.get("https://www.bourseview.com/home/#/account/login")
         sleep(break_time)
 
-    except:
-        pass
+        # go to login page
+        driver.find_element(
+            By.XPATH, "//a[@class='web-app-log-in-mobile web-app-log-in-btn']"
+        ).click()
+        sleep(break_time)
+
+        # send username
+        driver.find_element(By.XPATH, "//input[@id='Username']").send_keys(
+            bourseview_user
+        )
+        sleep(break_time)
+
+        # send password
+        driver.find_element(By.XPATH, "//input[@id='Password']").send_keys(
+            bourseview_pass
+        )
+        sleep(break_time)
+
+        # login
+        driver.find_element(By.XPATH, "//*[@id='submit_btn']").click()
+        sleep(6 * break_time)
+
+        try:
+            # block pop-ups
+            driver.find_element(
+                By.XPATH, "//*[@id='dialog_1']/div[1]/div[1]/span"
+            ).click()
+            sleep(break_time)
+
+        except:
+            pass
+
+    except Exception as err:
+        print(f"cant login into bourseview : {err}")
 
 
 def bourseview_search(stock_name):
     """search stock in bourseview"""
 
-    # search stock name
-    driver.find_element(By.XPATH, "//*[@id='input-0']").clear()
-    sleep(break_time)
-    driver.find_element(By.XPATH, "//*[@id='input-0']").send_keys(
-        watchlist[stock_name]["token"]
-    )
-    sleep(break_time)
+    try:
+        # search stock name
+        driver.find_element(By.XPATH, "//*[@id='input-0']").clear()
+        sleep(break_time)
+        driver.find_element(By.XPATH, "//*[@id='input-0']").send_keys(
+            watchlist[stock_name]["token"]
+        )
+        sleep(break_time)
 
-    # select first choice
-    driver.find_element(
-        By.XPATH,
-        "/html/body/md-virtual-repeat-container/div/div[2]/ul/li[1]/md-autocomplete-parent-scope/div/div/div[1]",
-    ).click()
-    sleep(2 * break_time)
+        # select first choice
+        driver.find_element(
+            By.XPATH,
+            "/html/body/md-virtual-repeat-container/div/div[2]/ul/li[1]/md-autocomplete-parent-scope/div/div/div[1]",
+        ).click()
+        sleep(2 * break_time)
+
+    except Exception as err:
+        print(f"cant bourseview search {stock_name} : {err}")
 
 
 def bourseview_balancesheet(stock_name, y=5, q=5, time_types=["yearly", "quarterly"]):
@@ -916,7 +936,6 @@ def bourseview_macro(start=first_day, end=last_day):
         sleep(break_time)
 
         # replace last file
-        Path(MACRO_PATH).mkdir(parents=True, exist_ok=True)
         move_last_file(f"{MACRO_PATH}/macro.xlsx")
 
     except Exception as err:
@@ -956,6 +975,7 @@ def integrate_database(stocks=list(watchlist.keys())):
     codal_login()
     for stock_name in stocks:
         if find_deficiencies(stock_name)[3]:
+            codal_search(stock_name)
             codal_eps(stock_name)
 
 
