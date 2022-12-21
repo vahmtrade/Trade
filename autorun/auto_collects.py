@@ -1,10 +1,8 @@
-import os
 import re
 import platform
 import pandas as pd
 
 from time import sleep
-from pathlib import Path
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -13,7 +11,6 @@ from statics.setting import *
 from statics.secrets import *
 from statics.driver_setup import *
 from preprocess.basic_modules import *
-from Trade_Lib.strategy import TesterOneSide
 
 # create driver for Linux and Windows
 if platform.system() == "Linux":

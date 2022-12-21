@@ -8,6 +8,7 @@ import win32com.client as win32
 
 from pathlib import Path
 from collections import defaultdict
+from itertools import tee
 from statics.setting import *
 
 
@@ -104,6 +105,27 @@ def best_table_id(data_tables):
     return table_id
 
 
+def only_zero_inequality(n):
+    try:
+        n = float(n)
+
+    except:
+        if type(n) != float:
+            return None
+
+    if n == 0:
+        return None
+
+    else:
+        return n
+
+
+def pairwise(iterable):
+    a, b = tee(iterable)
+    next(b, None)
+    return zip(a, b)
+
+
 def to_useful_excel(file_path):
     """convert bourseview excel to new excel that pandas use it"""
     if platform.system() == "Windows":
@@ -197,14 +219,41 @@ def check_stock_files(stock_name):
         "pe": "تاریخچه قیمت",
     }
 
+    step_types = {1: "monthly", 3: "quarterly", 0: "yearly"}
+
     for file in base_files:
-        stock_type = file.split("/")[6]
 
         if Path(file).exists():
+
             try:
                 df = pd.read_excel(file)
+                if df.applymap(only_zero_inequality).isnull().all().all():
+                    print(f"all data zero : {file}")
+
             except:
                 print("old format : ", file)
+
+            try:
+                stock_type = file.split("/")[6]
+                time_type = file.split("/")[7].split(".")[0].split("_")[0]
+
+            except:
+                pass
+
+            try:
+                timeids = re.findall(regex_en_timeid_q, str(df.loc[6]))
+                time_steps = list(map(lambda x: int(x.split("/")[1]), timeids))
+                step_type = sorted(
+                    list(set([abs(a - b) for a, b in pairwise(time_steps)])),
+                    reverse=False,
+                )
+                excel_time = step_types[step_type[0]]
+
+                if excel_time != time_type:
+                    print("unmatch time :",file)
+
+            except:
+                pass
 
             try:
                 excel_author = df["Unnamed: 1"][0]
@@ -221,8 +270,7 @@ def check_stock_files(stock_name):
                     print("unmatch name :", file)
 
             except:
-                if "opt.xlsx" not in file and "eps.xlsx" not in file:
-                    print("unmatch file :", file)
+                pass
 
 
 def find_deficiencies(stock_name):
