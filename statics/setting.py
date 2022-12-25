@@ -77,6 +77,8 @@ watchlist = {
     'dejaber':{'indus':'darou','token':'دجابر','name':'داروسازی جابر ابن حیان'},
     'feghadir':{'indus':'folad','token':'فغدیر','name':'آهن و فولاد غدیر ایرانیان'},
     'kimiatec':{'indus':'shoyande','token':'کیمیاتک','name':'آریان کیمیا تک'},
+    'ghesalem':{'indus':'ghaza','token':'غسالم','name':'سالمین'},
+    'ghevita':{'indus':'ghaza','token':'غویتا','name':'ویتانا'},
 
 
 }
