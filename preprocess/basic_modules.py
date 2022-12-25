@@ -8,6 +8,7 @@ import win32com.client as win32
 
 from pathlib import Path
 from collections import defaultdict
+from itertools import tee
 from statics.setting import *
 
 
@@ -104,6 +105,27 @@ def best_table_id(data_tables):
     return table_id
 
 
+def only_zero_inequality(n):
+    try:
+        n = float(n)
+
+    except:
+        if type(n) != float:
+            return None
+
+    if n == 0:
+        return None
+
+    else:
+        return n
+
+
+def pairwise(iterable):
+    a, b = tee(iterable)
+    next(b, None)
+    return zip(a, b)
+
+
 def to_useful_excel(file_path):
     """convert bourseview excel to new excel that pandas use it"""
     if platform.system() == "Windows":
@@ -175,6 +197,81 @@ def create_database_structure():
                 parents=True, exist_ok=True
             )
 
+    Path(MACRO_PATH).mkdir(parents=True, exist_ok=True)
+    Path(FOREX_PATH).mkdir(parents=True, exist_ok=True)
+    Path(PICKLES_PATH).mkdir(parents=True, exist_ok=True)
+
+
+def check_stock_files(stock_name):
+    base_files = [
+        f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{s}"
+        for s in all_dict_values(structure)
+        if ".xlsx" in s
+    ]
+
+    stock_types = {
+        "balancesheet": "Balance Sheet",
+        "income": "Income Statements",
+        "cashflow": "Cash Flow",
+        "product": "تولید و فروش",
+        "cost": "بهای تمام شده",
+        "official": "هزینه های عمومی و اداری",
+        "pe": "تاریخچه قیمت",
+    }
+
+    step_types = {1: "monthly", 3: "quarterly", 0: "yearly"}
+
+    for file in base_files:
+
+        if Path(file).exists():
+
+            try:
+                df = pd.read_excel(file)
+                if df.applymap(only_zero_inequality).isnull().all().all():
+                    print(f"all data zero : {file}")
+
+            except:
+                print("old format : ", file)
+
+            try:
+                stock_type = file.split("/")[6]
+                time_type = file.split("/")[7].split(".")[0].split("_")[0]
+
+            except:
+                pass
+
+            try:
+                timeids = re.findall(regex_en_timeid_q, str(df.loc[6]))
+                time_steps = list(map(lambda x: int(x.split("/")[1]), timeids))
+                step_type = sorted(
+                    list(set([abs(a - b) for a, b in pairwise(time_steps)])),
+                    reverse=False,
+                )
+                excel_time = step_types[step_type[0]]
+
+                if excel_time != time_type:
+                    print("unmatch time :",file)
+
+            except:
+                pass
+
+            try:
+                excel_author = df["Unnamed: 1"][0]
+                excel_type = df["Unnamed: 1"][4]
+                excel_token = (df["Unnamed: 1"][3]).replace("\u200c", "").split("-")[0]
+
+                if excel_author != "Pouya Finance":
+                    print("not bourseview : ", file)
+
+                if excel_type != stock_types[stock_type]:
+                    print("unmatch type : ", file)
+
+                if excel_token != watchlist[stock_name]["token"]:
+                    print("unmatch name :", file)
+
+            except:
+                pass
+
 
 def find_deficiencies(stock_name):
 
@@ -184,18 +281,20 @@ def find_deficiencies(stock_name):
         if ".xlsx" in s
     ]
 
+    files = [file for file in base_files if not Path(file).exists()]
     deficiencies = defaultdict(list)
     stock_types, time_types = [], []
-    eps, opt, pe = "", "", ""
+    pe = False
+    opt = False
+    eps = False
 
-    files = [file for file in base_files if not Path(file).exists()]
     for file in files:
         if "eps.xlsx" in file:
-            eps = stock_name
+            eps = True
         elif "opt.xlsx" in file:
-            opt = stock_name
+            opt = True
         elif "pe.xlsx" in file:
-            pe = stock_name
+            pe = True
 
         else:
             stock_types.append(file.split("/")[6].split(".")[0])
@@ -208,4 +307,4 @@ def find_deficiencies(stock_name):
     for i in deficiencies:
         deficiencies[i] = list(set(deficiencies[i]))
 
-    return eps, opt, pe, deficiencies
+    return deficiencies, pe, opt, eps

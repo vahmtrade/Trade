@@ -383,7 +383,7 @@ class Economy:
     def read_index(self):
         ########## Read pmi data #############
         service_pmi = pd.read_excel(
-            f"{DB}/forex_database/{self.country}.xlsx", sheet_name="service pmi"
+            f"{FOREX_PATH}/{self.country}.xlsx", sheet_name="service pmi"
         )
         try:
             for i in service_pmi.index:
@@ -400,7 +400,7 @@ class Economy:
             print(f"add service_pmi {self.country}")
         try:
             manufacturing_pmi = pd.read_excel(
-                f"{DB}/forex_database/{self.country}.xlsx",
+                f"{FOREX_PATH}/{self.country}.xlsx",
                 sheet_name="manufacturing pmi",
             )
             for i in manufacturing_pmi.index:
@@ -418,7 +418,7 @@ class Economy:
         ########### Read I.R data #############
         try:
             ir = pd.read_excel(
-                f"{DB}/forex_database/{self.country}.xlsx", sheet_name="ir"
+                f"{FOREX_PATH}/{self.country}.xlsx", sheet_name="ir"
             )
             # chnge type of data to datetime
             for i in ir.index:
@@ -435,7 +435,7 @@ class Economy:
         # GDP Q o Q
         try:
             gdp_q = pd.read_excel(
-                f"{DB}/forex_database/{self.country}.xlsx", sheet_name="gdp qoq"
+                f"{FOREX_PATH}/{self.country}.xlsx", sheet_name="gdp qoq"
             )
             # chnge type of data to datetime
             for i in gdp_q.index:
@@ -467,7 +467,7 @@ class Economy:
         # GDP Y o Y
         try:
             gdp_y = pd.read_excel(
-                f"{DB}/forex_database/{self.country}.xlsx", sheet_name="gdp yoy"
+                f"{FOREX_PATH}/{self.country}.xlsx", sheet_name="gdp yoy"
             )
             # chnge type of data to datetime
             for i in gdp_y.index:
@@ -483,7 +483,7 @@ class Economy:
         ########### Read unemployment_rate ############
         try:
             unemployment = pd.read_excel(
-                f"{DB}/forex_database/{self.country}.xlsx",
+                f"{FOREX_PATH}/{self.country}.xlsx",
                 sheet_name="unemployment rate",
             )
             # chnge type of data to datetime
@@ -503,7 +503,7 @@ class Economy:
         # cpi_mom
         try:
             cpi_m = pd.read_excel(
-                f"{DB}/forex_database/{self.country}.xlsx", sheet_name="cpi mom"
+                f"{FOREX_PATH}/{self.country}.xlsx", sheet_name="cpi mom"
             )
             # chnge type of data to datetime
             for i in cpi_m.index:
@@ -519,7 +519,7 @@ class Economy:
         # cpi_yoy
         try:
             cpi_y = pd.read_excel(
-                f"{DB}/forex_database/{self.country}.xlsx", sheet_name="cpi yoy"
+                f"{FOREX_PATH}/{self.country}.xlsx", sheet_name="cpi yoy"
             )
             # chnge type of data to datetime
             for i in cpi_y.index:
@@ -535,7 +535,7 @@ class Economy:
         # ppi_mom
         try:
             ppi_m = pd.read_excel(
-                f"{DB}/forex_database/{self.country}.xlsx", sheet_name="ppi mom"
+                f"{FOREX_PATH}/{self.country}.xlsx", sheet_name="ppi mom"
             )
             # chnge type of data to datetime
             for i in ppi_m.index:
@@ -551,7 +551,7 @@ class Economy:
         # ppi_yoy
         try:
             ppi_y = pd.read_excel(
-                f"{DB}/forex_database/{self.country}.xlsx", sheet_name="ppi yoy"
+                f"{FOREX_PATH}/{self.country}.xlsx", sheet_name="ppi yoy"
             )
             # chnge type of data to datetime
             for i in ppi_y.index:

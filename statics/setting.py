@@ -10,7 +10,6 @@ watchlist = {
     "kermasha": {"indus": "urea", "token": "کرماشا", "name": "صنایع پتروشیمی کرمانشاه"},
     "khorasan": {"indus": "urea", "token": "خراسان", "name": "پتروشیمی خراسان"},
     "shapdis": {"indus": "urea", "token": "شپدیس", "name": "پتروشیمی پردیس"},
-    "shepoly": {"indus": "nasaji", "token": "شپلی", "name": "پلی اکریل ایران"},
     "pekavir": {"indus": "lastic", "token": "پکویر", "name": "کویر تایر"},
     "pekerman": {"indus": "lastic", "token": "پکرمان", "name": "گروه صنعتی بارز"},
     "sekhash": {"indus": "siman", "token": "سخاش", "name": "سیمان خاش"},
@@ -112,20 +111,25 @@ structure = {
     "cash": {"yearly": "cashflow/yearly.xlsx", "quarterly": "cashflow/quarterly.xlsx"},
     "cost": {"yearly": "cost/yearly.xlsx", "quarterly": "cost/quarterly.xlsx"},
     "analyse": "analyse/",
-    "detail": "detail_trade/",
+    "detail": "detail/",
     "pe": "pe/pe.xlsx",
     "eps": "eps.xlsx",
-    "opt":"opt.xlsx"
+    "opt": "opt.xlsx",
 }
 
 ROOT_PATH = os.path.abspath(os.curdir).replace("\\", "/")
 DB = f"{ROOT_PATH}/database"
-INDUSTRIES_PATH = f"{DB}/industries"
-MACRO_PATH = "macro/macro.xlsx"
 WINDOWS_FIREFOX_DRIVER_PATH = f"{ROOT_PATH}/statics/geckodriver.exe"
 LINUX_FIREFOX_DRIVER_PATH = f"{ROOT_PATH}/statics/geckodriver"
 
+INDUSTRIES_PATH = f"{DB}/industries"
+MACRO_PATH = f"{DB}/macro"
+FOREX_PATH = f"{DB}/forex"
+PICKLES_PATH = f"{DB}/watchlist"
+
+
 today = JalaliDate.today()
+today_8digit = f"{today.year:02d}{today.month:02d}{today.day:02d}"
 first_day = f"{today.year-10:02d}/{today.month:02d}/{today.day-1:02d}"
 last_day = f"{today.year:02d}/{today.month:02d}/{today.day-1:02d}"
 

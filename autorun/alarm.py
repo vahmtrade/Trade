@@ -2,8 +2,8 @@ import pickle
 import smtplib, ssl
 from email.message import EmailMessage
 
-from statics.setting import DB, watchlist
-from statics.secrets import sender, sender_pass, receiver
+from statics.setting import *
+from statics.secrets import *
 from Trade_Lib.boors_func import Stock
 
 context = ssl.create_default_context()
@@ -21,7 +21,7 @@ with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
     alarm_text = []
 
     # create all stocks in watchlist
-    for s in list(watchlist.keys())[:2]:
+    for s in list(watchlist.keys())[-5:]:
         stock = Stock(s)
 
         data[stock.Name] = stock

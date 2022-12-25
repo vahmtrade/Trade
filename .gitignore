@@ -7,9 +7,7 @@ __pycache__
 *.pdf
 *.docx
 *.pkl
-*.txt
 
-/ramanu
 /_temp
 /database/Portfolio
 /statics/secrets.py

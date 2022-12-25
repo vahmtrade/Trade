@@ -89,7 +89,7 @@ class TesterOneSide:
         df["Performance"] = resault
         industry = watchlist[self.name]["indus"]
         df = df.sort_values("Performance", ascending=False)
-        df.to_excel(f"{INDUSTRIES_PATH}/{industry}/{self.name}/opt.xlsx")
+        df.to_excel(f"{INDUSTRIES_PATH}/{industry}/{self.name}/{structure['opt']}")
         return df
 
     def plot_position(self):

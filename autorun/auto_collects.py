@@ -1,10 +1,8 @@
-import os
 import re
 import platform
 import pandas as pd
 
 from time import sleep
-from pathlib import Path
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -13,7 +11,6 @@ from statics.setting import *
 from statics.secrets import *
 from statics.driver_setup import *
 from preprocess.basic_modules import *
-
 
 # create driver for Linux and Windows
 if platform.system() == "Linux":
@@ -38,46 +35,51 @@ driver.maximize_window()
 
 def codal_login():
     """login into codal"""
+    try:
+        # get page
+        driver.get("https://www.codal.ir")
+        sleep(break_time)
 
-    # get page
-    driver.get("https://www.codal.ir")
-    sleep(break_time)
+        # select 'jostojoye etelaye'
+        driver.find_element(By.XPATH, '//*[@id="aSearch"]').click()
+        sleep(break_time)
 
-    # select 'jostojoye etelaye'
-    driver.find_element(By.XPATH, '//*[@id="aSearch"]').click()
-    sleep(break_time)
+    except Exception as err:
+        print(f"cant login into codal : {err}")
 
 
 def codal_search(stock_name):
     """search stock in codal"""
+    try:
+        # click searck button
+        driver.find_element(
+            By.XPATH,
+            "//*[@id='collapse-search-1']/div[2]/div[1]/div/div",
+        ).click()
+        sleep(break_time)
 
-    # click searck button
-    driver.find_element(
-        By.XPATH,
-        "//*[@id='collapse-search-1']/div[2]/div[1]/div/div",
-    ).click()
-    sleep(break_time)
+        # send stock name
+        driver.find_element(By.XPATH, '//*[@id="txtSymbol"]').clear()
+        sleep(break_time)
 
-    # send stock name
-    driver.find_element(By.XPATH, '//*[@id="txtSymbol"]').clear()
-    sleep(break_time)
+        driver.find_element(By.XPATH, '//*[@id="txtSymbol"]').send_keys(
+            watchlist[stock_name]["name"]
+        )
+        sleep(break_time)
 
-    driver.find_element(By.XPATH, '//*[@id="txtSymbol"]').send_keys(
-        watchlist[stock_name]["name"]
-    )
-    sleep(break_time)
+        # select first choice
+        driver.find_element(
+            By.XPATH,
+            "//*[@id='ui-select-choices-row-0-0']/div",
+        ).click()
+        sleep(break_time)
 
-    # select first choice
-    driver.find_element(
-        By.XPATH,
-        "//*[@id='ui-select-choices-row-0-0']/div",
-    ).click()
-    sleep(break_time)
+    except Exception as err:
+        print(f"cant codal search {stock_name} : {err}")
 
 
 def codal_eps(stock_name, n=5):
     """create eps"""
-
     try:
         # click 'davat majamea'
         driver.find_element(
@@ -325,7 +327,7 @@ def tse_buy_sell_volume(stock_name):
     # export excel
     df = pd.DataFrame([buy_sell[a : a + 6] for a in range(0, len(buy_sell), 6)])
     df.to_excel(
-        f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/buy_sell_volume.xlsx",
+        f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}.xlsx",
         index=False,
     )
 
@@ -333,54 +335,68 @@ def tse_buy_sell_volume(stock_name):
 def bourseview_login():
     """login into bourseview panel"""
 
-    # get page
-    driver.get("https://www.bourseview.com/home/#/account/login")
-    sleep(break_time)
-
-    # go to login page
-    driver.find_element(
-        By.XPATH, "//a[@class='web-app-log-in-mobile web-app-log-in-btn']"
-    ).click()
-    sleep(break_time)
-
-    # send username
-    driver.find_element(By.XPATH, "//input[@id='Username']").send_keys(bourseview_user)
-    sleep(break_time)
-
-    # send password
-    driver.find_element(By.XPATH, "//input[@id='Password']").send_keys(bourseview_pass)
-    sleep(break_time)
-
-    # login
-    driver.find_element(By.XPATH, "//*[@id='submit_btn']").click()
-    sleep(6 * break_time)
-
     try:
-        # block pop-ups
-        driver.find_element(By.XPATH, "//*[@id='dialog_1']/div[1]/div[1]/span").click()
+        # get page
+        driver.get("https://www.bourseview.com/home/#/account/login")
         sleep(break_time)
 
-    except:
-        pass
+        # go to login page
+        driver.find_element(
+            By.XPATH, "//a[@class='web-app-log-in-mobile web-app-log-in-btn']"
+        ).click()
+        sleep(break_time)
+
+        # send username
+        driver.find_element(By.XPATH, "//input[@id='Username']").send_keys(
+            bourseview_user
+        )
+        sleep(break_time)
+
+        # send password
+        driver.find_element(By.XPATH, "//input[@id='Password']").send_keys(
+            bourseview_pass
+        )
+        sleep(break_time)
+
+        # login
+        driver.find_element(By.XPATH, "//*[@id='submit_btn']").click()
+        sleep(6 * break_time)
+
+        try:
+            # block pop-ups
+            driver.find_element(
+                By.XPATH, "//*[@id='dialog_1']/div[1]/div[1]/span"
+            ).click()
+            sleep(break_time)
+
+        except:
+            pass
+
+    except Exception as err:
+        print(f"cant login into bourseview : {err}")
 
 
 def bourseview_search(stock_name):
     """search stock in bourseview"""
 
-    # search stock name
-    driver.find_element(By.XPATH, "//*[@id='input-0']").clear()
-    sleep(break_time)
-    driver.find_element(By.XPATH, "//*[@id='input-0']").send_keys(
-        watchlist[stock_name]["token"]
-    )
-    sleep(break_time)
+    try:
+        # search stock name
+        driver.find_element(By.XPATH, "//*[@id='input-0']").clear()
+        sleep(break_time)
+        driver.find_element(By.XPATH, "//*[@id='input-0']").send_keys(
+            watchlist[stock_name]["token"]
+        )
+        sleep(break_time)
 
-    # select first choice
-    driver.find_element(
-        By.XPATH,
-        "/html/body/md-virtual-repeat-container/div/div[2]/ul/li[1]/md-autocomplete-parent-scope/div/div/div[1]",
-    ).click()
-    sleep(2 * break_time)
+        # select first choice
+        driver.find_element(
+            By.XPATH,
+            "/html/body/md-virtual-repeat-container/div/div[2]/ul/li[1]/md-autocomplete-parent-scope/div/div/div[1]",
+        ).click()
+        sleep(2 * break_time)
+
+    except Exception as err:
+        print(f"cant bourseview search {stock_name} : {err}")
 
 
 def bourseview_balancesheet(stock_name, y=5, q=5, time_types=["yearly", "quarterly"]):
@@ -918,11 +934,47 @@ def bourseview_macro(start=first_day, end=last_day):
         sleep(break_time)
 
         # replace last file
-        Path(f"{DB}/{MACRO_PATH.split('/')[0]}").mkdir(parents=True, exist_ok=True)
-        move_last_file(f"{DB}/{MACRO_PATH}")
+        move_last_file(f"{MACRO_PATH}/macro.xlsx")
 
     except Exception as err:
         print(f"cant download macro data : {err}")
+
+
+def integrate_database(stocks=list(watchlist.keys())):
+    create_database_structure()
+
+    bourseview_login()
+    for stock_name in stocks:
+
+        deficiencies = find_deficiencies(stock_name)[0]
+        if deficiencies != {}:
+            bourseview_search(stock_name)
+            for d in deficiencies:
+                if d == "balancesheet":
+                    bourseview_balancesheet(stock_name, time_types=deficiencies[d])
+                if d == "income":
+                    bourseview_income_statement(stock_name, time_types=deficiencies[d])
+                if d == "product":
+                    bourseview_product_revenue(stock_name, time_types=deficiencies[d])
+                if d == "official":
+                    bourseview_official(stock_name, time_types=deficiencies[d])
+                if d == "cashflow":
+                    bourseview_cashflow(stock_name, time_types=deficiencies[d])
+                if d == "cost":
+                    bourseview_cost(stock_name, time_types=deficiencies[d])
+
+        if find_deficiencies(stock_name)[1]:
+            bourseview_search(stock_name)
+            bourseview_price_history(stock_name)
+
+        if find_deficiencies(stock_name)[2]:
+            print(f"{stock_name} not have opt file")
+
+    codal_login()
+    for stock_name in stocks:
+        if find_deficiencies(stock_name)[3]:
+            codal_search(stock_name)
+            codal_eps(stock_name)
 
 
 def update_database(
@@ -932,7 +984,6 @@ def update_database(
     monthly=False,
 ):
     create_database_structure()
-    bourseview_login()
 
     t = []
     if yearly:
@@ -945,9 +996,9 @@ def update_database(
     if monthly:
         t2.append("monthly")
 
+    bourseview_login()
     for stock_name in stocks:
         bourseview_search(stock_name)
-        print(f"download {stock_name} ...")
         bourseview_balancesheet(stock_name, time_types=t)
         bourseview_income_statement(stock_name, time_types=t)
         bourseview_cashflow(stock_name, time_types=t)
@@ -962,141 +1013,3 @@ def update_database(
     for stock_name in stocks:
         codal_search(stock_name)
         codal_eps(stock_name)
-
-
-def check_database(stocks=list(watchlist.keys())):
-    create_database_structure()
-    bourseview_login()
-
-    for stock_name in stocks:
-        # files that must every stock have it
-        base_files = []
-        base_folders = []
-        for s in all_dict_values(structure):
-            if ".xlsx" in s:
-                base_files.append(
-                    f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{s}"
-                )
-            else:
-                base_folders.append(s)
-
-        deficiencies = {}
-        lst_time = []
-        lst_stock_type = []
-        for file in base_files:
-            stock_types = {
-                "balancesheet": "Balance Sheet",
-                "income": "Income Statements",
-                "cashflow": "Cash Flow",
-                "product": "تولید و فروش",
-                "cost": "بهای تمام شده",
-                "official": "هزینه های عمومی و اداری",
-                "pe": "تاریخچه قیمت",
-            }
-            stock_type = file.split("/")[6]
-
-            if Path(file).exists():
-                # check sanity of bourseview excels
-                try:
-                    df = pd.read_excel(file)
-                except:
-                    print("old format : ", file)
-                    # to_useful_excel(file)
-
-                try:
-                    excel_author = df["Unnamed: 1"][0]
-                    excel_type = df["Unnamed: 1"][4]
-                    excel_token = (
-                        (df["Unnamed: 1"][3]).replace("\u200c", "").split("-")[0]
-                    )
-
-                    if excel_author != "Pouya Finance":
-                        print("not bourseview : ", file)
-                        os.remove(file)
-
-                    if excel_type != stock_types[stock_type]:
-                        print("unmatch type : ", file)
-                        os.remove(file)
-
-                    if excel_token != watchlist[stock_name]["token"]:
-                        print("unmatch name :", file)
-                        os.remove(file)
-
-                except:
-                    pass
-
-            else:
-                # file : "E:\Trade\database\industries\ghaza\gheshahdab\balancesheet\quarterly.xlsx"
-                if stock_type not in ["eps.xlsx", "opt.xlsx"]:
-                    time_type = (file.split("/")[7]).split(".")[0]
-                    lst_time.append(time_type)
-                    lst_stock_type.append(stock_type)
-
-
-                    flag_change=False
-                    flag_end=False
-                    for i in range(len(lst_stock_type)):
-                        if (i == len(lst_stock_type) - 1):
-                            flag_end=True
-                        else:
-                            if lst_stock_type[i]!= lst_stock_type[i+1]:   
-                                flag_change = True
-                                deficiencies[lst_stock_type[i+1]] = [lst_time[i+1]]
-                                deficiencies[lst_stock_type[i]] = lst_time.copy()[0:i+1] 
-                                lst_time.clear()   
-                                lst_stock_type.clear() 
-                                break                                                         
-                        if (flag_end) and not(flag_change):
-                            deficiencies[lst_stock_type[i]] = lst_time.copy() 
-
-        print(deficiencies)
-
-        for i in deficiencies:
-            bourseview_search(stock_name)
-            if i == "balancesheet":
-                bourseview_balancesheet(stock_name,time_types=deficiencies[i])
-
-            if i == "income":
-                bourseview_income_statement(stock_name,time_types=deficiencies[i])
-
-            if i == "cashflow":
-                bourseview_cashflow(stock_name,time_types=deficiencies[i])
-
-                if file.split("/")[7] == "pe.xlsx":
-                    bourseview_price_history(stock_name)
-
-
-def integrate_database(stocks=list(watchlist.keys())):
-    print(f"login to bourseview")
-    bourseview_login()
-    for stock_name in stocks:
-        eps, opt, pe, deficiencies = find_deficiencies(stock_name)
-
-        if deficiencies != {}:
-            bourseview_search(stock_name)
-
-            for d in deficiencies:
-                print(f"download {stock_name} {d} {deficiencies[d]}")
-
-                if d == "balancesheet":
-                    bourseview_balancesheet(stock_name, time_types=deficiencies[d])
-                if d == "income":
-                    bourseview_income_statement(stock_name, time_types=deficiencies[d])
-                if d == "product":
-                    bourseview_product_revenue(stock_name, time_types=deficiencies[d])
-                if d == "official":
-                    bourseview_official(stock_name, time_types=deficiencies[d])
-                if d == "cashflow":
-                    bourseview_cashflow(stock_name, time_types=deficiencies[d])
-                if d == "cost":
-                    bourseview_cost(stock_name, time_types=deficiencies[d])
-
-        if pe == stock_name:
-            print(stock_name, "pe")
-            bourseview_search(stock_name)
-            bourseview_price_history(stock_name)
-        if eps == stock_name:
-            print(stock_name, "eps")
-
-        if opt == stock_name:
-            print(stock_name, "opt")
