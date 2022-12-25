@@ -171,7 +171,7 @@ def create_database_structure():
         for file in all_dict_values(structure):
             s = "/".join(file.split("/")[:-1])
 
-            Path(f"{INDUSTRIES_PATH}/{info['indus']}/{stock}{s}").mkdir(
+            Path(f"{INDUSTRIES_PATH}/{info['indus']}/{stock}/{s}").mkdir(
                 parents=True, exist_ok=True
             )
 

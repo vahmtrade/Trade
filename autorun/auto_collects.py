@@ -425,7 +425,6 @@ def bourseview_balancesheet(stock_name, y=5, q=5, time_types=["yearly", "quarter
             # replace last file
             new_path = f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{structure['balance'][time_type]}"
             move_last_file(new_path)
-            to_useful_excel(new_path)
 
     except Exception as err:
         print(f"cant download balancesheet {stock_name} : {err}")
@@ -484,7 +483,6 @@ def bourseview_income_statement(
                 # replace last file
                 new_path = f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{structure['income'][time_type][money_type]}"
                 move_last_file(new_path)
-                to_useful_excel(new_path)
 
     except Exception as err:
         print(f"cant download incomestatement {stock_name} : {err}")
@@ -535,6 +533,7 @@ def bourseview_cashflow(stock_name, y=5, q=5, time_types=["yearly", "quarterly"]
             new_path = f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{structure['cash'][time_type]}"
             move_last_file(new_path)
             to_useful_excel(new_path)
+            sleep(2 * break_time)
 
     except Exception as err:
         print(f"cant download cashflow {stock_name} : {err}")
@@ -610,6 +609,7 @@ def bourseview_product_revenue(
                 new_path = f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{structure['product'][time_type+money_type]}"
                 move_last_file(new_path)
                 to_useful_excel(new_path)
+                sleep(2 * break_time)
 
     except Exception as err:
         print(f"cant download product {stock_name} : {err}")
@@ -670,6 +670,7 @@ def bourseview_cost(stock_name, y=5, q=5, time_types=["yearly", "quarterly"]):
             new_path = f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{structure['cost'][time_type]}"
             move_last_file(new_path)
             to_useful_excel(new_path)
+            sleep(2 * break_time)
 
     except Exception as err:
         print(f"cant download cost {stock_name} : {err}")
@@ -724,6 +725,7 @@ def bourseview_official(stock_name, y=5, q=5, time_types=["yearly", "quarterly"]
             new_path = f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{structure['official'][time_type]}"
             move_last_file(new_path)
             to_useful_excel(new_path)
+            sleep(2 * break_time)
 
     except Exception as err:
         print(f"cant download official {stock_name} : {err}")
@@ -789,7 +791,6 @@ def bourseview_price_history(stock_name, start=first_day, end=last_day):
         # replace last file
         new_path = f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{structure['pe']}"
         move_last_file(new_path)
-        to_useful_excel(new_path)
 
     except:
         print(f"cant download price history of {stock_name}")
@@ -1092,7 +1093,8 @@ def integrate_database(stocks=list(watchlist.keys())):
 
         if pe == stock_name:
             print(stock_name, "pe")
-
+            bourseview_search(stock_name)
+            bourseview_price_history(stock_name)
         if eps == stock_name:
             print(stock_name, "eps")
 
