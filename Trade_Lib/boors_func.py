@@ -42,7 +42,7 @@ def save_watchlist(date=today_8digit):
     with open(f"{PICKLES_PATH}/{date}.pkl", "wb") as file:
         pickle.dump(data, file)
 
-    return errs
+    print(errs)
 
 
 def analyse_watchlist(date):
@@ -71,21 +71,24 @@ def analyse_watchlist(date):
             analyse.loc[stock.Name]["margin_var"] = stock.Risk_income_yearly[1]
             analyse.loc[stock.Name]["last_rate/mean_12"] = (
                 stock.rate_monthly["total"].iloc[-1]
-                / stock.rate_monthly["total"].iloc[-12:].mean()-1
+                / stock.rate_monthly["total"].iloc[-12:].mean()
+                - 1
             )
             analyse.loc[stock.Name]["last_rate_change"] = stock.rate_change_monthly[
                 "total"
             ].iloc[-1]
             analyse.loc[stock.Name]["last_rate/same_year"] = (
                 stock.rate_monthly.iloc[-1]["total"]
-                / stock.rate_monthly.iloc[-13]["total"]-1
+                / stock.rate_monthly.iloc[-13]["total"]
+                - 1
             )
             analyse.loc[stock.Name]["net_profit_change"] = (
                 stock.income_rial_quarterly["Net_Profit"].pct_change().iloc[-1]
             )
             analyse.loc[stock.Name]["net_profit/net_profit_same_last"] = (
                 stock.income_rial_quarterly["Net_Profit"].iloc[-1]
-                / stock.income_rial_quarterly["Net_Profit"].iloc[-5]-1
+                / stock.income_rial_quarterly["Net_Profit"].iloc[-5]
+                - 1
             )
 
         except Exception as err:
@@ -119,10 +122,10 @@ def analyse_watchlist(date):
             "expected_return_historical",
             "expected_return_capm",
             "expected_return",
-            'beta',
-            'cagr_count',
-        ]
-        ,index=data.keys()
+            "beta",
+            "cagr_count",
+        ],
+        index=data.keys(),
     )
     for stock in data.values():
         try:
@@ -143,11 +146,17 @@ def analyse_watchlist(date):
             value.loc[stock.Name]["expected_return_capm"] = stock.k_capm
             value.loc[stock.Name]["expected_return"] = stock.k
             value.loc[stock.Name]["beta"] = stock.beta
-            value.loc[stock.Name]["cagr_count"] = stock.cagr_count-1
+            value.loc[stock.Name]["cagr_count"] = stock.cagr_count - 1
         except Exception as err:
             errs[stock.Name] = err
-    value['value/price']=value['value']/value['price']
-    d={'analyse':analyse,'technical':technical,'value':value,'data':data,'err':errs}
+    value["value/price"] = value["value"] / value["price"]
+    d = {
+        "analyse": analyse,
+        "technical": technical,
+        "value": value,
+        "data": data,
+        "err": errs,
+    }
     return d
 
 
@@ -1178,7 +1187,9 @@ def plot_cagr_stocks(stocks):
 def plot_margin_trend(stocks):
     plt.figure(figsize=[16, 8])
     for i in stocks:
-        plt.plot(i.income_common_rial_yearly[["Gross_Profit"]], label=i.Name, marker="o")
+        plt.plot(
+            i.income_common_rial_yearly[["Gross_Profit"]], label=i.Name, marker="o"
+        )
     plt.legend()
     plt.title("Gross_Profitt_Margin_yearly")
     plt.figure(figsize=[16, 8])
@@ -1188,7 +1199,7 @@ def plot_margin_trend(stocks):
         )
     plt.legend()
     plt.title("Gross_Profit_Margin_quarterly")
- 
+
     plt.figure(figsize=[16, 8])
     for i in stocks:
         plt.plot(i.income_common_rial_yearly[["Net_Profit"]], label=i.Name, marker="o")
@@ -1202,7 +1213,7 @@ def plot_margin_trend(stocks):
     plt.legend()
     plt.title("Net_Profit_Margin_quarterly")
     plt.figure(figsize=[16, 8])
-    
+
 
 def plot_pe_trend_stocks(stocks, year_s=1400, month_s=1, year_e=1401, month_e=12):
     start = pd.to_datetime(JalaliDate(year_s, month_s, 1).to_gregorian())
@@ -1516,6 +1527,7 @@ def merge_same_columns(df):
             pass
     return dup_c
 
+
 def merge_same_index(df):
     dup_c = df.index[df.index.duplicated()]
     for i in dup_c:
@@ -1529,6 +1541,7 @@ def merge_same_index(df):
         except:
             pass
     return dup_c
+
 
 class DesiredPortfolio:
     def __init__(self, names, farsi, start, end):
@@ -2274,7 +2287,7 @@ class Macro:
         data_1401["IR"] = ir_1401
         data_1401["pe"] = pe_1401
         # add future data
-         # create interest_ yearly data
+        # create interest_ yearly data
         yearly_interest = []
         yearly_pe = []
         for i in history.index:
@@ -2285,18 +2298,24 @@ class Macro:
         history["IR"] = yearly_interest
         history["pe"] = yearly_pe
         history.loc[1401, "dollar"] = self.dollar_azad.iloc[-1]["Close"]
-        history.loc[1401, "cpi"]=data_1401['cpi'].iloc[-1]
-        history.loc[1401, "IR"]=self.IR['Close'].iloc[-1]
-        history.loc[1401, "stock"]=self.shakhes_kol['Close'].iloc[-1]
-        history.loc[1401, "pe"]=self.pe['Close'].iloc[-1]
-        for i in ['cash',"current_deposits","non_current_deposits","paper_money",'base_money']:
-            month=data_1401.index[-1]
-            ratio=history.loc[1400,i]/data_1400[i].loc[month]
-            history.loc[1401,i]=ratio*data_1401.loc[month,i]
-        for i in ['import','total_export']:
-           month=data_1401.index[-1]
-           ratio=history.loc[1400,i]/data_1400[i].loc[0:month].sum()
-           history.loc[1401,i]=ratio*data_1401[i].loc[0:month].sum()
+        history.loc[1401, "cpi"] = data_1401["cpi"].iloc[-1]
+        history.loc[1401, "IR"] = self.IR["Close"].iloc[-1]
+        history.loc[1401, "stock"] = self.shakhes_kol["Close"].iloc[-1]
+        history.loc[1401, "pe"] = self.pe["Close"].iloc[-1]
+        for i in [
+            "cash",
+            "current_deposits",
+            "non_current_deposits",
+            "paper_money",
+            "base_money",
+        ]:
+            month = data_1401.index[-1]
+            ratio = history.loc[1400, i] / data_1400[i].loc[month]
+            history.loc[1401, i] = ratio * data_1401.loc[month, i]
+        for i in ["import", "total_export"]:
+            month = data_1401.index[-1]
+            ratio = history.loc[1400, i] / data_1400[i].loc[0:month].sum()
+            history.loc[1401, i] = ratio * data_1401[i].loc[0:month].sum()
 
         # extract monetary index
         monetary = history[
@@ -2306,12 +2325,10 @@ class Macro:
                 "current_deposits",
                 "non_current_deposits",
                 "cash",
-                'dollar'
+                "dollar",
             ]
         ]
-        monetary["ratio_deposits"] = (
-            monetary["current_deposits"] / monetary["cash"]
-        )
+        monetary["ratio_deposits"] = monetary["current_deposits"] / monetary["cash"]
         # extract price index
         price = history[["dollar", "cpi", "ppi", "land", "dollar_land", "stock"]]
         price_90 = price.loc[1390:]
@@ -2325,9 +2342,8 @@ class Macro:
                 "constant_gdp",
                 "cpi",
                 "cash",
-                'IR',
-                'pe',
-
+                "IR",
+                "pe",
             ]
         ]
 
@@ -3296,25 +3312,23 @@ class Stock:
 
     def plot_revenue(self):
         plt.figure()
-        df=self.price_revenue_yearly.copy()
-        df.drop(['total','جمع'],axis=1,inplace=True)
-        arabic_text=list(df.columns)
-        reshaped_text = map(lambda x: arabic_reshaper.reshape(x),arabic_text)
-        bidi_text = map( lambda x:get_display(x),reshaped_text)
-        plt.pie(df.iloc[-1],labels=list(bidi_text),autopct='%2.2f')
-        plt.title(f'{self.Name}')
-        plt.figure(figsize=[20,15])
-        plt.subplot(3,1,1)
-        plt.plot(self.rate_monthly['total'].iloc[-20:],marker='o')
-        plt.title(f'rate {self.Name}')
-        plt.subplot(3,1,2)
-        plt.plot(self.count_revenue_monthly['total'].iloc[-20:],marker='o')
-        plt.title(f'count revenue {self.Name}')
-        plt.subplot(3,1,3)
-        plt.plot(self.price_revenue_monthly['total'].iloc[-20:],marker='o')
-        plt.title(f'price revenue {self.Name}')        
-
-
+        df = self.price_revenue_yearly.copy()
+        df.drop(["total", "جمع"], axis=1, inplace=True)
+        arabic_text = list(df.columns)
+        reshaped_text = map(lambda x: arabic_reshaper.reshape(x), arabic_text)
+        bidi_text = map(lambda x: get_display(x), reshaped_text)
+        plt.pie(df.iloc[-1], labels=list(bidi_text), autopct="%2.2f")
+        plt.title(f"{self.Name}")
+        plt.figure(figsize=[20, 15])
+        plt.subplot(3, 1, 1)
+        plt.plot(self.rate_monthly["total"].iloc[-20:], marker="o")
+        plt.title(f"rate {self.Name}")
+        plt.subplot(3, 1, 2)
+        plt.plot(self.count_revenue_monthly["total"].iloc[-20:], marker="o")
+        plt.title(f"count revenue {self.Name}")
+        plt.subplot(3, 1, 3)
+        plt.plot(self.price_revenue_monthly["total"].iloc[-20:], marker="o")
+        plt.title(f"price revenue {self.Name}")
 
     def create_eps_data(self):
         adress = f"{INDUSTRIES_PATH}/{self.industry}/{self.Name}/{structure['eps']}"
@@ -4427,20 +4441,20 @@ class Stock:
         if (period == "quarterly") | (period == "yearly"):
             delete_empty(categ_cost)
 
-       #merge_same_index
+        # merge_same_index
         merge_same_index(count_product)
         merge_same_index(count_revenue)
         merge_same_index(price_revenue)
-        if (period == "quarterly") | (period == "yearly"):    
+        if (period == "quarterly") | (period == "yearly"):
             merge_same_index(categ_cost)
-        
-        #merge_same_columns   
+
+        # merge_same_columns
         merge_same_columns(count_product)
         merge_same_columns(count_revenue)
         merge_same_columns(price_revenue)
-        if (period == "quarterly") | (period == "yearly"):    
+        if (period == "quarterly") | (period == "yearly"):
             merge_same_columns(categ_cost)
-       
+
         # remove_zero from data
         remove_zero(count_product)
         remove_zero(count_revenue)

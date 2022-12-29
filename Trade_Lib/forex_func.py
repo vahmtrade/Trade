@@ -417,9 +417,7 @@ class Economy:
             print(f"add manufacturing pmi {self.country}")
         ########### Read I.R data #############
         try:
-            ir = pd.read_excel(
-                f"{FOREX_PATH}/{self.country}.xlsx", sheet_name="ir"
-            )
+            ir = pd.read_excel(f"{FOREX_PATH}/{self.country}.xlsx", sheet_name="ir")
             # chnge type of data to datetime
             for i in ir.index:
                 if type(ir.loc[i, "date"]) == str:

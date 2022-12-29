@@ -6,18 +6,56 @@ import platform
 import pandas as pd
 import win32com.client as win32
 
+from datetime import datetime
 from pathlib import Path
 from collections import defaultdict
 from itertools import tee
 from statics.setting import *
 
 
+def benfords_law(nums):
+    ones = list(filter(lambda x: True if str(x)[0] == "1" else False, nums))
+    return len(ones) / len(nums)
+
+
+def pairwise(iterable):
+    a, b = tee(iterable)
+    next(b, None)
+    return zip(a, b)
+
+
+def all_dict_values(data: dict):
+    for v in data.values():
+        if isinstance(v, dict):
+            yield from all_dict_values(v)
+        else:
+            yield v
+
+
+def only_zero_inequality(n):
+    """just show nums != 0"""
+    try:
+        n = float(n)
+
+    except:
+        if type(n) != float:
+            return None
+
+    if n == 0:
+        return None
+
+    else:
+        return n
+
+
 def clarify_number(a, seprator=",", n=2):
-    """12345678 => 12,345,678
+    """
+    12345678 => 12,345,678
 
     -12345678 => (12,345,678)
 
-    12345678.1234 => 12,345,678.12"""
+    12345678.1234 => 12,345,678.12
+    """
 
     is_float = False
     is_negative = False
@@ -59,38 +97,44 @@ def clarify_number(a, seprator=",", n=2):
     return b
 
 
-def to_digits(string):
-    """get a string like '(۲۵۴,۱۵۹,۳۴۷)' [negative] or '۴۳۹,۶۲۸,۱۹۸' [positive] and return a number"""
+def to_digits(a):
+    """
+    (۲۵۴,۱۵۹) : -254159
+    ۴۳۹,۶۲۸ : 439628
+    """
 
-    if isinstance(string, str) == False:
-        return 1
+    if isinstance(a, float) or isinstance(a, int):
+        return a
 
-    en_digits = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-    fa_digits = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"]
+    if isinstance(a, str):
+        en_digits = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+        fa_digits = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"]
 
-    number = ""
-    flag = 0
+        b = ""
+        for s in a:
+            if s in "".join(en_digits) + "".join(fa_digits):
+                for i in range(0, 10):
+                    if s == fa_digits[i]:
+                        s = en_digits[i]
+                b = b + s
 
-    if "(" in string and ")" in string:
-        flag = 1
+        is_negative = False
+        if "(" in a and ")" in a:
+            is_negative = True
 
-    for s in string:
-        if s in "0123456789۰۱۲۳۴۵۶۷۸۹":
-            for i in range(0, 10):
-                if s == fa_digits[i]:
-                    s = en_digits[i]
-            number = number + s
+        if b == "":
+            return False
 
-    try:
-        if flag == 0:
-            number = int(number)
-        if flag == 1:
-            number = -int(number)
+        elif not is_negative:
+            b = int(b)
 
-    except:
-        number = number
+        elif is_negative:
+            b = int(b)
 
-    return number
+        return b
+
+    else:
+        return False
 
 
 def best_table_id(data_tables):
@@ -103,27 +147,6 @@ def best_table_id(data_tables):
             table_id = i
 
     return table_id
-
-
-def only_zero_inequality(n):
-    try:
-        n = float(n)
-
-    except:
-        if type(n) != float:
-            return None
-
-    if n == 0:
-        return None
-
-    else:
-        return n
-
-
-def pairwise(iterable):
-    a, b = tee(iterable)
-    next(b, None)
-    return zip(a, b)
 
 
 def to_useful_excel(file_path):
@@ -163,14 +186,6 @@ def move_last_file(new_path):
         )
 
 
-def all_dict_values(data: dict):
-    for v in data.values():
-        if isinstance(v, dict):
-            yield from all_dict_values(v)
-        else:
-            yield v
-
-
 def list_stock_files(stock_name):
     """return all folders and files of stock in database"""
     stock_dirs = []
@@ -187,6 +202,18 @@ def list_stock_files(stock_name):
     return stock_dirs, stock_files
 
 
+def get_excel_nums(file_path):
+    df = pd.read_excel(file_path)
+    nums = []
+    for i in df.items():
+        for j in df[i[0]].items():
+            num = j[1]
+            if pd.notna(num) and to_digits(num):
+                nums.append(abs(to_digits(num)))
+
+    return nums
+
+
 def create_database_structure():
     """create database folders based on watchlist"""
     for stock, info in watchlist.items():
@@ -200,77 +227,6 @@ def create_database_structure():
     Path(MACRO_PATH).mkdir(parents=True, exist_ok=True)
     Path(FOREX_PATH).mkdir(parents=True, exist_ok=True)
     Path(PICKLES_PATH).mkdir(parents=True, exist_ok=True)
-
-
-def check_stock_files(stock_name):
-    base_files = [
-        f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{s}"
-        for s in all_dict_values(structure)
-        if ".xlsx" in s
-    ]
-
-    stock_types = {
-        "balancesheet": "Balance Sheet",
-        "income": "Income Statements",
-        "cashflow": "Cash Flow",
-        "product": "تولید و فروش",
-        "cost": "بهای تمام شده",
-        "official": "هزینه های عمومی و اداری",
-        "pe": "تاریخچه قیمت",
-    }
-
-    step_types = {1: "monthly", 3: "quarterly", 0: "yearly"}
-
-    for file in base_files:
-
-        if Path(file).exists():
-
-            try:
-                df = pd.read_excel(file)
-                if df.applymap(only_zero_inequality).isnull().all().all():
-                    print(f"all data zero : {file}")
-
-            except:
-                print("old format : ", file)
-
-            try:
-                stock_type = file.split("/")[6]
-                time_type = file.split("/")[7].split(".")[0].split("_")[0]
-
-            except:
-                pass
-
-            try:
-                timeids = re.findall(regex_en_timeid_q, str(df.loc[6]))
-                time_steps = list(map(lambda x: int(x.split("/")[1]), timeids))
-                step_type = sorted(
-                    list(set([abs(a - b) for a, b in pairwise(time_steps)])),
-                    reverse=False,
-                )
-                excel_time = step_types[step_type[0]]
-
-                if excel_time != time_type:
-                    print("unmatch time :",file)
-
-            except:
-                pass
-
-            try:
-                excel_author = df["Unnamed: 1"][0]
-                excel_type = df["Unnamed: 1"][4]
-                excel_token = (df["Unnamed: 1"][3]).replace("\u200c", "").split("-")[0]
-
-                if excel_author != "Pouya Finance":
-                    print("not bourseview : ", file)
-
-                if excel_type != stock_types[stock_type]:
-                    print("unmatch type : ", file)
-
-                if excel_token != watchlist[stock_name]["token"]:
-                    print("unmatch name :", file)
-
-            except:
-                pass
 
 
 def find_deficiencies(stock_name):
@@ -308,3 +264,84 @@ def find_deficiencies(stock_name):
         deficiencies[i] = list(set(deficiencies[i]))
 
     return deficiencies, pe, opt, eps
+
+
+def check_stock_files(stock_name, user_year=0, user_month=0, user_quarter=0):
+    base_files = [
+        f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{s}"
+        for s in all_dict_values(structure)
+        if ".xlsx" in s
+    ]
+
+    for file in base_files:
+        if Path(file).exists():
+            file_size = (os.stat(file).st_size) / (1024 * 1024)
+            file_ctime = JalaliDate(datetime.fromtimestamp(os.path.getctime(file)))
+
+            if file_size > 1:
+                print("large file :", file)
+
+            try:
+                df = pd.read_excel(file)
+                if df.applymap(only_zero_inequality).isnull().all().all():
+                    print("empty file :", file)
+
+            except:
+                print("old format : ", file)
+
+            try:
+                stock_type = file.split("/")[6]
+                stock_time = file.split("/")[7].split(".")[0].split("_")[0]
+
+            except:
+                pass
+
+            try:
+                excel_timeids = re.findall(regex_en_timeid_q, str(df.loc[6]))
+                excel_years = list(map(lambda x: int(x.split("/")[0]), excel_timeids))
+                excel_months = list(map(lambda x: int(x.split("/")[1]), excel_timeids))
+                excel_steps = [abs(a - b) for a, b in pairwise(excel_months)]
+                excel_step = max(excel_steps, key=excel_steps.count)
+
+                steptypes = {1: "monthly", 3: "quarterly", 0: "yearly"}
+                if steptypes[excel_step] != stock_time:
+                    print("unmatch time :", file)
+
+                if stock_time == "monthly" and user_month > excel_months[-1]:
+                    print("old data :", file, file_ctime)
+
+                if stock_time == "quarterly" and user_quarter > excel_months[-1]:
+                    print("old data :", file, file_ctime)
+
+                if stock_time == "yearly" and user_year > excel_years[-1]:
+                    print("old data :", file, file_ctime)
+
+            except:
+                pass
+
+            try:
+                excel_author = df["Unnamed: 1"][0]
+                excel_type = df["Unnamed: 1"][4]
+                excel_token = (df["Unnamed: 1"][3]).replace("\u200c", "").split("-")[0]
+
+                stock_types = {
+                    "balancesheet": "Balance Sheet",
+                    "income": "Income Statements",
+                    "cashflow": "Cash Flow",
+                    "product": "تولید و فروش",
+                    "cost": "بهای تمام شده",
+                    "official": "هزینه های عمومی و اداری",
+                    "pe": "تاریخچه قیمت",
+                }
+
+                if excel_author != "Pouya Finance":
+                    print("not bourseview : ", file)
+
+                if excel_type != stock_types[stock_type]:
+                    print("unmatch type : ", file)
+
+                if excel_token != watchlist[stock_name]["token"]:
+                    print("unmatch name :", file)
+
+            except:
+                pass

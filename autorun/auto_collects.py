@@ -67,11 +67,21 @@ def codal_search(stock_name):
         )
         sleep(break_time)
 
-        # select first choice
-        driver.find_element(
-            By.XPATH,
-            "//*[@id='ui-select-choices-row-0-0']/div",
-        ).click()
+        exceptions = {"simorgh": 1}
+        if stock_name in exceptions:
+            # select exceptions choice
+            driver.find_element(
+                By.XPATH,
+                f"//*[@id='ui-select-choices-row-0-{exceptions[stock_name]}']",
+            ).click()
+
+        else:
+            # select first choice
+            driver.find_element(
+                By.XPATH,
+                "//*[@id='ui-select-choices-row-0-0']",
+            ).click()
+
         sleep(break_time)
 
     except Exception as err:
@@ -441,6 +451,9 @@ def bourseview_balancesheet(stock_name, y=5, q=5, time_types=["yearly", "quarter
             # replace last file
             new_path = f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{structure['balance'][time_type]}"
             move_last_file(new_path)
+            sleep(break_time)
+            to_useful_excel(new_path)
+            sleep(2 * break_time)
 
     except Exception as err:
         print(f"cant download balancesheet {stock_name} : {err}")
@@ -499,6 +512,9 @@ def bourseview_income_statement(
                 # replace last file
                 new_path = f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{structure['income'][time_type][money_type]}"
                 move_last_file(new_path)
+                sleep(break_time)
+                to_useful_excel(new_path)
+                sleep(2 * break_time)
 
     except Exception as err:
         print(f"cant download incomestatement {stock_name} : {err}")
@@ -548,6 +564,7 @@ def bourseview_cashflow(stock_name, y=5, q=5, time_types=["yearly", "quarterly"]
             # replace last file
             new_path = f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{structure['cash'][time_type]}"
             move_last_file(new_path)
+            sleep(break_time)
             to_useful_excel(new_path)
             sleep(2 * break_time)
 
@@ -624,6 +641,7 @@ def bourseview_product_revenue(
                 # replace last file
                 new_path = f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{structure['product'][time_type+money_type]}"
                 move_last_file(new_path)
+                sleep(break_time)
                 to_useful_excel(new_path)
                 sleep(2 * break_time)
 
@@ -685,6 +703,7 @@ def bourseview_cost(stock_name, y=5, q=5, time_types=["yearly", "quarterly"]):
             # replace last file
             new_path = f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{structure['cost'][time_type]}"
             move_last_file(new_path)
+            sleep(break_time)
             to_useful_excel(new_path)
             sleep(2 * break_time)
 
@@ -740,6 +759,7 @@ def bourseview_official(stock_name, y=5, q=5, time_types=["yearly", "quarterly"]
             # replace last file
             new_path = f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{structure['official'][time_type]}"
             move_last_file(new_path)
+            sleep(break_time)
             to_useful_excel(new_path)
             sleep(2 * break_time)
 
@@ -807,6 +827,9 @@ def bourseview_price_history(stock_name, start=first_day, end=last_day):
         # replace last file
         new_path = f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{structure['pe']}"
         move_last_file(new_path)
+        sleep(break_time)
+        to_useful_excel(new_path)
+        sleep(2 * break_time)
 
     except:
         print(f"cant download price history of {stock_name}")
@@ -934,7 +957,9 @@ def bourseview_macro(start=first_day, end=last_day):
         sleep(break_time)
 
         # replace last file
-        move_last_file(f"{MACRO_PATH}/macro.xlsx")
+        new_path = f"{MACRO_PATH}/macro.xlsx"
+        move_last_file(new_path)
+        sleep(break_time)
 
     except Exception as err:
         print(f"cant download macro data : {err}")
@@ -945,7 +970,7 @@ def integrate_database(stocks=list(watchlist.keys())):
 
     bourseview_login()
     for stock_name in stocks:
-
+        print(f"integrate {stock_name} ...")
         deficiencies = find_deficiencies(stock_name)[0]
         if deficiencies != {}:
             bourseview_search(stock_name)
@@ -998,6 +1023,7 @@ def update_database(
 
     bourseview_login()
     for stock_name in stocks:
+        print(f"update {stock_name} ...")
         bourseview_search(stock_name)
         bourseview_balancesheet(stock_name, time_types=t)
         bourseview_income_statement(stock_name, time_types=t)
@@ -1009,7 +1035,8 @@ def update_database(
 
     bourseview_macro()
 
-    codal_login()
-    for stock_name in stocks:
-        codal_search(stock_name)
-        codal_eps(stock_name)
+    if yearly:
+        codal_login()
+        for stock_name in stocks:
+            codal_search(stock_name)
+            codal_eps(stock_name)
