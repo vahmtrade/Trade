@@ -42,7 +42,7 @@ def save_watchlist(date=today_8digit):
     with open(f"{PICKLES_PATH}/{date}.pkl", "wb") as file:
         pickle.dump(data, file)
 
-    print(errs)
+    return errs
 
 
 def analyse_watchlist(date):
@@ -66,20 +66,24 @@ def analyse_watchlist(date):
     for stock in data.values():
         try:
 
+            df = stock.price_revenue_com_yearly.copy()
+            df.drop(["total", "جمع"], axis=1, inplace=True)
+            converte_numeric(df)
+            max_com = df.idxmax(axis=1).iloc[-1]
             analyse.loc[stock.Name]["sector"] = stock.industry
             analyse.loc[stock.Name]["margin"] = stock.Risk_income_yearly[0]
             analyse.loc[stock.Name]["margin_var"] = stock.Risk_income_yearly[1]
             analyse.loc[stock.Name]["last_rate/mean_12"] = (
-                stock.rate_monthly["total"].iloc[-1]
-                / stock.rate_monthly["total"].iloc[-12:].mean()
+                stock.rate_monthly[max_com].iloc[-1]
+                / stock.rate_monthly[max_com].iloc[-12:].mean()
                 - 1
             )
             analyse.loc[stock.Name]["last_rate_change"] = stock.rate_change_monthly[
-                "total"
+                max_com
             ].iloc[-1]
             analyse.loc[stock.Name]["last_rate/same_year"] = (
-                stock.rate_monthly.iloc[-1]["total"]
-                / stock.rate_monthly.iloc[-13]["total"]
+                stock.rate_monthly.iloc[-1][max_com]
+                / stock.rate_monthly.iloc[-13][max_com]
                 - 1
             )
             analyse.loc[stock.Name]["net_profit_change"] = (
@@ -149,6 +153,7 @@ def analyse_watchlist(date):
             value.loc[stock.Name]["cagr_count"] = stock.cagr_count - 1
         except Exception as err:
             errs[stock.Name] = err
+    value.drop("deshimi", inplace=True)
     value["value/price"] = value["value"] / value["price"]
     d = {
         "analyse": analyse,
@@ -157,7 +162,30 @@ def analyse_watchlist(date):
         "data": data,
         "err": errs,
     }
-    return d
+    value_price = value[["value/price"]].applymap(lambda x: 0 if x < 0 else x)
+    group_analyse = analyse.groupby("sector").median()
+    group_analyse.drop("palayesh", inplace=True)
+    group_value = value.groupby("sector").median()
+    plt.figure(figsize=[20, 8])
+    plt.subplot(1, 3, 1)
+    group_analyse["last_rate_change"].plot(kind="bar")
+    plt.title("rate/last_rate")
+    plt.subplot(1, 3, 2)
+    group_analyse["last_rate/same_year"].plot(kind="bar")
+    plt.title("last_rate/same_year")
+    plt.subplot(1, 3, 3)
+    group_analyse["last_rate/mean_12"].plot(kind="bar")
+    plt.title("last_rate/mean_12")
+    plt.figure(figsize=[20, 8])
+    plt.subplot(1, 2, 1)
+    group_analyse["net_profit_change"].plot(kind="bar")
+    plt.title("net_profit/net_profit_last")
+    plt.subplot(1, 2, 2)
+    group_analyse["net_profit/net_profit_same_last"].plot(kind="bar")
+    plt.title("net_profit/net_profit_same_last")
+    value_price.plot(kind="bar", figsize=[20, 8])
+    plt.axhline(y=1, linestyle="dashed", color="red")
+    return d, [group_analyse, group_value, value_price]
 
 
 def update_watchlist(data):
@@ -1543,6 +1571,11 @@ def merge_same_index(df):
     return dup_c
 
 
+def converte_numeric(df):
+    for i in df.columns:
+        df[i] = pd.to_numeric(df[i])
+
+
 class DesiredPortfolio:
     def __init__(self, names, farsi, start, end):
         self.names = names
@@ -2638,7 +2671,7 @@ class Stock:
         ########## Load  Optimize_Strategy file ############
         try:
             opt = pd.read_excel(
-                f"{INDUSTRIES_PATH}/{self.industry}/{self.Name}/{structure[opt]}"
+                f"{INDUSTRIES_PATH}/{self.industry}/{self.Name}/{structure['opt']}"
             )
             # simulate with opt file
             self.my_tester.test_strategy(
@@ -4166,8 +4199,8 @@ class Stock:
         interest.loc[future_year, "pay"] = np.average(interest["pay_ratio"][-3:-1]) * (
             interest.loc[future_year, "first"] + interest.loc[future_year, "add"]
         )
-        interest.loc[future_year, "interest"] = np.average(
-            interest["interest_ratio"][-3:-1]
+        interest.loc[future_year, "interest"] = np.median(
+            interest["interest_ratio"][-4:-1]
         ) * (interest.loc[future_year, "first"] + interest.loc[future_year, "add"])
         interest.loc[future_year, "end"] = (
             interest.loc[future_year, "first"]
@@ -4196,8 +4229,8 @@ class Stock:
             interest.loc[future_year + 1, "first"]
             + interest.loc[future_year + 1, "add"]
         )
-        interest.loc[future_year + 1, "interest"] = np.average(
-            interest["interest_ratio"][-3:-1]
+        interest.loc[future_year + 1, "interest"] = np.median(
+            interest["interest_ratio"][-4:-1]
         ) * (
             interest.loc[future_year + 1, "first"]
             + interest.loc[future_year + 1, "add"]
@@ -4298,6 +4331,10 @@ class Stock:
                 self.pred_income.loc[i] / self.pred_income.loc[i]["Total_Revenue"]
             )
         self.pred_com = pred_com
+        self.pe_fw = (
+            self.Price["Close"].iloc[-1]
+            / self.pred_income.loc[future_year]["EPS_Capital"]
+        )
         # create data
         end_data = self.pred_income[["EPS_Capital"]]
         price = []
@@ -4306,12 +4343,20 @@ class Stock:
         min_price = []
         max_price = []
         price_ret = []
+        pe_fw_yearly = []
+        end_data["EPS_Capital"] = end_data["EPS_Capital"].apply(
+            lambda x: 0.1 if x == 0 else x
+        )
         for i in end_data.index:
             date_1 = pd.to_datetime(JalaliDate(i, 1, 1).to_gregorian())
             date_2 = pd.to_datetime(JalaliDate(i, 12, 29).to_gregorian())
             price.append(self.Price.loc[date_1:date_2]["Close"].mean())
             min_price.append(self.Price.loc[date_1:date_2]["Close"].min())
             max_price.append(self.Price.loc[date_1:date_2]["Close"].max())
+            pe_fw_yearly.append(
+                self.Price.loc[date_1:date_2]["Close"].values
+                / end_data["EPS_Capital"].loc[i]
+            )
             try:
                 price_first.append(self.Price.loc[date_1:date_2]["Close"][0])
             except:
@@ -4335,6 +4380,7 @@ class Stock:
         end_data["yearly_ret"] = (end_data["last_price"] / end_data["first_price"]) - 1
         end_data["eps_ret"] = end_data["EPS_Capital"].pct_change()
         self.end_data = end_data
+        self.pe_fw_yearly = pe_fw_yearly
         try:
             self.create_eps_data()
         except:
@@ -4672,29 +4718,32 @@ class Stock:
         g=1,
         pe_terminal=1,
     ):
-        self.create_interest_data()
-        self.predict_income(
-            alpha_rate_update,
-            alpha_prod_update,
-            alpha_prod_next_update,
-            alpha_rate_next_update,
-            salary_g_update,
-            material_g_update,
-            energy_g_update,
-            dep_g_update,
-            transport_g_update,
-            other_g_update,
-            salary_g_next_update,
-            material_g_next_update,
-            energy_g_next_update,
-            dep_g_next_update,
-            transport_g_next_update,
-            other_g_next_update,
-        )
-        self.predict_balance_sheet()
-        self.predict_interst()
-        self.create_fcfe()
-        self.predict_value(n_g, rf, erp, g, pe_terminal)
+        try:
+            self.create_interest_data()
+            self.predict_income(
+                alpha_rate_update,
+                alpha_prod_update,
+                alpha_prod_next_update,
+                alpha_rate_next_update,
+                salary_g_update,
+                material_g_update,
+                energy_g_update,
+                dep_g_update,
+                transport_g_update,
+                other_g_update,
+                salary_g_next_update,
+                material_g_next_update,
+                energy_g_next_update,
+                dep_g_next_update,
+                transport_g_next_update,
+                other_g_next_update,
+            )
+            self.predict_balance_sheet()
+            self.predict_interst()
+            self.create_fcfe()
+            self.predict_value(n_g, rf, erp, g, pe_terminal)
+        except:
+            print(f"cant update predict {self.Name}")
 
     def plot_margin(self):
         plt.figure(figsize=[20, 8])
@@ -4866,7 +4915,7 @@ class Stock:
         ##### estimate eps of ngrowth year ######
         i = 3
         while i < 3 + n_g:
-            vars()[f"eps{i}"] = cagr_profit * vars()[f"eps{i-1}"]
+            vars()[f"eps{i}"] = (1 + g_economy) * vars()[f"eps{i-1}"]
             # setattr(self,f"eps{i}",)
             self.__dict__[f"eps{i}"] = vars()[f"eps{i}"]
             value_d += vars()[f"eps{i}"] / (1 + k) ** (i - 1 + n)
@@ -5065,6 +5114,24 @@ class Stock:
         self.rate_quarterly = (
             self.price_revenue_quarterly / self.count_revenue_quarterly
         )
+
+    def plot_price_value(self):
+        pe_fw_historical = []
+        pe_2 = (
+            self.Price["Close"].iloc[-1]
+            / self.pred_income.loc[self.future_year + 1, "EPS_Capital"]
+        )
+        for i in self.pe_fw_yearly:
+            pe_fw_historical.extend(i.tolist())
+        self.pe_fw_historical = pe_fw_historical
+        plt.figure(figsize=[20, 14])
+        plt.subplot(2, 1, 1)
+        plt.plot(self.Price["Close"])
+        plt.axhline(self.value, linestyle="dashed", color="red")
+        plt.subplot(2, 1, 2)
+        plt.hist(pe_fw_historical, edgecolor="black", bins=50)
+        plt.axvline(pe_fw_historical[-1], linestyle="dashed", color="red")
+        plt.axvline(pe_2, linestyle="dashed", color="red", alpha=0.5)
 
 
 class OptPort:
