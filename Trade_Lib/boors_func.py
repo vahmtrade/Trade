@@ -1424,7 +1424,7 @@ def search_df_month(df, fiscal_year, future_year, word):
                 m.append(i)
 
         if fiscal_year == 12:
-            last_index = ["1400" + "/" + f"{i}" for i in m]
+            last_index = [f"1400/{i}" for i in m]
         else:
             year = []
             month = []
@@ -1436,7 +1436,7 @@ def search_df_month(df, fiscal_year, future_year, word):
                 year.append(y)
             l = [i - 1 for i in year]
             for i in range(len(l)):
-                s = f"{l[i]}" + "/" + f"{month[i]}"
+                s = f"{l[i]}/{month[i]}"
                 last_index.append(s)
         for i in last_index:
             count_last += df.loc[i][word]

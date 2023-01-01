@@ -89,10 +89,10 @@ def clarify_number(a, seprator=",", n=2):
 
     if is_float:
         if n != 0:
-            b = b + "." + float_part
+            b = f"{b}.{float_part}"
 
     if is_negative:
-        b = "(" + b + ")"
+        b = f"({b})"
 
     return b
 
