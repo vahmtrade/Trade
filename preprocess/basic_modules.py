@@ -266,12 +266,15 @@ def find_deficiencies(stock_name):
     return deficiencies, pe, opt, eps
 
 
-def check_stock_files(stock_name, user_year=0, user_month=0, user_quarter=0):
+def check_stock_files(
+    stock_name, user_year=0, user_month=0, user_quarter=0, action=False
+):
     base_files = [
         f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{s}"
         for s in all_dict_values(structure)
         if ".xlsx" in s
     ]
+    failed = []
 
     for file in base_files:
         if Path(file).exists():
@@ -280,14 +283,17 @@ def check_stock_files(stock_name, user_year=0, user_month=0, user_quarter=0):
 
             if file_size > 1:
                 print("large file :", file)
+                failed.append(file)
 
             try:
                 df = pd.read_excel(file)
                 if df.applymap(only_zero_inequality).isnull().all().all():
                     print("empty file :", file)
+                    failed.append(file)
 
             except:
                 print("old format : ", file)
+                failed.append(file)
 
             try:
                 stock_type = file.split("/")[6]
@@ -306,6 +312,7 @@ def check_stock_files(stock_name, user_year=0, user_month=0, user_quarter=0):
                 steptypes = {1: "monthly", 3: "quarterly", 0: "yearly"}
                 if steptypes[excel_step] != stock_time:
                     print("unmatch time :", file)
+                    failed.append(file)
 
                 if stock_time == "monthly" and user_month > excel_months[-1]:
                     print("old data :", file, file_ctime)
@@ -336,12 +343,19 @@ def check_stock_files(stock_name, user_year=0, user_month=0, user_quarter=0):
 
                 if excel_author != "Pouya Finance":
                     print("not bourseview : ", file)
+                    failed.append(file)
 
                 if excel_type != stock_types[stock_type]:
                     print("unmatch type : ", file)
+                    failed.append(file)
 
                 if excel_token != watchlist[stock_name]["token"]:
                     print("unmatch name :", file)
+                    failed.append(file)
 
             except:
                 pass
+
+    if action:
+        for i in failed:
+            os.remove(i)

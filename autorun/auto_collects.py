@@ -6,6 +6,11 @@ from time import sleep
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.support.expected_conditions import (
+    presence_of_element_located as presence,
+    element_to_be_clickable as clickable,
+)
 
 from statics.setting import *
 from statics.secrets import *
@@ -29,7 +34,7 @@ if platform.system() == "Windows":
         capabilities=driver_capabilities,
     )
 
-driver.implicitly_wait(wait_time)
+webwait = WebDriverWait(driver, wait_time)
 driver.maximize_window()
 
 
@@ -41,7 +46,9 @@ def codal_login():
         sleep(break_time)
 
         # select 'jostojoye etelaye'
-        driver.find_element(By.XPATH, '//*[@id="aSearch"]').click()
+        search = '//*[@id="aSearch"]'
+        webwait.until(clickable((By.XPATH, search)))
+        driver.find_element(By.XPATH, search).click()
         sleep(break_time)
 
     except Exception as err:
@@ -52,35 +59,32 @@ def codal_search(stock_name):
     """search stock in codal"""
     try:
         # click searck button
-        driver.find_element(
-            By.XPATH,
-            "//*[@id='collapse-search-1']/div[2]/div[1]/div/div",
-        ).click()
+        search = "//*[@id='collapse-search-1']/div[2]/div[1]/div/div"
+        webwait.until(clickable((By.XPATH, search)))
+        driver.find_element(By.XPATH, search).click()
         sleep(break_time)
 
         # send stock name
-        driver.find_element(By.XPATH, '//*[@id="txtSymbol"]').clear()
-        sleep(break_time)
-
-        driver.find_element(By.XPATH, '//*[@id="txtSymbol"]').send_keys(
-            watchlist[stock_name]["name"]
-        )
+        send = '//*[@id="txtSymbol"]'
+        webwait.until(presence((By.XPATH, send)))
+        driver.find_element(By.XPATH, send).clear()
+        driver.find_element(By.XPATH, send).send_keys(watchlist[stock_name]["name"])
         sleep(break_time)
 
         exceptions = {"simorgh": 1}
         if stock_name in exceptions:
             # select exceptions choice
-            driver.find_element(
-                By.XPATH,
-                f"//*[@id='ui-select-choices-row-0-{exceptions[stock_name]}']",
-            ).click()
+            exception = f"//*[@id='ui-select-choices-row-0-{exceptions[stock_name]}']"
+            webwait.until(clickable((By.XPATH, exception)))
+            driver.find_element(By.XPATH, exception).click()
+            sleep(break_time)
 
         else:
             # select first choice
-            driver.find_element(
-                By.XPATH,
-                "//*[@id='ui-select-choices-row-0-0']",
-            ).click()
+            first = "//*[@id='ui-select-choices-row-0-0']"
+            webwait.until(clickable((By.XPATH, first)))
+            driver.find_element(By.XPATH, first).click()
+            sleep(break_time)
 
         sleep(break_time)
 
@@ -92,31 +96,27 @@ def codal_eps(stock_name, n=5):
     """create eps"""
     try:
         # click 'davat majamea'
-        driver.find_element(
-            By.XPATH,
-            "//*[@id='reportType']/option[7]",
-        ).click()
+        call = "//*[@id='reportType']/option[7]"
+        webwait.until(clickable((By.XPATH, call)))
+        driver.find_element(By.XPATH, call).click()
         sleep(break_time)
 
         # select 'nooe etelaye'
-        driver.find_element(
-            By.XPATH,
-            "//*[@id='collapse-search-1']/div[2]/div[5]/div/div",
-        ).click()
+        notice = "//*[@id='collapse-search-1']/div[2]/div[5]/div/div"
+        webwait.until(clickable((By.XPATH, notice)))
+        driver.find_element(By.XPATH, notice).click()
         sleep(break_time)
 
         # click 'tasmimat majmae omomi saliyane'
-        driver.find_element(
-            By.XPATH,
-            "//*[@id='ui-select-choices-row-1-4']/div/div",
-        ).click()
+        choice = "//*[@id='ui-select-choices-row-1-4']/div/div"
+        webwait.until(clickable((By.XPATH, choice)))
+        driver.find_element(By.XPATH, choice).click()
         sleep(break_time)
 
         # click 'jostojo'
-        driver.find_element(
-            By.XPATH,
-            "//*[@id='aspnetForm']/div[3]/div[1]/div[1]/div[2]/div[1]/div/div[3]/div[1]/input",
-        ).click()
+        search = "//*[@id='aspnetForm']/div[3]/div[1]/div[1]/div[2]/div[1]/div/div[3]/div[1]/input"
+        webwait.until(clickable((By.XPATH, search)))
+        driver.find_element(By.XPATH, search).click()
         sleep(break_time)
 
         links = []
@@ -203,38 +203,33 @@ def codal_statement(stock_name):
     """create 3 files : income,balancesheet,cashflow"""
 
     # click 'sorathaye mali'
-    driver.find_element(
-        By.XPATH,
-        "//*[@id='reportType']/option[2]",
-    ).click()
+    state = "//*[@id='reportType']/option[2]"
+    webwait.until(clickable((By.XPATH, state)))
+    driver.find_element(By.XPATH, state).click()
     sleep(break_time)
 
     # select 'nooe etelaye'
-    driver.find_element(
-        By.XPATH,
-        "//*[@id='collapse-search-1']/div[2]/div[5]/div/div",
-    ).click()
+    notice = "//*[@id='collapse-search-1']/div[2]/div[5]/div/div"
+    webwait.until(clickable((By.XPATH, notice)))
+    driver.find_element(By.XPATH, notice).click()
     sleep(break_time)
 
     # click 'mian dorea'
-    driver.find_element(
-        By.XPATH,
-        "//*[@id='ui-select-choices-row-1-1']/div/div",
-    ).click()
+    mid = "//*[@id='ui-select-choices-row-1-1']/div/div"
+    webwait.until(clickable((By.XPATH, mid)))
+    driver.find_element(By.XPATH, mid).click()
     sleep(break_time)
 
     # disable 'zirmajmoeha'
-    driver.find_element(
-        By.XPATH,
-        "//*[@id='collapse-search-other']/div/div[6]/div[1]/div",
-    ).click()
+    subset = "//*[@id='collapse-search-other']/div/div[6]/div[1]/div"
+    webwait.until(clickable((By.XPATH, subset)))
+    driver.find_element(By.XPATH, subset).click()
     sleep(break_time)
 
     # click 'jostojo'
-    driver.find_element(
-        By.XPATH,
-        "//*[@id='aspnetForm']/div[3]/div[1]/div[1]/div[2]/div[1]/div/div[3]/div[1]/input",
-    ).click()
+    search = "//*[@id='aspnetForm']/div[3]/div[1]/div[1]/div[2]/div[1]/div/div[3]/div[1]/input"
+    webwait.until(clickable((By.XPATH, search)))
+    driver.find_element(By.XPATH, search).click()
     sleep(break_time)
 
     # create list of stocks_links and stocks_timeid
@@ -303,45 +298,6 @@ def codal_statement(stock_name):
         Excelwriter.save()
 
 
-def tse_buy_sell_volume(stock_name):
-    """return volume of buyer and seller"""
-    driver.get("http://www.tsetmc.com/")
-    sleep(break_time)
-
-    # select search
-    driver.find_element(By.XPATH, '//*[@id="search"]').click()
-    sleep(break_time)
-
-    # send stock name
-    driver.find_element(By.XPATH, '//*[@id="SearchKey"]').send_keys(
-        watchlist[stock_name]["token"]
-    )
-    sleep(break_time)
-
-    # click blanck page
-    driver.find_element(By.XPATH, '//*[@id="ModalWindowInner1"]').click()
-    sleep(break_time)
-
-    # select first choice
-    driver.find_element(
-        By.XPATH,
-        "/html/body/div[5]/section/div/div/div/div[2]/table/tbody/tr[1]/td[1]/a",
-    ).click()
-    sleep(10 * break_time)
-
-    # find 'kharid va forosh'
-    buy_sell = (
-        driver.find_element(By.XPATH, '//*[@id="Section_bestlimit"]').text
-    ).split()
-
-    # export excel
-    df = pd.DataFrame([buy_sell[a : a + 6] for a in range(0, len(buy_sell), 6)])
-    df.to_excel(
-        f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}.xlsx",
-        index=False,
-    )
-
-
 def bourseview_login():
     """login into bourseview panel"""
 
@@ -351,32 +307,33 @@ def bourseview_login():
         sleep(break_time)
 
         # go to login page
-        driver.find_element(
-            By.XPATH, "//a[@class='web-app-log-in-mobile web-app-log-in-btn']"
-        ).click()
+        page = "//a[@class='web-app-log-in-mobile web-app-log-in-btn']"
+        webwait.until(clickable((By.XPATH, page)))
+        driver.find_element(By.XPATH, page).click()
         sleep(break_time)
 
         # send username
-        driver.find_element(By.XPATH, "//input[@id='Username']").send_keys(
-            bourseview_user
-        )
+        user = "//input[@id='Username']"
+        webwait.until(presence((By.XPATH, user)))
+        driver.find_element(By.XPATH, user).send_keys(bourseview_user)
         sleep(break_time)
 
         # send password
-        driver.find_element(By.XPATH, "//input[@id='Password']").send_keys(
-            bourseview_pass
-        )
+        passw = "//input[@id='Password']"
+        webwait.until(presence((By.XPATH, passw)))
+        driver.find_element(By.XPATH, passw).send_keys(bourseview_pass)
         sleep(break_time)
 
         # login
-        driver.find_element(By.XPATH, "//*[@id='submit_btn']").click()
+        login = "//*[@id='submit_btn']"
+        webwait.until(clickable((By.XPATH, login)))
+        driver.find_element(By.XPATH, login).click()
         sleep(6 * break_time)
 
         try:
             # block pop-ups
-            driver.find_element(
-                By.XPATH, "//*[@id='dialog_1']/div[1]/div[1]/span"
-            ).click()
+            block = "//*[@id='dialog_1']/div[1]/div[1]/span"
+            driver.find_element(By.XPATH, block).click()
             sleep(break_time)
 
         except:
@@ -391,18 +348,16 @@ def bourseview_search(stock_name):
 
     try:
         # search stock name
-        driver.find_element(By.XPATH, "//*[@id='input-0']").clear()
-        sleep(break_time)
-        driver.find_element(By.XPATH, "//*[@id='input-0']").send_keys(
-            watchlist[stock_name]["token"]
-        )
+        search = "//*[@id='input-0']"
+        webwait.until(presence((By.XPATH, search)))
+        driver.find_element(By.XPATH, search).clear()
+        driver.find_element(By.XPATH, search).send_keys(watchlist[stock_name]["token"])
         sleep(break_time)
 
         # select first choice
-        driver.find_element(
-            By.XPATH,
-            "/html/body/md-virtual-repeat-container/div/div[2]/ul/li[1]/md-autocomplete-parent-scope/div/div/div[1]",
-        ).click()
+        first = "/html/body/md-virtual-repeat-container/div/div[2]/ul/li[1]/md-autocomplete-parent-scope/div/div/div[1]"
+        webwait.until(clickable((By.XPATH, first)))
+        driver.find_element(By.XPATH, first).click()
         sleep(2 * break_time)
 
     except Exception as err:
@@ -414,12 +369,10 @@ def bourseview_balancesheet(stock_name, y=5, q=5, time_types=["yearly", "quarter
     try:
 
         # select 'tarazname'
-        driver.find_element(
-            By.XPATH, "//*[@id='stocks-sub-menu']/ul/li[2]/a[2]"
-        ).click()
-        driver.find_element(
-            By.XPATH, "//*[@id='stocks-sub-menu']/ul/li[2]/a[2]"
-        ).click()
+        balancesheet = "//*[@id='stocks-sub-menu']/ul/li[2]/a[2]"
+        webwait.until(clickable((By.XPATH, balancesheet)))
+        driver.find_element(By.XPATH, balancesheet).click()
+        driver.find_element(By.XPATH, balancesheet).click()
         sleep(break_time)
 
         # click blanck page
@@ -435,17 +388,21 @@ def bourseview_balancesheet(stock_name, y=5, q=5, time_types=["yearly", "quarter
                 n = q
 
             # select 'nooe'
-            driver.find_element(By.XPATH, f"//option[@value='{time_type}']").click()
+            balancesheet_type = f"//option[@value='{time_type}']"
+            webwait.until(clickable((By.XPATH, balancesheet_type)))
+            driver.find_element(By.XPATH, balancesheet_type).click()
             sleep(break_time)
 
             # select 'dore'
-            driver.find_element(By.XPATH, f"//option[@value='{n}']").click()
+            balancesheet_count = f"//option[@value='{n}']"
+            webwait.until(clickable((By.XPATH, balancesheet_count)))
+            driver.find_element(By.XPATH, balancesheet_count).click()
             sleep(8 * break_time)
 
             # click download excel
-            driver.find_element(
-                By.XPATH, "//*[@id='new-balance-sheet-grid']/div/div[1]/span[2]/span"
-            ).click()
+            dl_btn = "//*[@id='new-balance-sheet-grid']/div/div[1]/span[2]/span"
+            webwait.until(clickable((By.XPATH, dl_btn)))
+            driver.find_element(By.XPATH, dl_btn).click()
             sleep(2 * break_time)
 
             # replace last file
@@ -470,11 +427,15 @@ def bourseview_income_statement(
     try:
 
         # select 'sood va zian'
-        driver.find_element(By.XPATH, "//*[@id='stocks-sub-menu']/ul/li[3]").click()
-        driver.find_element(By.XPATH, "//*[@id='stocks-sub-menu']/ul/li[3]").click()
+        income = "//*[@id='stocks-sub-menu']/ul/li[3]"
+        webwait.until(clickable((By.XPATH, income)))
+        driver.find_element(By.XPATH, income).click()
+        driver.find_element(By.XPATH, income).click()
+        sleep(break_time)
 
         # click blank page
         driver.find_element(By.XPATH, "//*[@id='overal_step2']/div[1]/div/div").click()
+        sleep(break_time)
 
         # download 4 excels
         for time_type in time_types:
@@ -486,27 +447,30 @@ def bourseview_income_statement(
                 n = q
 
             # select 'nooe'
-            driver.find_element(By.XPATH, f"//option[@value='{time_type}']").click()
+            income_type = f"//option[@value='{time_type}']"
+            webwait.until(clickable((By.XPATH, income_type)))
+            driver.find_element(By.XPATH, income_type).click()
             sleep(break_time)
 
             # select 'dore'
-            driver.find_element(By.XPATH, f"//option[@value='{n}']").click()
+            income_count = f"//option[@value='{n}']"
+            webwait.until(clickable((By.XPATH, income_count)))
+            driver.find_element(By.XPATH, income_count).click()
             sleep(break_time)
 
             for money_type in money_types:
 
                 # click 'rial','dollar azad'
                 money_options = {"rial": "IRR", "dollar": "USDf"}
-                driver.find_element(
-                    By.XPATH, f"//option[@value='{money_options[money_type]}']"
-                ).click()
+                money = f"//option[@value='{money_options[money_type]}']"
+                webwait.until(clickable((By.XPATH, money)))
+                driver.find_element(By.XPATH, money).click()
                 sleep(8 * break_time)
 
                 # click download excel
-                driver.find_element(
-                    By.XPATH,
-                    "//*[@id='new-income-statement-grid']/div/div[1]/span[2]/span",
-                ).click()
+                dl_btn = "//*[@id='new-income-statement-grid']/div/div[1]/span[2]/span"
+                webwait.until(clickable((By.XPATH, dl_btn)))
+                driver.find_element(By.XPATH, dl_btn).click()
                 sleep(2 * break_time)
 
                 # replace last file
@@ -526,12 +490,10 @@ def bourseview_cashflow(stock_name, y=5, q=5, time_types=["yearly", "quarterly"]
     try:
 
         # select 'jaryan vojoh naghd'
-        driver.find_element(
-            By.XPATH, "//*[@id='stocks-sub-menu']/ul/li[4]/a[2]"
-        ).click()
-        driver.find_element(
-            By.XPATH, "//*[@id='stocks-sub-menu']/ul/li[4]/a[2]"
-        ).click()
+        cashflow = "//*[@id='stocks-sub-menu']/ul/li[4]/a[2]"
+        webwait.until(clickable((By.XPATH, cashflow)))
+        driver.find_element(By.XPATH, cashflow).click()
+        driver.find_element(By.XPATH, cashflow).click()
         sleep(break_time)
 
         # click blanck page
@@ -548,17 +510,21 @@ def bourseview_cashflow(stock_name, y=5, q=5, time_types=["yearly", "quarterly"]
                 n = q
 
             # select 'nooe'
-            driver.find_element(By.XPATH, f"//option[@value='{time_type}']").click()
+            cashflow_type = f"//option[@value='{time_type}']"
+            webwait.until(clickable((By.XPATH, cashflow_type)))
+            driver.find_element(By.XPATH, cashflow_type).click()
             sleep(break_time)
 
             # select 'dore'
-            driver.find_element(By.XPATH, f"//option[@value='{n}']").click()
+            cashflow_count = f"//option[@value='{n}']"
+            webwait.until(clickable((By.XPATH, cashflow_count)))
+            driver.find_element(By.XPATH, cashflow_count).click()
             sleep(8 * break_time)
 
             # click download excel
-            driver.find_element(
-                By.XPATH, "//*[@id='new-cash-flow-grid']/div/div[1]/span[2]/span"
-            ).click()
+            dl_btn = "//*[@id='new-cash-flow-grid']/div/div[1]/span[2]/span"
+            webwait.until(clickable((By.XPATH, dl_btn)))
+            driver.find_element(By.XPATH, dl_btn).click()
             sleep(2 * break_time)
 
             # replace last file
@@ -588,14 +554,10 @@ def bourseview_product_revenue(
     try:
 
         # select 'tolid va frosh'
-        driver.find_element(
-            By.XPATH,
-            "//*[@id='stocks-sub-menu']/ul/li[8]/a[2]",
-        ).click()
-        driver.find_element(
-            By.XPATH,
-            "//*[@id='stocks-sub-menu']/ul/li[8]/a[2]",
-        ).click()
+        product = "//*[@id='stocks-sub-menu']/ul/li[8]/a[2]"
+        webwait.until(clickable((By.XPATH, product)))
+        driver.find_element(By.XPATH, product).click()
+        driver.find_element(By.XPATH, product).click()
         sleep(break_time)
 
         # click blanck page
@@ -605,10 +567,9 @@ def bourseview_product_revenue(
         for money_type in money_types:
 
             # click 'tafkik dakheli,khareji'
-            driver.find_element(
-                By.XPATH,
-                "//*[@id='grid']/div/div[1]/span[1]/div[3]",
-            ).click()
+            seprate = "//*[@id='grid']/div/div[1]/span[1]/div[3]"
+            webwait.until(clickable((By.XPATH, seprate)))
+            driver.find_element(By.XPATH, seprate).click()
             sleep(break_time)
 
             # download base excels
@@ -624,18 +585,21 @@ def bourseview_product_revenue(
                     n = m
 
                 # select 'nooe'
-                driver.find_element(By.XPATH, f"//option[@value='{time_type}']").click()
+                product_type = f"//option[@value='{time_type}']"
+                webwait.until(clickable((By.XPATH, product_type)))
+                driver.find_element(By.XPATH, product_type).click()
                 sleep(break_time)
 
                 # select 'dore'
-                driver.find_element(By.XPATH, f"//option[@value='{n}']").click()
+                product_count = f"//option[@value='{n}']"
+                webwait.until(clickable((By.XPATH, product_count)))
+                driver.find_element(By.XPATH, product_count).click()
                 sleep(8 * break_time)
 
                 # click download excel
-                driver.find_element(
-                    By.XPATH,
-                    "//*[@id='grid']/div/div[1]/span[2]/span",
-                ).click()
+                dl_btn = "//*[@id='grid']/div/div[1]/span[2]/span"
+                webwait.until(clickable((By.XPATH, dl_btn)))
+                driver.find_element(By.XPATH, dl_btn).click()
                 sleep(2 * break_time)
 
                 # replace last file
@@ -657,12 +621,10 @@ def bourseview_cost(stock_name, y=5, q=5, time_types=["yearly", "quarterly"]):
     try:
 
         # select 'bahaye tamam shode'
-        driver.find_element(
-            By.XPATH, "//*[@id='stocks-sub-menu']/ul/li[13]/a[2]"
-        ).click()
-        driver.find_element(
-            By.XPATH, "//*[@id='stocks-sub-menu']/ul/li[13]/a[2]"
-        ).click()
+        cost = "//*[@id='stocks-sub-menu']/ul/li[13]/a[2]"
+        webwait.until(clickable((By.XPATH, cost)))
+        driver.find_element(By.XPATH, cost).click()
+        driver.find_element(By.XPATH, cost).click()
         sleep(break_time)
 
         # click blank page
@@ -679,25 +641,31 @@ def bourseview_cost(stock_name, y=5, q=5, time_types=["yearly", "quarterly"]):
                 n = q
 
             # select 'nooe'
-            driver.find_element(By.XPATH, f"//option[@value='{time_type}']").click()
+            cost_type = f"//option[@value='{time_type}']"
+            webwait.until(clickable((By.XPATH, cost_type)))
+            driver.find_element(By.XPATH, cost_type).click()
             sleep(break_time)
 
             # select 'dore'
-            driver.find_element(By.XPATH, f"//option[@value='{n}']").click()
+            cost_count = f"//option[@value='{n}']"
+            webwait.until(clickable((By.XPATH, cost_count)))
+            driver.find_element(By.XPATH, cost_count).click()
             sleep(8 * break_time)
 
             # click 'hameye' data
-            driver.find_element(
-                By.XPATH, "//*[@id='grid-cogs']/div/div[4]/div/div[1]"
-            ).click()
+            all_data = "//*[@id='grid-cogs']/div/div[4]/div/div[1]"
+            webwait.until(clickable((By.XPATH, all_data)))
+            driver.find_element(By.XPATH, all_data).click()
+            sleep(break_time)
 
             # go top of page
             driver.find_element(By.TAG_NAME, "body").send_keys(Keys.CONTROL + Keys.HOME)
+            sleep(break_time)
 
             # click download excel
-            driver.find_element(
-                By.XPATH, "//*[@id='grid-cogs']/div/div[2]/span[2]/span"
-            ).click()
+            dl_btn = "//*[@id='grid-cogs']/div/div[2]/span[2]/span"
+            webwait.until(clickable((By.XPATH, dl_btn)))
+            driver.find_element(By.XPATH, dl_btn).click()
             sleep(2 * break_time)
 
             # replace last file
@@ -719,14 +687,10 @@ def bourseview_official(stock_name, y=5, q=5, time_types=["yearly", "quarterly"]
     try:
 
         # select 'hazine haye omomi edari'
-        driver.find_element(
-            By.XPATH,
-            "//*[@id='stocks-sub-menu']/ul/li[16]/a[2]",
-        ).click()
-        driver.find_element(
-            By.XPATH,
-            "//*[@id='stocks-sub-menu']/ul/li[16]/a[2]",
-        ).click()
+        official = "//*[@id='stocks-sub-menu']/ul/li[16]/a[2]"
+        webwait.until(clickable((By.XPATH, official)))
+        driver.find_element(By.XPATH, official).click()
+        driver.find_element(By.XPATH, official).click()
         sleep(break_time)
 
         # click blanck page
@@ -743,17 +707,21 @@ def bourseview_official(stock_name, y=5, q=5, time_types=["yearly", "quarterly"]
                 n = q
 
             # select 'nooe'
-            driver.find_element(By.XPATH, f"//option[@value='{time_type}']").click()
+            official_type = f"//option[@value='{time_type}']"
+            webwait.until(clickable((By.XPATH, official_type)))
+            driver.find_element(By.XPATH, official_type).click()
             sleep(break_time)
 
             # select 'dore'
-            driver.find_element(By.XPATH, f"//option[@value='{n}']").click()
+            official_count = f"//option[@value='{n}']"
+            webwait.until(clickable((By.XPATH, official_count)))
+            driver.find_element(By.XPATH, official_count).click()
             sleep(8 * break_time)
 
             # click download excel
-            driver.find_element(
-                By.XPATH, "//*[@id='grid']/div/div[2]/span[2]/span"
-            ).click()
+            dl_btn = "//*[@id='grid']/div/div[2]/span[2]/span"
+            webwait.until(clickable((By.XPATH, dl_btn)))
+            driver.find_element(By.XPATH, dl_btn).click()
             sleep(2 * break_time)
 
             # replace last file
@@ -774,14 +742,10 @@ def bourseview_price_history(stock_name, start=first_day, end=last_day):
     try:
 
         # select 'tarikhche gheimat'
-        driver.find_element(
-            By.XPATH,
-            "//*[@id='stocks-sub-menu']/ul/li[21]/a[2]",
-        ).click()
-        driver.find_element(
-            By.XPATH,
-            "//*[@id='stocks-sub-menu']/ul/li[21]/a[2]",
-        ).click()
+        price = "//*[@id='stocks-sub-menu']/ul/li[21]/a[2]"
+        webwait.until(clickable((By.XPATH, price)))
+        driver.find_element(By.XPATH, price).click()
+        driver.find_element(By.XPATH, price).click()
         sleep(break_time)
 
         # click blank page
@@ -789,39 +753,29 @@ def bourseview_price_history(stock_name, start=first_day, end=last_day):
         sleep(break_time)
 
         # send 'tarikh shoroea'
-        driver.find_element(
-            By.XPATH,
-            "//*[@id='stocks-content-body']/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/input",
-        ).clear()
-        driver.find_element(
-            By.XPATH,
-            "//*[@id='stocks-content-body']/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/input",
-        ).send_keys(start)
+        first = "//*[@id='stocks-content-body']/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/input"
+        webwait.until(presence((By.XPATH, first)))
+        driver.find_element(By.XPATH, first).clear()
+        driver.find_element(By.XPATH, first).send_keys(start)
         sleep(break_time)
 
         # send 'tarikh payan'
-        driver.find_element(
-            By.XPATH,
-            "//*[@id='stocks-content-body']/div[1]/div[2]/div[1]/div[1]/div[3]/div[1]/input",
-        ).clear()
-        driver.find_element(
-            By.XPATH,
-            "//*[@id='stocks-content-body']/div[1]/div[2]/div[1]/div[1]/div[3]/div[1]/input",
-        ).send_keys(end)
+        last = "//*[@id='stocks-content-body']/div[1]/div[2]/div[1]/div[1]/div[3]/div[1]/input"
+        webwait.until(presence((By.XPATH, last)))
+        driver.find_element(By.XPATH, last).clear()
+        driver.find_element(By.XPATH, last).send_keys(end)
         sleep(break_time)
 
         # click 'namayesh gheimat'
-        driver.find_element(
-            By.XPATH,
-            "//*[@id='stocks-content-body']/div[1]/div[2]/div[1]/div[1]/button",
-        ).click()
-        sleep(4 * break_time)
+        show = "//*[@id='stocks-content-body']/div[1]/div[2]/div[1]/div[1]/button"
+        webwait.until(clickable((By.XPATH, show)))
+        driver.find_element(By.XPATH, show).click()
+        sleep(8 * break_time)
 
         # click download excel
-        driver.find_element(
-            By.XPATH,
-            "//*[@id='stocks-content-body']/div[1]/div[2]/div[1]/div[2]/div/div/div[2]/div",
-        ).click()
+        dl_btn = "//*[@id='stocks-content-body']/div[1]/div[2]/div[1]/div[2]/div/div/div[2]/div"
+        webwait.until(clickable((By.XPATH, dl_btn)))
+        driver.find_element(By.XPATH, dl_btn).click()
         sleep(2 * break_time)
 
         # replace last file
@@ -841,115 +795,106 @@ def bourseview_macro(start=first_day, end=last_day):
     <end : 1400/01/01>"""
     try:
         # select 'dadehaye kalan'
-        driver.find_element(
-            By.XPATH,
-            "//*[@id='step3']/li[9]",
-        ).click()
+        macro = "//*[@id='step3']/li[9]"
+        webwait.until(clickable((By.XPATH, macro)))
+        driver.find_element(By.XPATH, macro).click()
+        driver.find_element(By.XPATH, macro).click()
         sleep(break_time)
 
         # select 'shakhes boors iran'
-        driver.find_element(
-            By.XPATH,
-            "//*[@id='macro-history-select-irex-wrapper']/span",
-        ).click()
+        index = "//*[@id='macro-history-select-irex-wrapper']/span"
+        webwait.until(clickable((By.XPATH, index)))
+        driver.find_element(By.XPATH, index).click()
         sleep(break_time)
 
         # click 'arzesh moamelat'
-        driver.find_element(
-            By.XPATH, "/html/body/span/span/span/ul/li/ul/li[3]"
-        ).click()
+        value = "/html/body/span/span/span/ul/li/ul/li[3]"
+        webwait.until(clickable((By.XPATH, value)))
+        driver.find_element(By.XPATH, value).click()
         sleep(break_time)
 
         # click p/e ttm
-        driver.find_element(
-            By.XPATH, "/html/body/span/span/span/ul/li/ul/li[6]"
-        ).click()
+        p_e = "/html/body/span/span/span/ul/li/ul/li[6]"
+        webwait.until(clickable((By.XPATH, p_e)))
+        driver.find_element(By.XPATH, p_e).click()
         sleep(break_time)
 
         # click p/d
-        driver.find_element(
-            By.XPATH, "/html/body/span/span/span/ul/li/ul/li[8]"
-        ).click()
+        p_d = "/html/body/span/span/span/ul/li/ul/li[8]"
+        webwait.until(clickable((By.XPATH, p_d)))
+        driver.find_element(By.XPATH, p_d).click()
         sleep(break_time)
 
         # select 'saham shakhes boors'
-        driver.find_element(
-            By.XPATH,
-            "//*[@id='macro-history-select-tedpix-wrapper']/span",
-        ).click()
+        stocks = "//*[@id='macro-history-select-tedpix-wrapper']/span"
+        webwait.until(clickable((By.XPATH, stocks)))
+        driver.find_element(By.XPATH, stocks).click()
         sleep(break_time)
 
         # click 'arzesh khales vorod haghighi'
-        driver.find_element(
-            By.XPATH, "/html/body/span/span/span/ul/li/ul/li[20]"
-        ).click()
+        real = "/html/body/span/span/span/ul/li/ul/li[20]"
+        webwait.until(clickable((By.XPATH, real)))
+        driver.find_element(By.XPATH, real).click()
         sleep(break_time)
 
         # select 'nerkh arz'
-        driver.find_element(
-            By.XPATH,
-            "//*[@id='macro-history-select-currency-wrapper']/span",
-        ).click()
+        currency = "//*[@id='macro-history-select-currency-wrapper']/span"
+        webwait.until(clickable((By.XPATH, currency)))
+        driver.find_element(By.XPATH, currency).click()
         sleep(break_time)
 
         # click dollar 'nima'
-        driver.find_element(
-            By.XPATH, "/html/body/span/span/span/ul/li/ul/li[1]"
-        ).click()
+        dollar = "/html/body/span/span/span/ul/li/ul/li[1]"
+        webwait.until(clickable((By.XPATH, dollar)))
+        driver.find_element(By.XPATH, dollar).click()
         sleep(break_time)
 
         # click dollar 'azad'
-        driver.find_element(
-            By.XPATH, "/html/body/span/span/span/ul/li/ul/li[2]"
-        ).click()
+        free = "/html/body/span/span/span/ul/li/ul/li[2]"
+        webwait.until(clickable((By.XPATH, free)))
+        driver.find_element(By.XPATH, free).click()
         sleep(break_time)
 
         # select 'motoghayerhaye poli'
-        driver.find_element(
-            By.XPATH,
-            "//*[@id='macro-history-select-economics-wrapper']/span",
-        ).click()
+        money = "//*[@id='macro-history-select-economics-wrapper']/span"
+        webwait.until(clickable((By.XPATH, money)))
+        driver.find_element(By.XPATH, money).click()
         sleep(break_time)
 
         # click 'miangin nerkh bedon risk'
-        driver.find_element(
-            By.XPATH, "/html/body/span/span/span/ul/li/ul/li[2]"
-        ).click()
+        risk = "/html/body/span/span/span/ul/li/ul/li[2]"
+        webwait.until(clickable((By.XPATH, risk)))
+        driver.find_element(By.XPATH, risk).click()
         sleep(break_time)
 
         # click download excel
-        driver.find_element(
-            By.XPATH,
-            "/html/body/div[2]/div/div/div/div/div[3]/div[3]/div/div[1]/div/div/div[3]/div/span",
-        ).click()
+        dl_exl = "/html/body/div[2]/div/div/div/div/div[3]/div[3]/div/div[1]/div/div/div[3]/div/span"
+        webwait.until(clickable((By.XPATH, dl_exl)))
+        driver.find_element(By.XPATH, dl_exl).click()
         sleep(break_time)
 
         # click 'entekhab baze delkhah'
-        driver.find_element(
-            By.XPATH,
-            "//*[@id='myModal']/div/div/div[2]/div/button",
-        ).click()
+        limit = "//*[@id='myModal']/div/div/div[2]/div/button"
+        webwait.until(clickable((By.XPATH, limit)))
+        driver.find_element(By.XPATH, limit).click()
         sleep(break_time)
 
         # send 'tarikh shoroe'
-        driver.find_element(
-            By.XPATH,
-            "//*[@id='collapseExample']/div/div/div[1]/div[1]/input",
-        ).send_keys(start)
+        first = "//*[@id='collapseExample']/div/div/div[1]/div[1]/input"
+        webwait.until(presence((By.XPATH, first)))
+        driver.find_element(By.XPATH, first).send_keys(start)
         sleep(break_time)
 
         # send 'tarikh payan'
-        driver.find_element(
-            By.XPATH,
-            "//*[@id='collapseExample']/div/div/div[3]/div[1]/input",
-        ).send_keys(end)
+        last = "//*[@id='collapseExample']/div/div/div[3]/div[1]/input"
+        webwait.until(presence((By.XPATH, last)))
+        driver.find_element(By.XPATH, last).send_keys(end)
         sleep(2 * break_time)
 
         # click download button
-        driver.find_element(
-            By.XPATH,
-            "//*[@id='myModal']/div/div/div[3]/button",
-        ).click()
+        dl_btn = "//*[@id='myModal']/div/div/div[3]/button"
+        webwait.until(clickable((By.XPATH, dl_btn)))
+        driver.find_element(By.XPATH, dl_btn).click()
         sleep(2 * break_time)
 
         # click blank page
