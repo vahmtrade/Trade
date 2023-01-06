@@ -2690,6 +2690,7 @@ class Stock:
             self.predict_income()
             self.predict_balance_sheet()
             self.predict_interst()
+            self.create_end_data()
             self.create_fcfe()
         except Exception as err:
             print(f"cant predict future {self.Name}--{err}")
@@ -2978,7 +2979,7 @@ class Stock:
             6: {1: 9, 2: 12, 3: 3, 4: 6},
             3: {1: 6, 2: 9, 3: 12, 4: 3},
             10: {1: 1, 2: 4, 3: 7, 4: 10},
-            8: {11: 1, 2: 2, 5: 3, 8: 4},
+            8: {1: 11, 2: 2, 3: 5, 4: 8},
         }
         self.fiscal_dic = fiscal_dic
 
@@ -3819,11 +3820,11 @@ class Stock:
         # add future year to tangible
         tangible.loc[future_year] = np.zeros(len(tangible.iloc[0]))
         tangible.loc[future_year, "first"] = tangible.loc[future_year - 1]["end"]
-        tangible.loc[future_year, "add"] = np.average(
-            tangible["add_cost_ratio"][-3:-1], weights=w
+        tangible.loc[future_year, "add"] = np.median(
+            tangible["add_cost_ratio"][1:-1]
         ) * np.abs(self.pred_income.loc[future_year]["Cost_of_Revenue"])
-        tangible.loc[future_year, "depreciation"] = np.average(
-            tangible["depreciation_ratio"][-3:-1], weights=w
+        tangible.loc[future_year, "depreciation"] = np.median(
+            tangible["depreciation_ratio"][1:-1]
         ) * (
             tangible.loc[future_year]["first"]
             + tangible.loc[future_year]["add"]
@@ -3844,11 +3845,11 @@ class Stock:
         # add future year + 1 to data frame
         tangible.loc[future_year + 1] = np.zeros(len(tangible.iloc[0]))
         tangible.loc[future_year + 1, "first"] = tangible.loc[future_year]["end"]
-        tangible.loc[future_year + 1, "add"] = np.average(
-            tangible["add_cost_ratio"][-3:-1], weights=w
+        tangible.loc[future_year + 1, "add"] = np.median(
+            tangible["add_cost_ratio"][1:-1]
         ) * np.abs(self.pred_income.loc[future_year + 1]["Cost_of_Revenue"])
-        tangible.loc[future_year + 1, "depreciation"] = np.average(
-            tangible["depreciation_ratio"][-3:-1], weights=w
+        tangible.loc[future_year + 1, "depreciation"] = np.median(
+            tangible["depreciation_ratio"][1:-1]
         ) * (
             tangible.loc[future_year + 1]["first"]
             + tangible.loc[future_year + 1]["add"]
@@ -4086,6 +4087,7 @@ class Stock:
         for i in np.linspace(0.5, 2, 40):
             self.predict_income(i, 1)
             self.predict_interst()
+            self.create_end_data()
             self.create_fcfe()
             rate.append(self.hypothesis["Last_Rate"])
             net_profit.append(self.hypothesis["Net_Profit"])
@@ -4187,16 +4189,14 @@ class Stock:
         )
         if inv < 0:
             inv = 0
-        interest.loc[future_year, "add_inv_ratio"] = np.average(
-            interest["add_inv_ratio"][-3:-1]
+        interest.loc[future_year, "add_inv_ratio"] = np.median(
+            interest["add_inv_ratio"][-4:-1]
         )
-        interest.loc[future_year, "pay_ratio"] = np.average(
-            interest["pay_ratio"][-3:-1]
-        )
+        interest.loc[future_year, "pay_ratio"] = np.median(interest["pay_ratio"][-4:-1])
         interest.loc[future_year, "add"] = (
             np.average(interest["add_inv_ratio"][-3:-1]) * inv
         )
-        interest.loc[future_year, "pay"] = np.average(interest["pay_ratio"][-3:-1]) * (
+        interest.loc[future_year, "pay"] = np.median(interest["pay_ratio"][-4:-1]) * (
             interest.loc[future_year, "first"] + interest.loc[future_year, "add"]
         )
         interest.loc[future_year, "interest"] = np.median(
@@ -4214,17 +4214,17 @@ class Stock:
             self.pred_inv_balance.loc[future_year + 1]["wc"]
             + self.tangible.loc[future_year + 1]["add"]
         )
-        interest.loc[future_year + 1, "add_inv_ratio"] = np.average(
-            interest["add_inv_ratio"][-3:-1]
+        interest.loc[future_year + 1, "add_inv_ratio"] = np.median(
+            interest["add_inv_ratio"][-4:-1]
         )
-        interest.loc[future_year + 1, "pay_ratio"] = np.average(
-            interest["pay_ratio"][-3:-1]
+        interest.loc[future_year + 1, "pay_ratio"] = np.median(
+            interest["pay_ratio"][-4:-1]
         )
         interest.loc[future_year + 1, "add"] = (
-            np.average(interest["add_inv_ratio"][-3:-1]) * inv
+            np.median(interest["add_inv_ratio"][-4:-1]) * inv
         )
-        interest.loc[future_year + 1, "pay"] = np.average(
-            interest["pay_ratio"][-3:-1]
+        interest.loc[future_year + 1, "pay"] = np.median(
+            interest["pay_ratio"][-4:-1]
         ) * (
             interest.loc[future_year + 1, "first"]
             + interest.loc[future_year + 1, "add"]
@@ -4245,7 +4245,7 @@ class Stock:
             future_year, "interest"
         ]
         self.pred_income.loc[future_year + 1, "Interest_Expense"] = -interest.loc[
-            future_year, "interest"
+            future_year + 1, "interest"
         ]
         # add financial facilities to pred_balance
         self.pred_balance.loc[future_year]["financial facilities"] = interest.loc[
@@ -4335,52 +4335,6 @@ class Stock:
             self.Price["Close"].iloc[-1]
             / self.pred_income.loc[future_year]["EPS_Capital"]
         )
-        # create data
-        end_data = self.pred_income[["EPS_Capital"]]
-        price = []
-        price_first = []
-        price_last = []
-        min_price = []
-        max_price = []
-        price_ret = []
-        pe_fw_yearly = []
-        end_data["EPS_Capital"] = end_data["EPS_Capital"].apply(
-            lambda x: 0.1 if x == 0 else x
-        )
-        for i in end_data.index:
-            date_1 = pd.to_datetime(JalaliDate(i, 1, 1).to_gregorian())
-            date_2 = pd.to_datetime(JalaliDate(i, 12, 29).to_gregorian())
-            price.append(self.Price.loc[date_1:date_2]["Close"].mean())
-            min_price.append(self.Price.loc[date_1:date_2]["Close"].min())
-            max_price.append(self.Price.loc[date_1:date_2]["Close"].max())
-            pe_fw_yearly.append(
-                self.Price.loc[date_1:date_2]["Close"].values
-                / end_data["EPS_Capital"].loc[i]
-            )
-            try:
-                price_first.append(self.Price.loc[date_1:date_2]["Close"][0])
-            except:
-                price_first.append(np.nan)
-            try:
-                price_last.append(self.Price.loc[date_1:date_2]["Close"][-1])
-            except:
-                price_last.append(np.nan)
-
-        end_data["price"] = price
-        end_data["max_price"] = max_price
-        end_data["min_price"] = min_price
-        end_data["first_price"] = price_first
-        end_data["last_price"] = price_last
-        end_data["mean_price/eps"] = end_data["price"] / end_data["EPS_Capital"]
-        end_data["max_price/eps"] = end_data["max_price"] / end_data["EPS_Capital"]
-        end_data["min_price/eps"] = end_data["min_price"] / end_data["EPS_Capital"]
-        end_data["first_price/eps"] = end_data["first_price"] / end_data["EPS_Capital"]
-        end_data["last_price/eps"] = end_data["last_price"] / end_data["EPS_Capital"]
-        end_data["volatility"] = (end_data["max_price"] / end_data["min_price"]) - 1
-        end_data["yearly_ret"] = (end_data["last_price"] / end_data["first_price"]) - 1
-        end_data["eps_ret"] = end_data["EPS_Capital"].pct_change()
-        self.end_data = end_data
-        self.pe_fw_yearly = pe_fw_yearly
         try:
             self.create_eps_data()
         except:
@@ -4740,6 +4694,7 @@ class Stock:
             )
             self.predict_balance_sheet()
             self.predict_interst()
+            self.create_end_data()
             self.create_fcfe()
             self.predict_value(n_g, rf, erp, g, pe_terminal)
         except:
@@ -5116,22 +5071,85 @@ class Stock:
         )
 
     def plot_price_value(self):
-        pe_fw_historical = []
         pe_2 = (
             self.Price["Close"].iloc[-1]
             / self.pred_income.loc[self.future_year + 1, "EPS_Capital"]
         )
-        for i in self.pe_fw_yearly:
-            pe_fw_historical.extend(i.tolist())
-        self.pe_fw_historical = pe_fw_historical
+        pe_fw_historical = self.pe_fw_historical
         plt.figure(figsize=[20, 14])
         plt.subplot(2, 1, 1)
         plt.plot(self.Price["Close"])
         plt.axhline(self.value, linestyle="dashed", color="red")
         plt.subplot(2, 1, 2)
-        plt.hist(pe_fw_historical, edgecolor="black", bins=50)
-        plt.axvline(pe_fw_historical[-1], linestyle="dashed", color="red")
+        plt.hist(pe_fw_historical["pe"], edgecolor="black", bins=50)
+        plt.axvline(pe_fw_historical["pe"].iloc[-1], linestyle="dashed", color="red")
         plt.axvline(pe_2, linestyle="dashed", color="red", alpha=0.5)
+
+    def create_end_data(self):
+        end_data = self.pred_income[["EPS_Capital"]]
+        price = []
+        price_first = []
+        price_last = []
+        min_price = []
+        max_price = []
+        price_ret = []
+        pe_fw_yearly = []
+        end_data["EPS_Capital"] = end_data["EPS_Capital"].apply(
+            lambda x: 0.1 if x == 0 else x
+        )
+        for i in end_data.index:
+            date_1 = pd.to_datetime(JalaliDate(i, 1, 1).to_gregorian())
+            date_2 = pd.to_datetime(JalaliDate(i, 12, 29).to_gregorian())
+            price.append(self.Price.loc[date_1:date_2]["Close"].mean())
+            min_price.append(self.Price.loc[date_1:date_2]["Close"].min())
+            max_price.append(self.Price.loc[date_1:date_2]["Close"].max())
+            pe_fw_yearly.append(
+                self.Price.loc[date_1:date_2]["Close"].values
+                / end_data["EPS_Capital"].loc[i]
+            )
+            try:
+                price_first.append(self.Price.loc[date_1:date_2]["Close"][0])
+            except:
+                price_first.append(np.nan)
+            try:
+                price_last.append(self.Price.loc[date_1:date_2]["Close"][-1])
+            except:
+                price_last.append(np.nan)
+
+        end_data["price"] = price
+        end_data["max_price"] = max_price
+        end_data["min_price"] = min_price
+        end_data["first_price"] = price_first
+        end_data["last_price"] = price_last
+        end_data["mean_price/eps"] = end_data["price"] / end_data["EPS_Capital"]
+        end_data["max_price/eps"] = end_data["max_price"] / end_data["EPS_Capital"]
+        end_data["min_price/eps"] = end_data["min_price"] / end_data["EPS_Capital"]
+        end_data["first_price/eps"] = end_data["first_price"] / end_data["EPS_Capital"]
+        end_data["last_price/eps"] = end_data["last_price"] / end_data["EPS_Capital"]
+        end_data["volatility"] = (end_data["max_price"] / end_data["min_price"]) - 1
+        end_data["yearly_ret"] = (end_data["last_price"] / end_data["first_price"]) - 1
+        end_data["eps_ret"] = end_data["EPS_Capital"].pct_change()
+        self.end_data = end_data
+        self.pe_fw_yearly = pe_fw_yearly
+        pe_fw_historical = []
+        for i in self.pe_fw_yearly:
+            pe_fw_historical.extend(i.tolist())
+        self.pe_fw_historical = pd.DataFrame(np.array(pe_fw_historical))
+        date_1 = pd.to_datetime(JalaliDate(end_data.index[0], 1, 1).to_gregorian())
+        self.pe_fw_historical.set_index(self.Price[date_1:].index, inplace=True)
+        self.pe_fw_historical["price"] = self.Price["Close"]
+        self.pe_fw_historical["cret"] = (
+            self.pe_fw_historical["price"] / self.pe_fw_historical["price"].iloc[0]
+        )
+        self.pe_fw_historical.rename(columns={0: "pe"}, inplace=True)
+
+    def update_manual(self, n_g=2, rf=0.35, erp=0.15, g=1, pe_terminal=1):
+        self.pred_income = pd.read_excel(
+            f"manual/{self.Name}.xlsx", index_col="Unnamed: 0"
+        )
+
+        self.create_end_data()
+        self.predict_value(n_g, rf, erp, pe_terminal)
 
 
 class OptPort:

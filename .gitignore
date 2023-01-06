@@ -10,6 +10,7 @@ __pycache__
 
 /_temp
 /database/Portfolio
+/database/manual
 /statics/secrets.py
 
 geckodriver.log

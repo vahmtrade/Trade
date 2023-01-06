@@ -82,6 +82,13 @@ watchlist = {
     "kimiatec": {"indus": "shoyande", "token": "کیمیاتک", "name": "آریان کیمیا تک"},
     "ghesalem": {"indus": "ghaza", "token": "غسالم", "name": "سالمین"},
     "ghevita": {"indus": "ghaza", "token": "غویتا", "name": "ویتانا"},
+    "faira": {"indus": "felezat", "token": "فایرا", "name": "آلومینیوم‌ایران"},
+    "khetrak": {
+        "indus": "khodro",
+        "token": "ختراک",
+        "name": "ریخته گری تراکتور سازی ایران",
+    },
+    "chekapa": {"indus": "kaghaz", "token": "چکاپا", "name": "گروه صنایع کاغذ پارس"},
 }
 structure = {
     "balance": {
