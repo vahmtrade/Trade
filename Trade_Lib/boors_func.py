@@ -45,9 +45,15 @@ def save_watchlist(date=today_8digit):
     return errs
 
 
-def analyse_watchlist(date):
+def read_watchlist(date):
     with open(f"{PICKLES_PATH}/{date}.pkl", "rb") as f:
         data = pickle.load(f)
+
+    return data
+
+
+def analyse_watchlist(date):
+    data = read_watchlist(date)
 
     analyse = pd.DataFrame(
         index=data.keys(),
@@ -204,6 +210,22 @@ def plot_watchlist(data):
     for i in industries:
         stocks = [data[x] for x in data if watchlist[x]["indus"] == i]
         plot_margin_trend(stocks)
+
+
+def plot_valuation_history(stock_name):
+    x, y = [], []
+    for i in os.listdir(PICKLES_PATH):
+        try:
+            date = i.split(".")[0]
+            data = read_watchlist(date)
+            y.append(data[stock_name].value)
+            x.append(date)
+        except:
+            pass
+    plt.rcParams["figure.figsize"] = (20, 5)
+    plt.title(stock_name)
+    plt.plot(x, y, marker="o")
+    plt.show()
 
 
 def analyse_detail_trade(adress):
@@ -1424,7 +1446,7 @@ def search_df_month(df, fiscal_year, future_year, word):
                 m.append(i)
 
         if fiscal_year == 12:
-            last_index = ["1400" + "/" + f"{i}" for i in m]
+            last_index = [f"1400/{i}" for i in m]
         else:
             year = []
             month = []
@@ -1436,7 +1458,7 @@ def search_df_month(df, fiscal_year, future_year, word):
                 year.append(y)
             l = [i - 1 for i in year]
             for i in range(len(l)):
-                s = f"{l[i]}" + "/" + f"{month[i]}"
+                s = f"{l[i]}/{month[i]}"
                 last_index.append(s)
         for i in last_index:
             count_last += df.loc[i][word]
@@ -2589,13 +2611,13 @@ class Stock:
             self.get_balance_sheet("yearly")
             self.get_balance_sheet("quarterly")
         except Exception as err:
-            print(f"add balancs sheet {self.Name}--{err}")
+            print(f"add balance sheet {self.Name} : {err}")
         ########## Load cash_flow ##############
         try:
             self.get_cash_flow("yearly")
             self.get_cash_flow("quarterly")
         except Exception as err:
-            print(f"add cash_flow {self.Name}--{err}")
+            print(f"add cash_flow {self.Name} : {err}")
 
         self.dollar_analyse["Net_Profit"] = (
             self.income_dollar_yearly[["Net_Profit"]]
@@ -2628,7 +2650,7 @@ class Stock:
         self.hazine_quarterly = abs(self.hazine_quarterly)
         # self.daramad_quarterly=self.income_common_rial_quarterly[['Other_operating_Income_Expense','Other_non_operate_Income_Expense']]
         self.Vp, self.Price_bin = voloume_profile(self.Price, "2020", 60)
-        ############ create tester majule #############
+        ############ create tester module #############
         self.sma_tester = SmaTester(
             self.Price, self.tester_start, self.tester_end, self.tc
         )
@@ -2638,7 +2660,7 @@ class Stock:
         self.tester_price = TesterOneSidePrice(
             self.Price, self.tester_start, self.tester_end, self.tc
         )
-        ############ Load_P/E Historical #############
+        ############ Load P/E Historical #############
         try:
             self.pe, self.pe_n, self.pe_u = get_pe_data(self.Name)
             self.dollar_azad, self.dollar_nima = read_dollar(
@@ -2655,14 +2677,14 @@ class Stock:
             self.get_product("quarterly")
             self.pre_process_product_data()
         except Exception as err:
-            print(f"add prouct data {self.Name}--{err}")
+            print(f"add prouct data {self.Name} : {err}")
 
         ########### load cost ###########
         try:
             self.get_cost("yearly")
             self.get_cost("quarterly")
         except Exception as err:
-            print(f"add cost {self.Name}--{err}")
+            print(f"add cost {self.Name} : {err}")
         ######### Load group p/e data #########
         try:
             self.group, self.gropu_n, self.group_u = get_pe_data(self.industry, "index")
@@ -2683,7 +2705,7 @@ class Stock:
             self.opt = opt
 
         except Exception as err:
-            print(f"add opt file {self.Name}--{err}")
+            print(f"add opt file {self.Name} : {err}")
         ########### Predict future ############
         try:
             self.create_interest_data()
@@ -2693,25 +2715,25 @@ class Stock:
             self.create_end_data()
             self.create_fcfe()
         except Exception as err:
-            print(f"cant predict future {self.Name}--{err}")
+            print(f"cant predict future {self.Name} : {err}")
         ########### add risk of falling ############
         try:
             self.risk_falling = len(self.pe[self.pe["P/E-ttm"] < self.pe_fw]) / len(
                 self.pe["P/E-ttm"]
             )
         except Exception as err:
-            print(f"cant calculate risk of falling {self.Name}--{err}")
+            print(f"cant calculate risk of falling {self.Name} : {err}")
 
         ######## add compare return data #########
         try:
             self.create_macro()
         except Exception as err:
-            print(f"cant compare returns {self.Name}--{err}")
+            print(f"cant compare returns {self.Name} : {err}")
         ############ add valueation of stock ###########
         try:
             self.predict_value()
         except Exception as err:
-            print(f"cant valuation of {self.Name} --{err}")
+            print(f"cant valuation of {self.Name} : {err}")
 
     def plot_income_yearly(self):
         plt.figure(figsize=[20, 15])
@@ -4537,21 +4559,21 @@ class Stock:
             for i in count_product.columns:
                 count_product_com[i] = count_product[i] / count_product["جمع"]
         except Exception as err:
-            print(f"cant create count_product_com {self.Name} {period}--{err}")
+            print(f"cant create count_product_com {self.Name} {period} : {err}")
         # create count_revenue_com
         try:
             count_revenue_com = pd.DataFrame(columns=count_revenue.columns)
             for i in count_revenue.columns:
                 count_revenue_com[i] = count_revenue[i] / count_revenue["جمع"]
         except Exception as err:
-            print(f"cant create count_revenue_com {self.Name} {period}--{err}")
+            print(f"cant create count_revenue_com {self.Name} {period} : {err}")
         # create price_revenue_com
         try:
             price_revenue_com = pd.DataFrame(columns=price_revenue.columns)
             for i in price_revenue.columns:
                 price_revenue_com[i] = price_revenue[i] / price_revenue["جمع"]
         except Exception as err:
-            print(f"cant create price_revenuee_com {self.Name} {period} --{err}")
+            print(f"cant create price_revenuee_com {self.Name} {period} : {err}")
 
         # create price_revenue major
         try:
@@ -4569,7 +4591,7 @@ class Stock:
             price_revenue_com_major = 0
             count_revenue_major = 0
             price_revenue_major = 0
-            print(f"cant create major data {self.Name} {period} --{err}")
+            print(f"cant create major data {self.Name} {period} : {err}")
         # create_rate
         try:
             rate = price_revenue / count_revenue
@@ -4577,7 +4599,7 @@ class Stock:
             rate_change = rate.pct_change()
             rate_change.dropna(inplace=True)
         except Exception as err:
-            print(f"cant create rate {self.Name} {period}--{err}")
+            print(f"cant create rate {self.Name} {period} : {err}")
             rate = 0
             rate_major = 0
         # fillna
