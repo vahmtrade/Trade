@@ -1226,12 +1226,107 @@ def plot_stocks_ret(
             label=i.Name,
         )
         plt.legend()
-
-
-def plot_cagr_stocks(stocks):
-    plt.figure(figsize=[12, 6])
+    plt.figure(figsize=[20, 8])
     for i in stocks:
-        plt.bar(x=i.Name, height=i.cagr_rial_yearly)
+        plt.bar(
+            x=i.Name,
+            height=i.Price[start:end]["Close"].iloc[-1]
+            / i.Price[start:end]["Close"].iloc[0],
+        )
+
+
+def plot_param_stocks(stocks, parametr):
+    """
+    parametr is: pe_terminal,pe_fw,growth,count,rate,pe_capm,pe_terminal_historical,'k_capm','k_historical','k','beta,pot
+    """
+    if parametr == "pe_terminal":
+        plt.figure(figsize=[12, 6])
+        for i in stocks:
+            try:
+                plt.bar(x=i.Name, height=i.pe_terminal)
+            except:
+                pass
+    if parametr == "pe_fw":
+        plt.figure(figsize=[12, 6])
+        for i in stocks:
+            try:
+                plt.bar(x=i.Name, height=i.pe_fw)
+            except:
+                pass
+    if parametr == "growth":
+        plt.figure(figsize=[12, 6])
+        for i in stocks:
+            try:
+                plt.bar(x=i.Name, height=i.g_stock)
+            except:
+                pass
+    if parametr == "count":
+        plt.figure(figsize=[12, 6])
+        for i in stocks:
+            try:
+                plt.bar(x=i.Name, height=i.cagr_count)
+            except:
+                pass
+    if parametr == "rate":
+        plt.figure(figsize=[12, 6])
+        for i in stocks:
+            try:
+                plt.bar(x=i.Name, height=i.cagr_rate)
+            except:
+                pass
+    if parametr == "pe_capm":
+        plt.figure(figsize=[12, 6])
+        for i in stocks:
+            try:
+                plt.bar(x=i.Name, height=i.pe_terminal_capm)
+            except:
+                pass
+    if parametr == "pe_terminal_historical":
+        plt.figure(figsize=[12, 6])
+        for i in stocks:
+            try:
+                plt.bar(x=i.Name, height=i.pe_terminal_historical)
+            except:
+                pass
+    if parametr == "k_capm":
+        plt.figure(figsize=[12, 6])
+        for i in stocks:
+            try:
+                plt.bar(x=i.Name, height=i.k_capm)
+            except:
+                pass
+    if parametr == "k_historical":
+        plt.figure(figsize=[12, 6])
+        for i in stocks:
+            try:
+                plt.bar(x=i.Name, height=i.k_historical)
+            except:
+                pass
+    if parametr == "k":
+        plt.figure(figsize=[12, 6])
+        for i in stocks:
+            try:
+                plt.bar(x=i.Name, height=i.k)
+            except:
+                pass
+    if parametr == "beta":
+        plt.figure(figsize=[12, 6])
+        for i in stocks:
+            try:
+                plt.bar(x=i.Name, height=i.beta)
+            except:
+                pass
+    if parametr == "pot":
+        plt.figure(figsize=[12, 6])
+        plt.axhline(y=1, linestyle="dashed")
+        for i in stocks:
+            try:
+                pot = i.value / i.Price["Close"].iloc[-1]
+                if pot < 0:
+                    pot = 0
+                plt.bar(x=i.Name, height=pot)
+            except:
+                pass
 
 
 def plot_margin_trend(stocks):
@@ -2525,7 +2620,7 @@ class Stock:
     def __init__(
         self,
         Name,
-        year_s=1390,
+        year_s=1396,
         month_s=1,
         year_end=1401,
         month_end=12,
@@ -2706,6 +2801,21 @@ class Stock:
 
         except Exception as err:
             print(f"add opt file {self.Name} : {err}")
+            self.my_tester.optimize_strategy(
+                range(3, 15, 3), range(18, 40, 4), range(10, 20, 4), range(21, 60, 6)
+            )
+            opt = pd.read_excel(
+                f"{INDUSTRIES_PATH}/{self.industry}/{self.Name}/{structure['opt']}"
+            )
+            # simulate with opt file
+            self.my_tester.test_strategy(
+                opt["SMA_s"].iloc[0],
+                opt["SMA_l"].iloc[0],
+                opt["VMA_S"].iloc[0],
+                opt["VMA_l"].iloc[0],
+            )
+            self.opt = opt
+
         ########### Predict future ############
         try:
             self.create_interest_data()
@@ -4860,23 +4970,25 @@ class Stock:
 
         ### calculate aggregate growth #######
         value_d = eps1 / (1 + k) ** n + eps2 / (1 + k) ** (1 + n)
-        rate_aggr = self.rate_yearly["total"] / self.rate_yearly["total"].iloc[0]
+        rate_aggr = self.rate_yearly["total"][-5:] / self.rate_yearly["total"].iloc[-5]
         cagr_rate = math.pow(
-            (self.rate_yearly["total"] / self.rate_yearly["total"].iloc[0]).iloc[-1],
-            1 / (len(self.rate_yearly) - 1),
+            (self.rate_yearly["total"][-5:] / self.rate_yearly["total"].iloc[-5]).iloc[
+                -1
+            ],
+            1 / (5 - 1),
         )
         self.rate_aggr = rate_aggr
         self.cagr_rate = cagr_rate
         count_aggr = (
-            self.count_revenue_yearly["total"]
-            / self.count_revenue_yearly["total"].iloc[0]
+            self.count_revenue_yearly["total"][-5:]
+            / self.count_revenue_yearly["total"].iloc[-5]
         )
         cagr_count = math.pow(count_aggr.iloc[-1], 1 / (len(count_aggr) - 1))
         self.count_aggr = count_aggr
         self.cagr_count = cagr_count
         profit_aggr = (
-            self.income_rial_yearly["Net_Profit"]
-            / self.income_rial_yearly["Net_Profit"].iloc[0]
+            self.income_rial_yearly["Net_Profit"][-5:]
+            / self.income_rial_yearly["Net_Profit"].iloc[-5]
         )
         cagr_profit = math.pow(profit_aggr.iloc[-1], 1 / (len(profit_aggr) - 1))
         self.profit_aggr = profit_aggr
@@ -4899,7 +5011,8 @@ class Stock:
             i += 1
         ##### Calculate terminal p/e ##########
         if pe_terminal == 1:
-            pe_terminal_historical = self.end_data["mean_price/eps"].median()
+            pe_terminal_historical = self.pe_fw_historical[["pe"]].median()
+            pe_terminal_historical = pe_terminal_historical.values[0]
             self.pe_terminal_historical = pe_terminal_historical
             pe_terminal_capm = (1 + g) / (k - g)
             self.pe_terminal_capm = pe_terminal_capm
@@ -5165,10 +5278,81 @@ class Stock:
         )
         self.pe_fw_historical.rename(columns={0: "pe"}, inplace=True)
 
+    def save_manual(self):
+        changeable = self.pred_income[
+            [
+                "Total_Revenue",
+                "Cost_of_Revenue",
+                "Operating_Expense",
+                "Other_operating_Income_Expense",
+                "Interest_Expense",
+                "Other_non_operate_Income_Expense",
+                "Tax_Provision",
+            ]
+        ].copy()
+        changeable.to_excel(f"{DB}/manual/{self.Name}.xlsx")
+
     def update_manual(self, n_g=2, rf=0.35, erp=0.15, g=1, pe_terminal=1):
-        self.pred_income = pd.read_excel(
-            f"manual/{self.Name}.xlsx", index_col="Unnamed: 0"
-        )
+        try:
+            changeable = pd.read_excel(
+                f"{DB}/manual/{self.Name}.xlsx", index_col="Unnamed: 0"
+            )
+            non_changeable = self.pred_income[
+                [
+                    "Gross_Profit",
+                    "Operating_Income",
+                    "Pretax_Income",
+                    "Net_Income_Common",
+                    "Net_Profit",
+                    "EPS",
+                    "Capital",
+                    "EPS_Capital",
+                ]
+            ]
+            non_changeable["Gross_Profit"] = (
+                changeable["Total_Revenue"] + changeable["Cost_of_Revenue"]
+            )
+            non_changeable["Operating_Income"] = (
+                non_changeable["Gross_Profit"]
+                + changeable["Operating_Expense"]
+                + changeable["Other_operating_Income_Expense"]
+            )
+            non_changeable["Pretax_Income"] = (
+                non_changeable["Operating_Income"]
+                + changeable["Interest_Expense"]
+                + changeable["Other_non_operate_Income_Expense"]
+            )
+            non_changeable["Net_Income_Common"] = (
+                non_changeable["Pretax_Income"] + changeable["Tax_Provision"]
+            )
+            non_changeable["Net_Profit"] = non_changeable["Net_Income_Common"]
+            non_changeable["EPS"] = (
+                non_changeable["Net_Profit"] / non_changeable["Capital"] * 1000
+            )
+            non_changeable["EPS_Capital"] = (
+                non_changeable["Net_Profit"] / non_changeable["Capital"].iloc[-1] * 1000
+            )
+            self.pred_income["Total_Revenue"] = changeable["Total_Revenue"]
+            self.pred_income["Cost_of_Revenue"] = changeable["Cost_of_Revenue"]
+            self.pred_income["Gross_Profit"] = non_changeable["Gross_Profit"]
+            self.pred_income["Operating_Expense"] = changeable["Operating_Expense"]
+            self.pred_income["Other_operating_Income_Expense"] = changeable[
+                "Other_operating_Income_Expense"
+            ]
+            self.pred_income["Operating_Income"] = non_changeable["Operating_Income"]
+            self.pred_income["Interest_Expense"] = changeable["Interest_Expense"]
+            self.pred_income["Other_non_operate_Income_Expense"] = changeable[
+                "Other_non_operate_Income_Expense"
+            ]
+            self.pred_income["Pretax_Income"] = non_changeable["Pretax_Income"]
+            self.pred_income["Tax_Provision"] = changeable["Tax_Provision"]
+            self.pred_income["Net_Income_Common"] = non_changeable["Net_Income_Common"]
+            self.pred_income["Net_Profit"] = non_changeable["Net_Profit"]
+            self.pred_income["EPS"] = non_changeable["EPS"]
+            self.pred_income["Capital"] = non_changeable["Capital"]
+            self.pred_income["EPS_Capital"] = non_changeable["EPS_Capital"]
+        except:
+            self.save_manual()
 
         self.create_end_data()
         self.predict_value(n_g, rf, erp, pe_terminal)
