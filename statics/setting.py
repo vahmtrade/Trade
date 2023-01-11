@@ -138,9 +138,10 @@ PICKLES_PATH = f"{DB}/watchlist"
 
 
 today = JalaliDate.today()
-today_8digit = f"{today.year:02d}{today.month:02d}{today.day:02d}"
-first_day = f"{today.year-10:02d}/{today.month:02d}/{today.day-1:02d}"
-last_day = f"{today.year:02d}/{today.month:02d}/{today.day-1:02d}"
+today_8char = f"{today.year:02d}{today.month:02d}{today.day:02d}"
+today_10char = f"{today.year:02d}/{today.month:02d}/{today.day:02d}"
+year_ago = f"{today.year-10:02d}/{today.month:02d}/{today.day:02d}"
+month_ago = f"{today.year:02d}/{today.month-1:02d}/{today.day:02d}"
 
 regex_per_timeid_y = "[۰۱۲۳۴۵۶۷۸۹]{4}/[۰۱۲۳۴۵۶۷۸۹]{2}/[۰۱۲۳۴۵۶۷۸۹]{2}"
 regex_en_timeid_q = "[0123456789]{4}/[0123456789]{2}"

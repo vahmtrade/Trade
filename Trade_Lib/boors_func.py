@@ -26,7 +26,7 @@ from Trade_Lib.strategy import SmaTester, TesterOneSide, TesterOneSidePrice
 plt.style.use("seaborn")
 
 
-def save_watchlist(date=today_8digit):
+def save_watchlist(date=today_8char):
     """save all stocks data in one file"""
 
     data = {}

@@ -10,6 +10,7 @@ from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support.expected_conditions import (
     presence_of_element_located as presence,
     element_to_be_clickable as clickable,
+    staleness_of as staleness,
 )
 
 from statics.setting import *
@@ -36,6 +37,69 @@ if platform.system() == "Windows":
 
 webwait = WebDriverWait(driver, wait_time)
 driver.maximize_window()
+
+
+def ime_physical(start=month_ago, end=today_10char):
+    webwait = WebDriverWait(driver, 8 * wait_time)
+    # get page
+    driver.get("https://ime.co.ir/offer-stat.html")
+    sleep(break_time)
+
+    # send start day
+    first = "//*[@id='ctl05_ReportsHeaderControl_FromDate']"
+    webwait.until(presence((By.XPATH, first)))
+    driver.find_element(By.XPATH, first).clear()
+    driver.find_element(By.XPATH, first).send_keys(start)
+    sleep(break_time)
+
+    # send end day
+    last = "//*[@id='ctl05_ReportsHeaderControl_ToDate']"
+    webwait.until(presence((By.XPATH, last)))
+    driver.find_element(By.XPATH, last).clear()
+    driver.find_element(By.XPATH, last).send_keys(end)
+    sleep(break_time)
+
+    # click 'satrha'
+    rows = "//*[@id='AmareMoamelatGrid']/div[1]/div[1]/div[1]/div[1]/button"
+    webwait.until(clickable((By.XPATH, rows)))
+    driver.find_element(By.XPATH, rows).click()
+    sleep(break_time)
+
+    # click 'tarikh moamele'
+    t = "//*[@id='AmareMoamelatGrid']/div[1]/div[1]/div[1]/div[1]/ul/li[16]/label/input"
+    webwait.until(clickable((By.XPATH, t)))
+    driver.find_element(By.XPATH, t).click()
+    sleep(break_time)
+
+    # click 'namayesh'
+    show = "//*[@id='FillGrid']"
+    webwait.until(clickable((By.XPATH, show)))
+    driver.find_element(By.XPATH, show).click()
+    loading = "/html/body/div[2]/div/div/div[1]/div/div[2]"
+    webwait.until(staleness(driver.find_element(By.XPATH, loading)))
+    sleep(4 * break_time)
+
+    # click 'Export data'
+    export = "//*[@id='AmareMoamelatGrid']/div[1]/div[1]/div[1]/div[2]/button"
+    webwait.until(clickable(driver.find_element(By.XPATH, export)))
+    driver.find_element(By.XPATH, export).click()
+    sleep(break_time)
+
+    # click CSV
+    csv = "//*[@id='AmareMoamelatGrid']/div[1]/div[1]/div[1]/div[2]/ul/li[3]"
+    webwait.until(clickable((By.XPATH, csv)))
+    driver.find_element(By.XPATH, csv).click()
+    sleep(2 * break_time)
+
+    # replace last file
+    new_path = f"{MACRO_PATH}/physical.csv"
+    move_last_file(new_path)
+    sleep(2 * break_time)
+
+    # to excel format
+    save_as_file(new_path, ".xls")
+    sleep(2 * break_time)
+    webwait = WebDriverWait(driver, wait_time)
 
 
 def codal_login():
@@ -409,7 +473,7 @@ def bourseview_balancesheet(stock_name, y=5, q=5, time_types=["yearly", "quarter
             new_path = f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{structure['balance'][time_type]}"
             move_last_file(new_path)
             sleep(break_time)
-            to_useful_excel(new_path)
+            resave_excel(new_path)
             sleep(2 * break_time)
 
     except Exception as err:
@@ -477,7 +541,7 @@ def bourseview_income_statement(
                 new_path = f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{structure['income'][time_type][money_type]}"
                 move_last_file(new_path)
                 sleep(break_time)
-                to_useful_excel(new_path)
+                resave_excel(new_path)
                 sleep(2 * break_time)
 
     except Exception as err:
@@ -531,7 +595,7 @@ def bourseview_cashflow(stock_name, y=5, q=5, time_types=["yearly", "quarterly"]
             new_path = f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{structure['cash'][time_type]}"
             move_last_file(new_path)
             sleep(break_time)
-            to_useful_excel(new_path)
+            resave_excel(new_path)
             sleep(2 * break_time)
 
     except Exception as err:
@@ -606,7 +670,7 @@ def bourseview_product_revenue(
                 new_path = f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{structure['product'][time_type+money_type]}"
                 move_last_file(new_path)
                 sleep(break_time)
-                to_useful_excel(new_path)
+                resave_excel(new_path)
                 sleep(2 * break_time)
 
     except Exception as err:
@@ -672,7 +736,7 @@ def bourseview_cost(stock_name, y=5, q=5, time_types=["yearly", "quarterly"]):
             new_path = f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{structure['cost'][time_type]}"
             move_last_file(new_path)
             sleep(break_time)
-            to_useful_excel(new_path)
+            resave_excel(new_path)
             sleep(2 * break_time)
 
     except Exception as err:
@@ -728,14 +792,14 @@ def bourseview_official(stock_name, y=5, q=5, time_types=["yearly", "quarterly"]
             new_path = f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{structure['official'][time_type]}"
             move_last_file(new_path)
             sleep(break_time)
-            to_useful_excel(new_path)
+            resave_excel(new_path)
             sleep(2 * break_time)
 
     except Exception as err:
         print(f"cant download official {stock_name} : {err}")
 
 
-def bourseview_price_history(stock_name, start=first_day, end=last_day):
+def bourseview_price_history(stock_name, start=year_ago, end=today_10char):
     """download pe
     <start : 1390/01/01>
     <end : 1400/01/01>"""
@@ -782,14 +846,14 @@ def bourseview_price_history(stock_name, start=first_day, end=last_day):
         new_path = f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{structure['pe']}"
         move_last_file(new_path)
         sleep(break_time)
-        to_useful_excel(new_path)
+        resave_excel(new_path)
         sleep(2 * break_time)
 
     except:
         print(f"cant download price history of {stock_name}")
 
 
-def bourseview_macro(start=first_day, end=last_day):
+def bourseview_macro(start=year_ago, end=today_10char):
     """download macro
     <start : 1390/01/01>
     <end : 1400/01/01>"""
