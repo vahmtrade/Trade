@@ -200,7 +200,7 @@ def list_stock_files(stock_name):
     stock_dirs = []
     stock_files = []
     for path, subdirs, files in os.walk(
-        f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}"
+        f"{INDUSTRIES_PATH}/{wl_productive[stock_name]['indus']}/{stock_name}"
     ):
         for dir in subdirs:
             stock_dirs.append(os.path.join(path, dir).replace("\\", "/"))
@@ -224,8 +224,8 @@ def get_excel_nums(file_path):
 
 
 def create_database_structure():
-    """create database folders based on watchlist"""
-    for stock, info in watchlist.items():
+    """create database folders based on wl_productive"""
+    for stock, info in wl_productive.items():
         for file in all_dict_values(structure):
             s = "/".join(file.split("/")[:-1])
 
@@ -241,7 +241,7 @@ def create_database_structure():
 def find_deficiencies(stock_name):
 
     base_files = [
-        f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{s}"
+        f"{INDUSTRIES_PATH}/{wl_productive[stock_name]['indus']}/{stock_name}/{s}"
         for s in all_dict_values(structure)
         if ".xlsx" in s
     ]
@@ -279,7 +279,7 @@ def check_stock_files(
     stock_name, user_year=0, user_month=0, user_quarter=0, action=False
 ):
     base_files = [
-        f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{s}"
+        f"{INDUSTRIES_PATH}/{wl_productive[stock_name]['indus']}/{stock_name}/{s}"
         for s in all_dict_values(structure)
         if ".xlsx" in s
     ]
@@ -358,7 +358,7 @@ def check_stock_files(
                     print("unmatch type : ", file)
                     failed.append(file)
 
-                if excel_token != watchlist[stock_name]["token"]:
+                if excel_token != wl_productive[stock_name]["token"]:
                     print("unmatch name :", file)
                     failed.append(file)
 

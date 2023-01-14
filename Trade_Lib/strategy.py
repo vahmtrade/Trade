@@ -87,7 +87,7 @@ class TesterOneSide:
             columns=["SMA_s", "SMA_l", "VMA_S", "VMA_l"], data=combination
         )
         df["Performance"] = resault
-        industry = watchlist[self.name]["indus"]
+        industry = wl_productive[self.name]["indus"]
         df = df.sort_values("Performance", ascending=False)
         df.to_excel(f"{INDUSTRIES_PATH}/{industry}/{self.name}/{structure['opt']}")
         return df
