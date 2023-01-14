@@ -149,41 +149,50 @@ def best_table_id(data_tables):
     return table_id
 
 
-def to_useful_excel(file_path):
-    """convert bourseview excel to new excel that pandas use it"""
-    if platform.system() == "Windows":
-        try:
-            excel = win32.gencache.EnsureDispatch("Excel.Application")
-        except AttributeError:
-            # remove cache and try again
-            MODULE_LIST = [m.__name__ for m in sys.modules.values()]
-            for module in MODULE_LIST:
-                if re.match(r"win32com\.gen_py\..+", module):
-                    del sys.modules[module]
-            shutil.rmtree(
-                os.path.join(os.environ.get("LOCALAPPDATA"), "Temp", "gen_py")
-            )
-            excel = win32.gencache.EnsureDispatch("Excel.Application")
+def load_win_app(app_name):
+    try:
+        app = win32.gencache.EnsureDispatch(app_name)
+    except AttributeError:
+        # remove cache and try again
+        MODULE_LIST = [m.__name__ for m in sys.modules.values()]
+        for module in MODULE_LIST:
+            if re.match(r"win32com\.gen_py\..+", module):
+                del sys.modules[module]
+        shutil.rmtree(os.path.join(os.environ.get("LOCALAPPDATA"), "Temp", "gen_py"))
+        app = win32.gencache.EnsureDispatch(app_name)
 
-        # open and save excel file
-        excel.Workbooks.Open(file_path).Save()
+    return app
+
+
+def resave_excel(file_path):
+    if platform.system() == "Windows":
+        excel = load_win_app("Excel.Application")
+        workbook = excel.Workbooks.Open(file_path)
+        workbook.Save()
         excel.Application.Quit()
 
 
+def save_as_file(file_path, ext):
+    exts = {".xls": 56, ".html": 44}
+    if platform.system() == "Windows":
+        excel = load_win_app("Excel.Application")
+        workbook = excel.Workbooks.Open(file_path)
+        new_name = os.path.splitext(file_path)[0] + ext
+        workbook.SaveAs(new_name.replace("/", "\\"), FileFormat=exts[ext])
+        excel.Application.Quit()
+        os.remove(file_path)
+
+
 def move_last_file(new_path):
-    """move last DB file to new_path"""
+    """move last database file to new_path"""
     # find latest downloaded file
     filename = max(
         [f for f in os.listdir(DB)],
         key=lambda x: os.path.getctime(os.path.join(DB, x)),
     )
-
-    # replace last file
-    if ".xlsx" in filename:
-        os.replace(
-            f"{DB}/{filename}",
-            new_path,
-        )
+    data = f"{DB}/{filename}"
+    if os.path.isfile(data):
+        os.replace(data, new_path)
 
 
 def list_stock_files(stock_name):
