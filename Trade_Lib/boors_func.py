@@ -579,6 +579,9 @@ def plot_pe_direct(pe, direct, start_date):
 
 
 def read_stock(name, start_date, end_date):
+    """
+    name:farsi symbol,start_date,end_date:miladi return stock and stock_dollar_price
+    """
     stock = tse.download(name, adjust=True)[name]
     stock.drop("yesterday", inplace=True, axis=1)
     stock.set_index("date", inplace=True)
@@ -643,8 +646,22 @@ def read_portfolio(broker, owner, date, alpha):
             },
             inplace=True,
         )
-    Portfolio["stock"] = Portfolio["Stock"]
+    lst = []
+    for i in Portfolio["Stock"]:
+        try:
+            lst.append(watchlist_df[watchlist_df["token"] == i].index[0])
+        except:
+            print(f"no {i}")
+    Portfolio["Stock"] = lst
     Portfolio.set_index("Stock", inplace=True)
+    data = read_watchlist("1401-10-15")
+    Portfolio["pe_fw"] = np.zeros(len(Portfolio))
+    for i in Portfolio.index:
+        Portfolio["Industry"].loc[i] = watchlist[i]["indus"]
+        try:
+            Portfolio["pe_fw"].loc[i] = data[i].pe_fw
+        except:
+            Portfolio["pe_fw"].loc[i] = np.nan
     Portfolio["Cost"] = Portfolio["Mean_Price"] * Portfolio["Count"] / 10**7
     Portfolio["Value"] = Portfolio["Count"] * Portfolio["Last_Price"] / 10**7
     Portfolio.sort_values("Value", inplace=True, ascending=False)
@@ -669,193 +686,15 @@ def read_portfolio(broker, owner, date, alpha):
     small = Portfolio[Portfolio["Perc_Of_Cost"] < (alpha)]
     Portfolio.drop(small.index, inplace=True)
     a = []
-    g = []
     for i in Portfolio.index:
         try:
-            ticker = tse.Ticker(i)
+            ticker = tse.Ticker(watchlist[i]["token"])
             a.append(ticker.p_e_ratio)
-            g.append(ticker.group_p_e_ratio)
         except:
             a.append(np.nan)
-            g.append(np.nan)
     Portfolio["PE"] = a
-    Portfolio["PE_Group"] = g
     Portfolio.to_excel(f"{DB}/Portfolio/{broker}/{owner}/Process_data/{date}.xlsx")
     return Portfolio
-
-
-def group_portFolio(Port):
-    Group_Port = pd.DataFrame(
-        columns=["Cost", "Value", "Count"],
-        index=[
-            "Oragh",
-            "Tala",
-            "Felezat",
-            "Chemical",
-            "Palayeshgah",
-            "Bank",
-            "Daroo",
-            "Ghaza",
-            "Ghand",
-            "Khodro",
-            "Kashi",
-        ],
-    )
-    Group_Port.loc["Oragh"] = [
-        Port[(Port["stock"] == "کیان") | (Port["stock"] == "آکورد")]["Cost"].sum(),
-        Port[(Port["stock"] == "کیان") | (Port["stock"] == "آکورد")]["Value"].sum(),
-        Port[(Port["stock"] == "کیان") | (Port["stock"] == "آکورد")]["Cost"].count(),
-    ]
-    Group_Port.loc["Tala"] = [Port.loc["طلا"]["Cost"], Port.loc["طلا"]["Value"], 1]
-    Group_Port.loc["Felezat"] = [
-        Port[Port["Industry"] == "فلزات اساسي"]["Cost"].sum(),
-        Port[Port["Industry"] == "فلزات اساسي"]["Value"].sum(),
-        Port[Port["Industry"] == "فلزات اساسي"]["Cost"].count(),
-    ]
-    Group_Port.loc["Khodro"] = [
-        Port[Port["Industry"] == "خودرو و ساخت قطعات"]["Cost"].sum(),
-        Port[Port["Industry"] == "خودرو و ساخت قطعات"]["Value"].sum(),
-        Port[Port["Industry"] == "خودرو و ساخت قطعات"]["Cost"].count(),
-    ]
-    Group_Port.loc["Daroo"] = [
-        Port[Port["Industry"] == "مواد و محصولات دارويي"]["Cost"].sum(),
-        Port[Port["Industry"] == "مواد و محصولات دارويي"]["Value"].sum(),
-        Port[Port["Industry"] == "مواد و محصولات دارويي"]["Cost"].count(),
-    ]
-    Group_Port.loc["Ghand"] = [
-        Port[Port["Industry"] == "قند و شكر"]["Cost"].sum(),
-        Port[Port["Industry"] == "قند و شكر"]["Value"].sum(),
-        Port[Port["Industry"] == "قند و شكر"]["Cost"].count(),
-    ]
-    Group_Port.loc["Zeraat"] = [
-        Port[Port["Industry"] == "زراعت و خدمات وابسته"]["Cost"].sum(),
-        Port[Port["Industry"] == "زراعت و خدمات وابسته"]["Value"].sum(),
-        Port[Port["Industry"] == "زراعت و خدمات وابسته"]["Cost"].count(),
-    ]
-    Group_Port.loc["Palayeshgah"] = [
-        Port[
-            (Port["stock"] == "پالایش")
-            | (Port["Industry"] == "فراورده هاي نفتي، كك و سوخت هسته اي")
-        ]["Cost"].sum(),
-        Port[
-            (Port["stock"] == "پالایش")
-            | (Port["Industry"] == "فراورده هاي نفتي، كك و سوخت هسته اي")
-        ]["Value"].sum(),
-        Port[
-            (Port["stock"] == "پالایش")
-            | (Port["Industry"] == "فراورده هاي نفتي، كك و سوخت هسته اي")
-        ]["Value"].count(),
-    ]
-    Group_Port.loc["Chemical"] = [
-        Port[Port["Industry"] == "محصولات شيميايي"]["Cost"].sum(),
-        Port[Port["Industry"] == "محصولات شيميايي"]["Value"].sum(),
-        Port[Port["Industry"] == "محصولات شيميايي"]["Cost"].count(),
-    ]
-    Group_Port.loc["Mokhaberat"] = [
-        Port[Port["Industry"] == "مخابرات"]["Cost"].sum(),
-        Port[Port["Industry"] == "مخابرات"]["Value"].sum(),
-        Port[Port["Industry"] == "مخابرات"]["Cost"].count(),
-    ]
-    Group_Port.loc["Sarmaye_Gozari"] = [
-        Port[Port["Industry"] == "سرمايه گذاريها"]["Cost"].sum(),
-        Port[Port["Industry"] == "سرمايه گذاريها"]["Value"].sum(),
-        Port[Port["Industry"] == "سرمايه گذاريها"]["Cost"].count(),
-    ]
-    Group_Port.loc["Bank"] = [
-        Port[
-            (Port["stock"] == "دارا یکم")
-            | (Port["Industry"] == "بانكها و موسسات اعتباري")
-        ]["Cost"].sum(),
-        Port[
-            (Port["stock"] == "دارا یکم")
-            | (Port["Industry"] == "بانكها و موسسات اعتباري")
-        ]["Value"].sum(),
-        Port[
-            (Port["stock"] == "دارا یکم")
-            | (Port["Industry"] == "بانكها و موسسات اعتباري")
-        ]["Value"].count(),
-    ]
-    Group_Port.loc["Utility"] = [
-        Port[Port["Industry"] == "عرضه برق، گاز، بخاروآب گرم"]["Cost"].sum(),
-        Port[Port["Industry"] == "عرضه برق، گاز، بخاروآب گرم"]["Value"].sum(),
-        Port[Port["Industry"] == "عرضه برق، گاز، بخاروآب گرم"]["Cost"].count(),
-    ]
-    Group_Port.loc["Siman"] = [
-        Port[Port["Industry"] == "سيمان، آهك و گچ"]["Cost"].sum(),
-        Port[Port["Industry"] == "سيمان، آهك و گچ"]["Value"].sum(),
-        Port[Port["Industry"] == "سيمان، آهك و گچ"]["Cost"].count(),
-    ]
-    Group_Port.loc["Kashi"] = [
-        Port[Port["Industry"] == "کاشی و سرامیک"]["Cost"].sum(),
-        Port[Port["Industry"] == "کاشی و سرامیک"]["Value"].sum(),
-        Port[Port["Industry"] == "کاشی و سرامیک"]["Cost"].count(),
-    ]
-    Group_Port.loc["Ghaza"] = [
-        Port[Port["Industry"] == "غذايي بجز قند"]["Cost"].sum(),
-        Port[Port["Industry"] == "غذايي بجز قند"]["Value"].sum(),
-        Port[Port["Industry"] == "غذايي بجز قند"]["Cost"].count(),
-    ]
-    Group_Port.loc["Sanati"] = [
-        Port[Port["Industry"] == "شرکتهاي چند رشته اي صنعتي"]["Cost"].sum(),
-        Port[Port["Industry"] == "شرکتهاي چند رشته اي صنعتي"]["Value"].sum(),
-        Port[Port["Industry"] == "شرکتهاي چند رشته اي صنعتي"]["Cost"].count(),
-    ]
-    Group_Port.loc["Computer"] = [
-        Port[Port["Industry"] == "توليد محصولات كامپيوتري الكترونيكي ونوري"][
-            "Cost"
-        ].sum(),
-        Port[Port["Industry"] == "توليد محصولات كامپيوتري الكترونيكي ونوري"][
-            "Value"
-        ].sum(),
-        Port[Port["Industry"] == "توليد محصولات كامپيوتري الكترونيكي ونوري"][
-            "Cost"
-        ].count(),
-    ]
-    Group_Port.loc["Total"] = [
-        Group_Port["Cost"].sum(),
-        Group_Port["Value"].sum(),
-        Group_Port["Count"].sum(),
-    ]
-    Group_Port["Profit"] = Group_Port["Value"] / (Group_Port["Cost"] + 0.01) - 1
-    Group_Port["Percent"] = Group_Port["Value"] / Group_Port.loc["Total"]["Value"]
-    Group_Port["Cperc"] = Group_Port["Percent"].cumsum()
-
-    return Group_Port
-
-
-def group_portfolio_bime(Portfolio):
-    Group_Port = pd.DataFrame(
-        columns=["Count", "Name", "Cost", "Value"],
-        index=["Oragh", "Tala", "Bank", "Felezat", "Sarmaye_Gozari"],
-    )
-    Group_Port["Count"] = [2, 1, 1, 1, 1]
-    Group_Port["Name"] = ["Kian,Akord", "Tala", "Dara_Yekom", "Folad", "Vakharazm"]
-    Group_Port["Cost"] = [
-        Portfolio.iloc[0]["Cost"] + Portfolio.iloc[1]["Cost"],
-        Portfolio.loc["طلا"]["Cost"],
-        Portfolio.iloc[3]["Cost"],
-        Portfolio.loc["فولاد"]["Cost"],
-        Portfolio.loc["وخارزم"]["Cost"],
-    ]
-    Group_Port["Value"] = [
-        Portfolio.iloc[0]["Value"] + Portfolio.iloc[1]["Value"],
-        Portfolio.loc["طلا"]["Value"],
-        Portfolio.iloc[3]["Value"],
-        Portfolio.loc["فولاد"]["Value"],
-        Portfolio.loc["وخارزم"]["Value"],
-    ]
-    Group_Port["Perc_Of_Value"] = [
-        Portfolio.iloc[0]["Perc_Of_Value"] + Portfolio.iloc[1]["Perc_Of_Value"],
-        Portfolio.loc["طلا"]["Perc_Of_Value"],
-        Portfolio.iloc[3]["Perc_Of_Value"],
-        Portfolio.loc["فولاد"]["Perc_Of_Value"],
-        Portfolio.loc["وخارزم"]["Perc_Of_Value"],
-    ]
-    Group_Port.sort_values("Value", ascending=False, inplace=True)
-    Group_Port["Cum_Val"] = Group_Port["Perc_Of_Value"].cumsum()
-    plt.figure(figsize=[30, 10])
-    Group_Port["Value"].plot(kind="pie", autopct="%1.2f")
-    return Group_Port
 
 
 def history(Broker, owner):
@@ -2110,32 +1949,6 @@ class Market:
         )
 
 
-class Portfolio:
-    def __init__(self, broker, owner, alpha, date):
-        self.broker = broker
-        self.owner = owner
-        self.alpha = alpha
-        self.date = date
-        self.Port = read_portfolio(self.broker, self.owner, self.date, self.alpha)
-        self.Group = group_portFolio(self.Port)
-        self.Data, self.History = history(self.broker, self.owner)
-
-    def plot_group(self):
-        plt.figure(figsize=[20, 8])
-        plt.pie(
-            self.Group.iloc[0:-1]["Value"],
-            labels=self.Group.index[0:-1],
-            autopct="%1.1f%%",
-            textprops={"color": "w"},
-            shadow=True,
-            explode=(0.1, 0.1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
-        )
-
-    def plot_history(self):
-        plt.figure(figsize=[15, 8])
-        plt.plot(self.History["Value"], marker="o", linewidth=3)
-
-
 class Macro:
     def __init__(
         self,
@@ -2657,50 +2470,73 @@ class Stock:
         except:
             print(f"cant download {self.Name} price")
         ######## load income yearly ############
-        (
-            self.income_rial_yearly,
-            self.income_common_rial_yearly,
-            self.Risk_income_yearly,
-            self.cagr_rial_yearly,
-            self.fiscal_year,
-            self.last_year,
-            self.income_cagr_rial_yearly,
-        ) = get_income_yearly(self.Name, "rial")
-        (
-            self.income_dollar_yearly,
-            self.income_common_dollar_yearly,
-            self.Risk_income_yearly,
-            self.cagr_dollar_yearly,
-            i,
-            j,
-            self.income_cagr_dollar_yearly,
-        ) = get_income_yearly(self.Name, "dollar")
-        (
-            self.income_rial_quarterly,
-            self.income_common_rial_quarterly,
-            self.Risk_income_rial_quarterly,
-            self.cagr_rial_quarterly,
-            self.income_cagr_rial_quarterly,
-        ) = get_income_quarterly(
-            self.Name, "rial", self.fiscal_year, (self.last_year + 1)
-        )
-        (
-            self.income_dollar_quarterly,
-            self.income_common_dollar_quarterly,
-            self.Risk_income_dollar_quarterly,
-            self.cagr_dollar_quarterly,
-            self.income_cagr_dollar_quarterly,
-        ) = get_income_quarterly(
-            self.Name, "dollar", self.fiscal_year, (self.last_year + 1)
-        )
-        self.Buy_Power = type_record(self.farsi)
-        self.Buy_Power_w = self.Buy_Power.resample("W").mean()
-        self.Buy_Power_m = self.Buy_Power.resample("M").mean()
-        self.dollar_analyse = (
-            self.income_dollar_yearly[["Total_Revenue"]]
-            / self.income_dollar_yearly.iloc[0]["Total_Revenue"]
-        )
-        self.n = len(self.income_rial_quarterly.index)
+        try:
+            (
+                self.income_rial_yearly,
+                self.income_common_rial_yearly,
+                self.Risk_income_yearly,
+                self.cagr_rial_yearly,
+                self.fiscal_year,
+                self.last_year,
+                self.income_cagr_rial_yearly,
+            ) = get_income_yearly(self.Name, "rial")
+        except:
+            print(f"cant download {self.Name}income_yearly")
+        try:
+            (
+                self.income_dollar_yearly,
+                self.income_common_dollar_yearly,
+                self.Risk_income_yearly,
+                self.cagr_dollar_yearly,
+                i,
+                j,
+                self.income_cagr_dollar_yearly,
+            ) = get_income_yearly(self.Name, "dollar")
+        except:
+            print(f"cant download {self.Name}income_yearly dollar")
+        ########### load income quarterly ############
+        try:
+            (
+                self.income_rial_quarterly,
+                self.income_common_rial_quarterly,
+                self.Risk_income_rial_quarterly,
+                self.cagr_rial_quarterly,
+                self.income_cagr_rial_quarterly,
+            ) = get_income_quarterly(
+                self.Name, "rial", self.fiscal_year, (self.last_year + 1)
+            )
+        except:
+            print(f"cant download {self.Name}income_quarterly")
+        try:
+            (
+                self.income_dollar_quarterly,
+                self.income_common_dollar_quarterly,
+                self.Risk_income_dollar_quarterly,
+                self.cagr_dollar_quarterly,
+                self.income_cagr_dollar_quarterly,
+            ) = get_income_quarterly(
+                self.Name, "dollar", self.fiscal_year, (self.last_year + 1)
+            )
+        except:
+            print(f"cant download {self.Name}income_quarterly dollar")
+        ############# Download Buy_Power ##############
+        try:
+            self.Buy_Power = type_record(self.farsi)
+            self.Buy_Power_w = self.Buy_Power.resample("W").mean()
+            self.Buy_Power_m = self.Buy_Power.resample("M").mean()
+        except:
+            print(f"cant download {self.Name}  buy power")
+        try:
+            self.dollar_analyse = (
+                self.income_dollar_yearly[["Total_Revenue"]]
+                / self.income_dollar_yearly.iloc[0]["Total_Revenue"]
+            )
+        except:
+            print(f"cant download {self.Name}  dollar analyse")
+        try:
+            self.n = len(self.income_rial_quarterly.index)
+        except:
+            print(f"cant download {self.Name}  income_rial_quarterly")
         ######### Load balancesheet ############
         try:
             self.get_balance_sheet("yearly")
@@ -2714,37 +2550,43 @@ class Stock:
         except Exception as err:
             print(f"add cash_flow {self.Name} : {err}")
 
-        self.dollar_analyse["Net_Profit"] = (
-            self.income_dollar_yearly[["Net_Profit"]]
-            / self.income_dollar_yearly.iloc[0]["Net_Profit"]
-        )
-        self.dollar_analyse["Total_change"] = self.income_dollar_yearly[
-            ["Total_Revenue"]
-        ].pct_change()
-        self.dollar_analyse["Net_change"] = self.income_dollar_yearly[
-            ["Net_Profit"]
-        ].pct_change()
-        self.hazine_yearly = self.income_common_rial_yearly[
-            [
-                "Cost_of_Revenue",
-                "Operating_Expense",
-                "Interest_Expense",
-                "Tax_Provision",
+        try:
+            self.dollar_analyse["Net_Profit"] = (
+                self.income_dollar_yearly[["Net_Profit"]]
+                / self.income_dollar_yearly.iloc[0]["Net_Profit"]
+            )
+            self.dollar_analyse["Total_change"] = self.income_dollar_yearly[
+                ["Total_Revenue"]
+            ].pct_change()
+            self.dollar_analyse["Net_change"] = self.income_dollar_yearly[
+                ["Net_Profit"]
+            ].pct_change()
+            self.hazine_yearly = self.income_common_rial_yearly[
+                [
+                    "Cost_of_Revenue",
+                    "Operating_Expense",
+                    "Interest_Expense",
+                    "Tax_Provision",
+                ]
             ]
-        ]
-        self.hazine_yearly = abs(self.hazine_yearly)
-        # self.daramad_yearly=self.income_common_rial_yearly[['Other_operating_Income_Expense','Other_non_operating_Income_Expense']]
-        self.hazine_quarterly = self.income_common_rial_quarterly[
-            [
-                "Cost_of_Revenue",
-                "Operating_Expense",
-                "Interest_Expense",
-                "Tax_Provision",
+            self.hazine_yearly = abs(self.hazine_yearly)
+            # self.daramad_yearly=self.income_common_rial_yearly[['Other_operating_Income_Expense','Other_non_operating_Income_Expense']]
+            self.hazine_quarterly = self.income_common_rial_quarterly[
+                [
+                    "Cost_of_Revenue",
+                    "Operating_Expense",
+                    "Interest_Expense",
+                    "Tax_Provision",
+                ]
             ]
-        ]
-        self.hazine_quarterly = abs(self.hazine_quarterly)
+            self.hazine_quarterly = abs(self.hazine_quarterly)
+        except:
+            pass
         # self.daramad_quarterly=self.income_common_rial_quarterly[['Other_operating_Income_Expense','Other_non_operate_Income_Expense']]
-        self.Vp, self.Price_bin = voloume_profile(self.Price, "2020", 60)
+        try:
+            self.Vp, self.Price_bin = voloume_profile(self.Price, "2020", 60)
+        except:
+            print(f"cant download {self.Name} voloume profile")
         ############ create tester module #############
         self.sma_tester = SmaTester(
             self.Price, self.tester_start, self.tester_end, self.tc
@@ -2801,20 +2643,24 @@ class Stock:
 
         except Exception as err:
             print(f"add opt file {self.Name} : {err}")
-            self.my_tester.optimize_strategy(
-                range(3, 15, 3), range(18, 40, 4), range(10, 20, 4), range(21, 60, 6)
-            )
-            opt = pd.read_excel(
-                f"{INDUSTRIES_PATH}/{self.industry}/{self.Name}/{structure['opt']}"
-            )
-            # simulate with opt file
-            self.my_tester.test_strategy(
-                opt["SMA_s"].iloc[0],
-                opt["SMA_l"].iloc[0],
-                opt["VMA_S"].iloc[0],
-                opt["VMA_l"].iloc[0],
-            )
-            self.opt = opt
+            if self.industry != "fixed_income":
+                self.my_tester.optimize_strategy(
+                    range(3, 15, 3),
+                    range(18, 40, 4),
+                    range(10, 20, 4),
+                    range(21, 60, 6),
+                )
+                opt = pd.read_excel(
+                    f"{INDUSTRIES_PATH}/{self.industry}/{self.Name}/{structure['opt']}"
+                )
+                # simulate with opt file
+                self.my_tester.test_strategy(
+                    opt["SMA_s"].iloc[0],
+                    opt["SMA_l"].iloc[0],
+                    opt["VMA_S"].iloc[0],
+                    opt["VMA_l"].iloc[0],
+                )
+                self.opt = opt
 
         ########### Predict future ############
         try:
@@ -5356,6 +5202,15 @@ class Stock:
 
         self.create_end_data()
         self.predict_value(n_g, rf, erp, pe_terminal)
+
+    def box_plot(self):
+        plt.figure(figsize=[15, 8])
+        plt.subplot(1, 2, 1)
+        self.pe_fw_historical["pe"].plot(kind="box")
+        plt.axhline(self.pe_fw_historical["pe"].iloc[-1], linestyle="dashed")
+        plt.subplot(1, 2, 2)
+        self.pred_com["Net_Profit"].plot(kind="box")
+        plt.axhline(self.pred_com["Net_Profit"].iloc[-1], linestyle="dashed")
 
 
 class OptPort:

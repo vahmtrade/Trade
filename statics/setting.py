@@ -1,6 +1,6 @@
 import os
 from persiantools.jdatetime import JalaliDate
-
+import pandas as pd
 
 watchlist = {
     "fakhouz": {"indus": "folad", "token": "فخوز", "name": "فخوز"},
@@ -89,6 +89,27 @@ watchlist = {
         "name": "ریخته گری تراکتور سازی ایران",
     },
     "chekapa": {"indus": "kaghaz", "token": "چکاپا", "name": "گروه صنایع کاغذ پارس"},
+    "kian": {"indus": "fixed_income", "token": "کیان", "name": "کیان"},
+    "palayesh": {"indus": "etf", "token": "پالایش", "name": "پالایش"},
+    "shepoly": {"indus": "chemical", "token": "شپلی", "name": "پلی اکریل"},
+    "darayekom": {"indus": "etf", "token": "دارا یکم", "name": "دارا یکم"},
+    "shasta": {
+        "indus": "holding",
+        "token": "شستا",
+        "name": "سرمایه گذاری تأمین اجتماعی",
+    },
+    "madira": {"indus": "domestic", "token": "مادیرا", "name": "صنایع مادیران"},
+    "fars": {"indus": "holding", "token": "فارس", "name": "صنایع پتروشیمی خلیج فارس"},
+    "vapoya": {"indus": "holding", "token": "وپویا", "name": "سرمایه گذاری پویا"},
+    "zegoldasht": {
+        "indus": "zaraat",
+        "token": "زگلدشت",
+        "name": "کشت و دام گلدشت نمونه اصفهان",
+    },
+    "kazar": {"indus": "kashi", "token": "کاذر", "name": "فرآورده‌های‌ نسوزآذر"},
+    "netrin": {"indus": "nasaji", "token": "نطرین", "name": "عطرین نخ قم"},
+    "tala": {"indus": "tala", "token": "طلا", "name": "طلا"},
+    "fejahan": {"indus": "folad", "token": "فجهان", "name": "مجتمع جهان فولاد سیرجان"},
 }
 structure = {
     "balance": {
@@ -125,7 +146,7 @@ structure = {
     "eps": "eps.xlsx",
     "opt": "opt.xlsx",
 }
-
+watchlist_df = pd.DataFrame(watchlist).T
 ROOT_PATH = os.path.abspath(os.curdir).replace("\\", "/")
 DB = f"{ROOT_PATH}/database"
 WINDOWS_FIREFOX_DRIVER_PATH = f"{ROOT_PATH}/statics/geckodriver.exe"
