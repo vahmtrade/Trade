@@ -26,13 +26,13 @@ from Trade_Lib.strategy import SmaTester, TesterOneSide, TesterOneSidePrice
 plt.style.use("seaborn")
 
 
-def save_watchlist(date=today_8char):
+def save_wl_productive(date=today_8char):
     """save all stocks data in one file"""
 
     data = {}
     errs = {}
 
-    for stock in watchlist:
+    for stock in wl_productive:
         try:
             data[stock] = Stock(stock)
 
@@ -45,15 +45,15 @@ def save_watchlist(date=today_8char):
     return errs
 
 
-def read_watchlist(date):
+def read_wl_productive(date):
     with open(f"{PICKLES_PATH}/{date}.pkl", "rb") as f:
         data = pickle.load(f)
 
     return data
 
 
-def analyse_watchlist(date):
-    data = read_watchlist(date)
+def analyse_wl_productive(date):
+    data = read_wl_productive(date)
 
     analyse = pd.DataFrame(
         index=data.keys(),
@@ -194,7 +194,7 @@ def analyse_watchlist(date):
     return d, [group_analyse, group_value, value_price]
 
 
-def update_watchlist(data):
+def update_wl_productive(data):
     # update price of data
     for stock in data.values():
         stock.Price, stock.Price_dollar = read_stock(
@@ -205,10 +205,10 @@ def update_watchlist(data):
     return data
 
 
-def plot_watchlist(data):
-    industries = list(set([watchlist[i]["indus"] for i in watchlist]))
+def plot_wl_productive(data):
+    industries = list(set([wl_productive[i]["indus"] for i in wl_productive]))
     for i in industries:
-        stocks = [data[x] for x in data if watchlist[x]["indus"] == i]
+        stocks = [data[x] for x in data if wl_productive[x]["indus"] == i]
         plot_margin_trend(stocks)
 
 
@@ -217,7 +217,7 @@ def plot_valuation_history(stock_name):
     for i in os.listdir(PICKLES_PATH):
         try:
             date = i.split(".")[0]
-            data = read_watchlist(date)
+            data = read_wl_productive(date)
             y.append(data[stock_name].value)
             x.append(date)
         except:
@@ -290,14 +290,14 @@ def load_stock_analyse(stock_name, name):
     """
     load your analyse from stock_name/analyse/name.pkl
     """
-    indus = watchlist[stock_name]["indus"]
+    indus = wl_productive[stock_name]["indus"]
     with open(f"{INDUSTRIES_PATH}/{indus}/{stock_name}/analyse/{name}.pkl", "rb") as f:
         data = pickle.load(f)
     return data
 
 
 def show_analyze(stock_name):
-    indus = watchlist[stock_name]["indus"]
+    indus = wl_productive[stock_name]["indus"]
     for i in os.listdir(f"{INDUSTRIES_PATH}/{indus}/{stock_name}/analyse"):
         print(i)
 
@@ -649,15 +649,15 @@ def read_portfolio(broker, owner, date, alpha):
     lst = []
     for i in Portfolio["Stock"]:
         try:
-            lst.append(watchlist_df[watchlist_df["token"] == i].index[0])
+            lst.append(wl_productive_df[wl_productive_df["token"] == i].index[0])
         except:
             print(f"no {i}")
     Portfolio["Stock"] = lst
     Portfolio.set_index("Stock", inplace=True)
-    data = read_watchlist("1401-10-15")
+    data = read_wl_productive("1401-10-15")
     Portfolio["pe_fw"] = np.zeros(len(Portfolio))
     for i in Portfolio.index:
-        Portfolio["Industry"].loc[i] = watchlist[i]["indus"]
+        Portfolio["Industry"].loc[i] = wl_productive[i]["indus"]
         try:
             Portfolio["pe_fw"].loc[i] = data[i].pe_fw
         except:
@@ -688,7 +688,7 @@ def read_portfolio(broker, owner, date, alpha):
     a = []
     for i in Portfolio.index:
         try:
-            ticker = tse.Ticker(watchlist[i]["token"])
+            ticker = tse.Ticker(wl_productive[i]["token"])
             a.append(ticker.p_e_ratio)
         except:
             a.append(np.nan)
@@ -720,7 +720,7 @@ def history(Broker, owner):
 
 
 def get_income_yearly(stock, money_type):
-    industry = watchlist[stock]["indus"]
+    industry = wl_productive[stock]["indus"]
     adress = f"{INDUSTRIES_PATH}/{industry}/{stock}/{structure['income']['yearly'][money_type]}"
     # read raw data
     stock_income = pd.read_excel(adress, engine="openpyxl")
@@ -800,7 +800,7 @@ def get_income_yearly(stock, money_type):
 
 
 def get_income_quarterly(stock, money_type, fisal_year, my_year):
-    industry = watchlist[stock]["indus"]
+    industry = wl_productive[stock]["indus"]
     adress = f"{INDUSTRIES_PATH}/{industry}/{stock}/{structure['income']['quarterly'][money_type]}"
     fiscal_dic = {
         12: {3: 1, 6: 2, 9: 3, 12: 4},
@@ -1283,7 +1283,7 @@ def mix_portfolio(names, prices, start, end):
 
 def get_pe_data(name):
 
-    adress = f"{INDUSTRIES_PATH}/{watchlist[name]['indus']}/{name}/{structure['pe']}"
+    adress = f"{INDUSTRIES_PATH}/{wl_productive[name]['indus']}/{name}/{structure['pe']}"
     pe = pd.read_excel(
         adress,
         engine="openpyxl",
@@ -2446,8 +2446,8 @@ class Stock:
 
         self.discounted_n = discounted_n
         self.Name = Name
-        self.industry = watchlist[Name]["indus"]
-        self.farsi = watchlist[Name]["token"]
+        self.industry = wl_productive[Name]["indus"]
+        self.farsi = wl_productive[Name]["token"]
 
         self.start_date = pd.to_datetime(JalaliDate(year_s, month_s, 1).to_gregorian())
 

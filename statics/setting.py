@@ -1,8 +1,8 @@
 import os
-from persiantools.jdatetime import JalaliDate
 import pandas as pd
+from persiantools.jdatetime import JalaliDate
 
-watchlist = {
+wl_productive = {
     "fakhouz": {"indus": "folad", "token": "فخوز", "name": "فخوز"},
     "folad": {"indus": "folad", "token": "فولاد", "name": "فولاد مبارکه اصفهان"},
     "sekhouz": {"indus": "siman", "token": "سخوز", "name": "سیمان خوزستان"},
@@ -89,27 +89,28 @@ watchlist = {
         "name": "ریخته گری تراکتور سازی ایران",
     },
     "chekapa": {"indus": "kaghaz", "token": "چکاپا", "name": "گروه صنایع کاغذ پارس"},
-    "kian": {"indus": "fixed_income", "token": "کیان", "name": "کیان"},
-    "palayesh": {"indus": "etf", "token": "پالایش", "name": "پالایش"},
-    "shepoly": {"indus": "chemical", "token": "شپلی", "name": "پلی اکریل"},
-    "darayekom": {"indus": "etf", "token": "دارا یکم", "name": "دارا یکم"},
-    "shasta": {
-        "indus": "holding",
-        "token": "شستا",
-        "name": "سرمایه گذاری تأمین اجتماعی",
-    },
-    "madira": {"indus": "domestic", "token": "مادیرا", "name": "صنایع مادیران"},
-    "fars": {"indus": "holding", "token": "فارس", "name": "صنایع پتروشیمی خلیج فارس"},
-    "vapoya": {"indus": "holding", "token": "وپویا", "name": "سرمایه گذاری پویا"},
     "zegoldasht": {
-        "indus": "zaraat",
+        "indus": "zeraat",
         "token": "زگلدشت",
         "name": "کشت و دام گلدشت نمونه اصفهان",
     },
     "kazar": {"indus": "kashi", "token": "کاذر", "name": "فرآورده‌های‌ نسوزآذر"},
     "netrin": {"indus": "nasaji", "token": "نطرین", "name": "عطرین نخ قم"},
-    "tala": {"indus": "tala", "token": "طلا", "name": "طلا"},
     "fejahan": {"indus": "folad", "token": "فجهان", "name": "مجتمع جهان فولاد سیرجان"},
+}
+wl_non_productive = {
+    "kian": {"indus": "fixed_income", "token": "کیان", "name": "کیان"},
+    "palayesh": {"indus": "etf", "token": "پالایش", "name": "پالایش"},
+    "fars": {"indus": "holding", "token": "فارس", "name": "صنایع پتروشیمی خلیج فارس"},
+    "vapoya": {"indus": "holding", "token": "وپویا", "name": "سرمایه گذاری پویا"},
+    "darayekom": {"indus": "etf", "token": "دارا یکم", "name": "دارا یکم"},
+    "tala": {"indus": "tala", "token": "طلا", "name": "طلا"},
+    "madira": {"indus": "domestic", "token": "مادیرا", "name": "صنایع مادیران"},
+    "shasta": {
+        "indus": "holding",
+        "token": "شستا",
+        "name": "سرمایه گذاری تأمین اجتماعی",
+    },
 }
 structure = {
     "balance": {
@@ -146,7 +147,7 @@ structure = {
     "eps": "eps.xlsx",
     "opt": "opt.xlsx",
 }
-watchlist_df = pd.DataFrame(watchlist).T
+
 ROOT_PATH = os.path.abspath(os.curdir).replace("\\", "/")
 DB = f"{ROOT_PATH}/database"
 WINDOWS_FIREFOX_DRIVER_PATH = f"{ROOT_PATH}/statics/geckodriver.exe"
@@ -155,7 +156,7 @@ LINUX_FIREFOX_DRIVER_PATH = f"{ROOT_PATH}/statics/geckodriver"
 INDUSTRIES_PATH = f"{DB}/industries"
 MACRO_PATH = f"{DB}/macro"
 FOREX_PATH = f"{DB}/forex"
-PICKLES_PATH = f"{DB}/watchlist"
+PICKLES_PATH = f"{DB}/wl_productive"
 
 
 today = JalaliDate.today()
@@ -166,3 +167,5 @@ month_ago = f"{today.year:02d}/{today.month-1:02d}/{today.day:02d}"
 
 regex_per_timeid_y = "[۰۱۲۳۴۵۶۷۸۹]{4}/[۰۱۲۳۴۵۶۷۸۹]{2}/[۰۱۲۳۴۵۶۷۸۹]{2}"
 regex_en_timeid_q = "[0123456789]{4}/[0123456789]{2}"
+
+wl_productive_df = pd.DataFrame(wl_productive).T

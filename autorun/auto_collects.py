@@ -132,7 +132,7 @@ def codal_search(stock_name):
         send = '//*[@id="txtSymbol"]'
         webwait.until(presence((By.XPATH, send)))
         driver.find_element(By.XPATH, send).clear()
-        driver.find_element(By.XPATH, send).send_keys(watchlist[stock_name]["name"])
+        driver.find_element(By.XPATH, send).send_keys(wl_productive[stock_name]["name"])
         sleep(break_time)
 
         exceptions = {"simorgh": 1}
@@ -255,7 +255,7 @@ def codal_eps(stock_name, n=5):
 
         # export eps
         df.to_excel(
-            f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{structure['eps']}",
+            f"{INDUSTRIES_PATH}/{wl_productive[stock_name]['indus']}/{stock_name}/{structure['eps']}",
             index=False,
         )
 
@@ -415,7 +415,9 @@ def bourseview_search(stock_name):
         search = "//*[@id='input-0']"
         webwait.until(presence((By.XPATH, search)))
         driver.find_element(By.XPATH, search).clear()
-        driver.find_element(By.XPATH, search).send_keys(watchlist[stock_name]["token"])
+        driver.find_element(By.XPATH, search).send_keys(
+            wl_productive[stock_name]["token"]
+        )
         sleep(break_time)
 
         # select first choice
@@ -470,7 +472,7 @@ def bourseview_balancesheet(stock_name, y=5, q=5, time_types=["yearly", "quarter
             sleep(2 * break_time)
 
             # replace last file
-            new_path = f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{structure['balance'][time_type]}"
+            new_path = f"{INDUSTRIES_PATH}/{wl_productive[stock_name]['indus']}/{stock_name}/{structure['balance'][time_type]}"
             move_last_file(new_path)
             sleep(break_time)
             resave_excel(new_path)
@@ -538,7 +540,7 @@ def bourseview_income_statement(
                 sleep(2 * break_time)
 
                 # replace last file
-                new_path = f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{structure['income'][time_type][money_type]}"
+                new_path = f"{INDUSTRIES_PATH}/{wl_productive[stock_name]['indus']}/{stock_name}/{structure['income'][time_type][money_type]}"
                 move_last_file(new_path)
                 sleep(break_time)
                 resave_excel(new_path)
@@ -592,7 +594,7 @@ def bourseview_cashflow(stock_name, y=5, q=5, time_types=["yearly", "quarterly"]
             sleep(2 * break_time)
 
             # replace last file
-            new_path = f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{structure['cash'][time_type]}"
+            new_path = f"{INDUSTRIES_PATH}/{wl_productive[stock_name]['indus']}/{stock_name}/{structure['cash'][time_type]}"
             move_last_file(new_path)
             sleep(break_time)
             resave_excel(new_path)
@@ -667,7 +669,7 @@ def bourseview_product_revenue(
                 sleep(2 * break_time)
 
                 # replace last file
-                new_path = f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{structure['product'][time_type+money_type]}"
+                new_path = f"{INDUSTRIES_PATH}/{wl_productive[stock_name]['indus']}/{stock_name}/{structure['product'][time_type+money_type]}"
                 move_last_file(new_path)
                 sleep(break_time)
                 resave_excel(new_path)
@@ -733,7 +735,7 @@ def bourseview_cost(stock_name, y=5, q=5, time_types=["yearly", "quarterly"]):
             sleep(2 * break_time)
 
             # replace last file
-            new_path = f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{structure['cost'][time_type]}"
+            new_path = f"{INDUSTRIES_PATH}/{wl_productive[stock_name]['indus']}/{stock_name}/{structure['cost'][time_type]}"
             move_last_file(new_path)
             sleep(break_time)
             resave_excel(new_path)
@@ -789,7 +791,7 @@ def bourseview_official(stock_name, y=5, q=5, time_types=["yearly", "quarterly"]
             sleep(2 * break_time)
 
             # replace last file
-            new_path = f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{structure['official'][time_type]}"
+            new_path = f"{INDUSTRIES_PATH}/{wl_productive[stock_name]['indus']}/{stock_name}/{structure['official'][time_type]}"
             move_last_file(new_path)
             sleep(break_time)
             resave_excel(new_path)
@@ -843,7 +845,7 @@ def bourseview_price_history(stock_name, start=year_ago, end=today_10char):
         sleep(2 * break_time)
 
         # replace last file
-        new_path = f"{INDUSTRIES_PATH}/{watchlist[stock_name]['indus']}/{stock_name}/{structure['pe']}"
+        new_path = f"{INDUSTRIES_PATH}/{wl_productive[stock_name]['indus']}/{stock_name}/{structure['pe']}"
         move_last_file(new_path)
         sleep(break_time)
         resave_excel(new_path)
@@ -974,7 +976,7 @@ def bourseview_macro(start=year_ago, end=today_10char):
         print(f"cant download macro data : {err}")
 
 
-def integrate_database(stocks=list(watchlist.keys())):
+def integrate_database(stocks=list(wl_productive.keys())):
     create_database_structure()
 
     bourseview_login()
@@ -1012,7 +1014,7 @@ def integrate_database(stocks=list(watchlist.keys())):
 
 
 def update_database(
-    stocks=list(watchlist.keys()),
+    stocks=list(wl_productive.keys()),
     yearly=False,
     quarterly=False,
     monthly=False,
