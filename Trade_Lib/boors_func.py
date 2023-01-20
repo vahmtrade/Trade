@@ -61,6 +61,8 @@ def analyse_wl_productive(date):
             "sector",
             "margin",
             "margin_var",
+            "last_gross_margin",
+            "gross_margin_change",
             "last_rate/mean_12",
             "last_rate_change",
             "last_rate/same_year",
@@ -79,6 +81,12 @@ def analyse_wl_productive(date):
             analyse.loc[stock.Name]["sector"] = stock.industry
             analyse.loc[stock.Name]["margin"] = stock.Risk_income_yearly[0]
             analyse.loc[stock.Name]["margin_var"] = stock.Risk_income_yearly[1]
+            analyse.loc[stock.Name][
+                "last_gross_margin"
+            ] = stock.income_common_rial_quarterly["Gross_Profit"].iloc[-1]
+            analyse.loc[stock.Name]["gross_margin_change"] = (
+                stock.income_common_rial_quarterly["Gross_Profit"].pct_change().iloc[-1]
+            )
             analyse.loc[stock.Name]["last_rate/mean_12"] = (
                 stock.rate_monthly[max_com].iloc[-1]
                 / stock.rate_monthly[max_com].iloc[-12:].mean()
@@ -1283,7 +1291,9 @@ def mix_portfolio(names, prices, start, end):
 
 def get_pe_data(name):
 
-    adress = f"{INDUSTRIES_PATH}/{wl_productive[name]['indus']}/{name}/{structure['pe']}"
+    adress = (
+        f"{INDUSTRIES_PATH}/{wl_productive[name]['indus']}/{name}/{structure['pe']}"
+    )
     pe = pd.read_excel(
         adress,
         engine="openpyxl",
@@ -2137,7 +2147,7 @@ class Macro:
                 ),
             )
 
-    def plot_pe_opt(self, opt, y_s, m_s, y_e, m_e):
+    def plot_pe_opt(self, opt, y_s=1400, m_s=1, y_e=1401, m_e=12):
         """IR dollar direct"""
         start = pd.to_datetime(JalaliDate(y_s, m_s, 1).to_gregorian())
         end = pd.to_datetime(JalaliDate(y_e, m_e, 1).to_gregorian())
@@ -2249,6 +2259,10 @@ class Macro:
         data_1401["dollar_nima"] = dollar_nima_1401
         data_1401["IR"] = ir_1401
         data_1401["pe"] = pe_1401
+        data_1401["cash/base"] = data_1401["cash"] / data_1401["base_money"]
+        data_1401["ratio_deposits"] = data_1401["current_deposits"] / data_1401["cash"]
+        data_1400["cash/base"] = data_1400["cash"] / data_1400["base_money"]
+        data_1400["ratio_deposits"] = data_1400["current_deposits"] / data_1400["cash"]
         # add future data
         # create interest_ yearly data
         yearly_interest = []
@@ -2292,6 +2306,7 @@ class Macro:
             ]
         ]
         monetary["ratio_deposits"] = monetary["current_deposits"] / monetary["cash"]
+        monetary["cash/base"] = monetary["cash"] / monetary["base_money"]
         # extract price index
         price = history[["dollar", "cpi", "ppi", "land", "dollar_land", "stock"]]
         price_90 = price.loc[1390:]
@@ -2588,15 +2603,18 @@ class Stock:
         except:
             print(f"cant download {self.Name} voloume profile")
         ############ create tester module #############
-        self.sma_tester = SmaTester(
-            self.Price, self.tester_start, self.tester_end, self.tc
-        )
-        self.my_tester = TesterOneSide(
-            self.Price, self.tester_start, self.tester_end, self.tc, self.Name
-        )
-        self.tester_price = TesterOneSidePrice(
-            self.Price, self.tester_start, self.tester_end, self.tc
-        )
+        try:
+            self.sma_tester = SmaTester(
+                self.Price, self.tester_start, self.tester_end, self.tc
+            )
+            self.my_tester = TesterOneSide(
+                self.Price, self.tester_start, self.tester_end, self.tc, self.Name
+            )
+            self.tester_price = TesterOneSidePrice(
+                self.Price, self.tester_start, self.tester_end, self.tc
+            )
+        except:
+            print("cant create tester")
         ############ Load P/E Historical #############
         try:
             self.pe, self.pe_n, self.pe_u = get_pe_data(self.Name)
@@ -4850,7 +4868,7 @@ class Stock:
         ##### estimate eps of ngrowth year ######
         i = 3
         while i < 3 + n_g:
-            vars()[f"eps{i}"] = (1 + g_economy) * vars()[f"eps{i-1}"]
+            vars()[f"eps{i}"] = (1 + g_stock) * vars()[f"eps{i-1}"]
             # setattr(self,f"eps{i}",)
             self.__dict__[f"eps{i}"] = vars()[f"eps{i}"]
             value_d += vars()[f"eps{i}"] / (1 + k) ** (i - 1 + n)
@@ -4873,6 +4891,16 @@ class Stock:
         self.value_d = value_d
         self.value = value
         self.potential_value_g = (value / self.Price["Close"].iloc[-1]) - 1
+        # create eps estimate dataframe
+        lst = list(range(self.future_year, self.future_year + n_g + 2))
+        df = pd.DataFrame(index=lst, columns=["EPS"])
+        df.loc[self.future_year] = self.pred_income["EPS_Capital"].loc[self.future_year]
+        df.loc[self.future_year + 1] = self.pred_income["EPS_Capital"].loc[
+            self.future_year + 1
+        ]
+        for j in range(3, n_g + 2 + 1):
+            df.loc[self.future_year + j - 1] = vars()[f"eps{j}"]
+        self.eps_estimate = df
 
     # save your analyse
     def save_analyse(self, name):

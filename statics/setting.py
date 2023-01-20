@@ -97,6 +97,8 @@ wl_productive = {
     "kazar": {"indus": "kashi", "token": "کاذر", "name": "فرآورده‌های‌ نسوزآذر"},
     "netrin": {"indus": "nasaji", "token": "نطرین", "name": "عطرین نخ قم"},
     "fejahan": {"indus": "folad", "token": "فجهان", "name": "مجتمع جهان فولاد سیرجان"},
+    "khodro": {"indus": "khodro", "token": "خودرو", "name": "ایران خودرو"},
+    "kemina": {"indus": "shishe", "token": "کمینا", "name": "شیشه سازی مینا"},
 }
 wl_non_productive = {
     "kian": {"indus": "fixed_income", "token": "کیان", "name": "کیان"},
