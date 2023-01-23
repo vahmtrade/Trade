@@ -4,7 +4,7 @@ from email.message import EmailMessage
 
 from statics.setting import *
 from statics.secrets import *
-from Trade_Lib.boors_func import Stock
+from process.boors import Stock
 
 context = ssl.create_default_context()
 
