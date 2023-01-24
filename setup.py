@@ -5,5 +5,5 @@ setup(
     version="0.1",
     description="Project for market research",
     author="vahmtrade",
-    packages=['Trade_Lib']
+    packages=["statics", "autorun", "preprocess", "process"],
 )

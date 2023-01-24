@@ -20,8 +20,8 @@ from scipy import stats
 import arabic_reshaper
 from bidi.algorithm import get_display
 from statics.setting import *
-from preprocess.basic_modules import *
-from Trade_Lib.strategy import SmaTester, TesterOneSide, TesterOneSidePrice
+from preprocess.basic import *
+from process.strategy import SmaTester, TesterOneSide, TesterOneSidePrice
 
 plt.style.use("seaborn")
 
@@ -622,7 +622,7 @@ def read_stock(name, start_date, end_date):
     stock_dollar = stock_dollar.to_frame()
     stock_dollar["Close"] = stock_dollar["Close"] / dollar_azad["Close"]
     try:
-        stock_dollar["Marcket_Cap"]=shares*stock_dollar["Close"]
+        stock_dollar["Marcket_Cap"] = shares * stock_dollar["Close"]
     except:
         pass
     stock_dollar["Change"] = stock_dollar["Close"].pct_change()
