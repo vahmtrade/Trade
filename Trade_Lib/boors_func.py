@@ -612,12 +612,19 @@ def read_stock(name, start_date, end_date):
     stock["Drow_Down"] = stock["Cummax"] - stock["Cret"]
     stock.dropna(inplace=True)
     Ticker = tse.Ticker(name)
-    # shares = Ticker.total_shares
-    # stock["Marcket_Cap"] = shares * stock["Close"] / 10**10
+    try:
+        shares = Ticker.total_shares
+        stock["Marcket_Cap"] = (shares * stock["Close"]) / 10**6
+    except:
+        pass
     dollar_azad, dollar_nima = read_dollar(start_date, end_date)
     stock_dollar = stock["Close"].copy()
     stock_dollar = stock_dollar.to_frame()
     stock_dollar["Close"] = stock_dollar["Close"] / dollar_azad["Close"]
+    try:
+        stock_dollar["Marcket_Cap"]=shares*stock_dollar["Close"]
+    except:
+        pass
     stock_dollar["Change"] = stock_dollar["Close"].pct_change()
     stock_dollar["Ret"] = np.log(stock_dollar["Close"] / stock_dollar["Close"].shift(1))
     stock_dollar["Cret"] = stock_dollar["Ret"].cumsum().apply(np.exp)
@@ -4924,7 +4931,7 @@ class Stock:
                 month = 0
             if month < 10:
                 id = f"{self.future_year}/0{month}"
-            if month > 10:
+            if month >= 10:
                 id = f"{self.future_year}/{month}"
             if m != 0:
                 try:
