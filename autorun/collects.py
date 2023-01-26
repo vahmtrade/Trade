@@ -11,6 +11,7 @@ from selenium.webdriver.support.expected_conditions import (
     presence_of_element_located as presence,
     element_to_be_clickable as clickable,
     staleness_of as staleness,
+    invisibility_of_element as invisibility,
 )
 
 from statics.setting import *
@@ -35,12 +36,13 @@ if platform.system() == "Windows":
         capabilities=driver_capabilities,
     )
 
+
 webwait = WebDriverWait(driver, wait_time)
 driver.maximize_window()
 
 
 def ime_physical(start=month_ago, end=today_10char):
-    webwait = WebDriverWait(driver, 8 * wait_time)
+    webwait = WebDriverWait(driver, 4 * wait_time)
     # get page
     driver.get("https://ime.co.ir/offer-stat.html")
     sleep(break_time)
@@ -92,12 +94,13 @@ def ime_physical(start=month_ago, end=today_10char):
     sleep(2 * break_time)
 
     # replace last file
-    new_path = f"{MACRO_PATH}/physical.csv"
+    new_path = f"{MACROPATH}/physical.csv"
     move_last_file(new_path)
     sleep(2 * break_time)
+
+    # save as excel file
     save_as_file(new_path, ".xls")
     sleep(2 * break_time)
-    webwait = WebDriverWait(driver, wait_time)
 
 
 def codal_login():
@@ -117,7 +120,7 @@ def codal_login():
         print(f"cant login into codal : {err}")
 
 
-def codal_search(stock_name):
+def codal_search(name):
     """search stock in codal"""
     try:
         # click searck button
@@ -130,13 +133,13 @@ def codal_search(stock_name):
         send = '//*[@id="txtSymbol"]'
         webwait.until(presence((By.XPATH, send)))
         driver.find_element(By.XPATH, send).clear()
-        driver.find_element(By.XPATH, send).send_keys(wl_productive[stock_name]["name"])
+        driver.find_element(By.XPATH, send).send_keys(wl_prod[name]["name"])
         sleep(break_time)
 
         exceptions = {"simorgh": 1}
-        if stock_name in exceptions:
+        if name in exceptions:
             # select exceptions choice
-            exception = f"//*[@id='ui-select-choices-row-0-{exceptions[stock_name]}']"
+            exception = f"//*[@id='ui-select-choices-row-0-{exceptions[name]}']"
             webwait.until(clickable((By.XPATH, exception)))
             driver.find_element(By.XPATH, exception).click()
             sleep(break_time)
@@ -151,10 +154,10 @@ def codal_search(stock_name):
         sleep(break_time)
 
     except Exception as err:
-        print(f"cant codal search {stock_name} : {err}")
+        print(f"cant codal search {name} : {err}")
 
 
-def codal_eps(stock_name, n=5):
+def codal_eps(name, n=5):
     """create eps"""
     try:
         # click 'davat majamea'
@@ -188,11 +191,8 @@ def codal_eps(stock_name, n=5):
         links_xpath = "//a[@class = 'letter-title ng-binding ng-scope']"
 
         for el in driver.find_elements(By.XPATH, links_xpath):
-
             link_timeids = re.findall(regex_per_timeid_y, el.text)
-
             if str(to_digits(link_timeids[0]))[:4] not in years:
-
                 if "اعلام تنفس" not in el.text:
                     links.append(el.get_attribute("href"))
                     years.append(str(to_digits(link_timeids[0]))[:4])
@@ -208,6 +208,7 @@ def codal_eps(stock_name, n=5):
         capital = []
 
         for link in links:
+            # open link in new page
             driver.execute_script("window.open('');")
             driver.switch_to.window(driver.window_handles[1])
             driver.get(link)
@@ -236,7 +237,7 @@ def codal_eps(stock_name, n=5):
 
         sleep(2 * break_time)
 
-        # set user n for data
+        # select user n of data
         dates = dates[:n]
         eps = eps[:n]
         dps = dps[:n]
@@ -252,16 +253,14 @@ def codal_eps(stock_name, n=5):
         df["capital_now"] = [capital[0] for i in range((len(capital)))]
 
         # export eps
-        df.to_excel(
-            f"{INDUSTRIES_PATH}/{wl_productive[stock_name]['indus']}/{stock_name}/{structure['eps']}",
-            index=False,
-        )
+        path = f"{INDUSPATH}/{wl_prod[name]['indus']}/{name}/{structure['eps']}"
+        df.to_excel(path, index=False)
 
     except Exception as err:
-        print(f"cant download eps {stock_name} : {err}")
+        print(f"cant download eps {name} : {err}")
 
 
-def codal_statement(stock_name):
+def codal_statement(name):
     """create 3 files : income,balancesheet,cashflow"""
 
     # click 'sorathaye mali'
@@ -295,17 +294,15 @@ def codal_statement(stock_name):
     sleep(break_time)
 
     # create list of stocks_links and stocks_timeid
+    links_xpath = "//a[@class = 'letter-title ng-binding ng-scope']"
     stocks_links = []
     stocks_timeid = []
-    for element in driver.find_elements(
-        By.XPATH, "//a[@class = 'letter-title ng-binding ng-scope']"
-    ):
+
+    for element in driver.find_elements(By.XPATH, links_xpath):
         stocks_links.append(element.get_attribute("href"))
 
         base_string = element.text
-        all_timeids = re.findall(
-            "[۰۱۲۳۴۵۶۷۸۹]{4}/[۰۱۲۳۴۵۶۷۸۹]{2}/[۰۱۲۳۴۵۶۷۸۹]{2}", base_string
-        )
+        all_timeids = re.findall(regex_per_timeid_y, base_string)
 
         if "نشده" in base_string:
             if "اصلاحیه" in base_string:
@@ -334,25 +331,21 @@ def codal_statement(stock_name):
         df_list = []
 
         for stock_link in stocks_links:
+            # open link in new page
             driver.execute_script("window.open('');")
             driver.switch_to.window(driver.window_handles[1])
             driver.get(stock_link + f"&sheetId={page_option}")
 
             page = driver.page_source
-
             data_tables = pd.read_html(page)
-            t_id = best_table_id(data_tables)
-            df = data_tables[t_id]
-
+            df = data_tables[best_table_id(data_tables)]
             df_list.append(df)
 
             driver.close()
             driver.switch_to.window(driver.window_handles[0])
 
-        Excelwriter = pd.ExcelWriter(
-            f"{DB}/{stock_name}_{page_options[page_option]}.xlsx",
-            engine="xlsxwriter",
-        )
+        new_path = f"{DB}/{name}_{page_options[page_option]}.xlsx"
+        Excelwriter = pd.ExcelWriter(new_path, engine="xlsxwriter")
 
         for i, df in enumerate(df_list):
             df.to_excel(Excelwriter, sheet_name=stocks_timeid[i])
@@ -390,7 +383,7 @@ def bourseview_login():
         login = "//*[@id='submit_btn']"
         webwait.until(clickable((By.XPATH, login)))
         driver.find_element(By.XPATH, login).click()
-        sleep(6 * break_time)
+        sleep(12 * break_time)
 
         try:
             # block pop-ups
@@ -405,7 +398,7 @@ def bourseview_login():
         print(f"cant login into bourseview : {err}")
 
 
-def bourseview_search(stock_name):
+def bourseview_search(name):
     """search stock in bourseview"""
 
     try:
@@ -413,9 +406,7 @@ def bourseview_search(stock_name):
         search = "//*[@id='input-0']"
         webwait.until(presence((By.XPATH, search)))
         driver.find_element(By.XPATH, search).clear()
-        driver.find_element(By.XPATH, search).send_keys(
-            wl_productive[stock_name]["token"]
-        )
+        driver.find_element(By.XPATH, search).send_keys(wl_prod[name]["token"])
         sleep(break_time)
 
         # select first choice
@@ -425,10 +416,10 @@ def bourseview_search(stock_name):
         sleep(2 * break_time)
 
     except Exception as err:
-        print(f"cant bourseview search {stock_name} : {err}")
+        print(f"cant bourseview search {name} : {err}")
 
 
-def bourseview_balancesheet(stock_name, y=5, q=5, time_types=["yearly", "quarterly"]):
+def bourseview_balancesheet(name, y=5, q=5, time_types=["yearly", "quarterly"]):
     """download 2 files : yearly,quarterly"""
     try:
 
@@ -437,11 +428,14 @@ def bourseview_balancesheet(stock_name, y=5, q=5, time_types=["yearly", "quarter
         webwait.until(clickable((By.XPATH, balancesheet)))
         driver.find_element(By.XPATH, balancesheet).click()
         driver.find_element(By.XPATH, balancesheet).click()
-        sleep(break_time)
+        sleep(2 * break_time)
 
-        # click blanck page
+        # wait for loading page
         driver.find_element(By.XPATH, "/html").click()
-        sleep(break_time)
+        loading_xpath = "//*[@id='new-balance-sheet-grid']/div/div[4]"
+        loading = driver.find_element(By.XPATH, loading_xpath)
+        webwait.until(invisibility(loading))
+        sleep(4 * break_time)
 
         for time_type in time_types:
 
@@ -461,7 +455,8 @@ def bourseview_balancesheet(stock_name, y=5, q=5, time_types=["yearly", "quarter
             balancesheet_count = f"//option[@value='{n}']"
             webwait.until(clickable((By.XPATH, balancesheet_count)))
             driver.find_element(By.XPATH, balancesheet_count).click()
-            sleep(8 * break_time)
+            webwait.until(invisibility(loading))
+            sleep(4 * break_time)
 
             # click download excel
             dl_btn = "//*[@id='new-balance-sheet-grid']/div/div[1]/span[2]/span"
@@ -470,18 +465,20 @@ def bourseview_balancesheet(stock_name, y=5, q=5, time_types=["yearly", "quarter
             sleep(2 * break_time)
 
             # replace last file
-            new_path = f"{INDUSTRIES_PATH}/{wl_productive[stock_name]['indus']}/{stock_name}/{structure['balance'][time_type]}"
+            new_path = f"{INDUSPATH}/{wl_prod[name]['indus']}/{name}/{structure['balance'][time_type]}"
             move_last_file(new_path)
             sleep(2 * break_time)
+
+            # open and ctrl + s excel file
             resave_excel(new_path)
             sleep(2 * break_time)
 
     except Exception as err:
-        print(f"cant download balancesheet {stock_name} : {err}")
+        print(f"cant download balancesheet {name} : {err}")
 
 
 def bourseview_income_statement(
-    stock_name,
+    name,
     y=5,
     q=5,
     time_types=["yearly", "quarterly"],
@@ -495,11 +492,13 @@ def bourseview_income_statement(
         webwait.until(clickable((By.XPATH, income)))
         driver.find_element(By.XPATH, income).click()
         driver.find_element(By.XPATH, income).click()
-        sleep(break_time)
+        sleep(2 * break_time)
 
-        # click blank page
+        # wait for loading page
         driver.find_element(By.XPATH, "//*[@id='overal_step2']/div[1]/div/div").click()
-        sleep(break_time)
+        loading_xpath = "//*[@id='new-income-statement-grid']/div/div[4]"
+        loading = driver.find_element(By.XPATH, loading_xpath)
+        sleep(4 * break_time)
 
         # download 4 excels
         for time_type in time_types:
@@ -529,7 +528,8 @@ def bourseview_income_statement(
                 money = f"//option[@value='{money_options[money_type]}']"
                 webwait.until(clickable((By.XPATH, money)))
                 driver.find_element(By.XPATH, money).click()
-                sleep(8 * break_time)
+                webwait.until(invisibility(loading))
+                sleep(4 * break_time)
 
                 # click download excel
                 dl_btn = "//*[@id='new-income-statement-grid']/div/div[1]/span[2]/span"
@@ -538,17 +538,19 @@ def bourseview_income_statement(
                 sleep(2 * break_time)
 
                 # replace last file
-                new_path = f"{INDUSTRIES_PATH}/{wl_productive[stock_name]['indus']}/{stock_name}/{structure['income'][time_type][money_type]}"
+                new_path = f"{INDUSPATH}/{wl_prod[name]['indus']}/{name}/{structure['income'][time_type][money_type]}"
                 move_last_file(new_path)
                 sleep(2 * break_time)
+
+                # open and ctrl + s excel file
                 resave_excel(new_path)
                 sleep(2 * break_time)
 
     except Exception as err:
-        print(f"cant download incomestatement {stock_name} : {err}")
+        print(f"cant download incomestatement {name} : {err}")
 
 
-def bourseview_cashflow(stock_name, y=5, q=5, time_types=["yearly", "quarterly"]):
+def bourseview_cashflow(name, y=5, q=5, time_types=["yearly", "quarterly"]):
     """download 2 files : yearly,quarterly"""
 
     try:
@@ -558,11 +560,14 @@ def bourseview_cashflow(stock_name, y=5, q=5, time_types=["yearly", "quarterly"]
         webwait.until(clickable((By.XPATH, cashflow)))
         driver.find_element(By.XPATH, cashflow).click()
         driver.find_element(By.XPATH, cashflow).click()
-        sleep(break_time)
+        sleep(2 * break_time)
 
-        # click blanck page
+        # wait for loading page
         driver.find_element(By.XPATH, "/html").click()
-        sleep(break_time)
+        loading_xpath = "//*[@id='new-cash-flow-grid']/div/div[4]"
+        loading = driver.find_element(By.XPATH, loading_xpath)
+        webwait.until(invisibility(loading))
+        sleep(4 * break_time)
 
         # download 2 file
         for time_type in time_types:
@@ -583,7 +588,8 @@ def bourseview_cashflow(stock_name, y=5, q=5, time_types=["yearly", "quarterly"]
             cashflow_count = f"//option[@value='{n}']"
             webwait.until(clickable((By.XPATH, cashflow_count)))
             driver.find_element(By.XPATH, cashflow_count).click()
-            sleep(8 * break_time)
+            webwait.until(invisibility(loading))
+            sleep(4 * break_time)
 
             # click download excel
             dl_btn = "//*[@id='new-cash-flow-grid']/div/div[1]/span[2]/span"
@@ -592,18 +598,20 @@ def bourseview_cashflow(stock_name, y=5, q=5, time_types=["yearly", "quarterly"]
             sleep(2 * break_time)
 
             # replace last file
-            new_path = f"{INDUSTRIES_PATH}/{wl_productive[stock_name]['indus']}/{stock_name}/{structure['cash'][time_type]}"
+            new_path = f"{INDUSPATH}/{wl_prod[name]['indus']}/{name}/{structure['cash'][time_type]}"
             move_last_file(new_path)
             sleep(2 * break_time)
+
+            # open and ctrl + s excel file
             resave_excel(new_path)
             sleep(2 * break_time)
 
     except Exception as err:
-        print(f"cant download cashflow {stock_name} : {err}")
+        print(f"cant download cashflow {name} : {err}")
 
 
 def bourseview_product_revenue(
-    stock_name,
+    name,
     y=5,
     q=5,
     m=50,
@@ -622,11 +630,14 @@ def bourseview_product_revenue(
         webwait.until(clickable((By.XPATH, product)))
         driver.find_element(By.XPATH, product).click()
         driver.find_element(By.XPATH, product).click()
-        sleep(break_time)
+        sleep(2 * break_time)
 
-        # click blanck page
+        # wait for loading page
         driver.find_element(By.XPATH, "/html").click()
-        sleep(break_time)
+        loading_xpath = "//*[@id='grid']/div/div[4]"
+        loading = driver.find_element(By.XPATH, loading_xpath)
+        webwait.until(invisibility(loading))
+        sleep(4 * break_time)
 
         for money_type in money_types:
 
@@ -634,6 +645,7 @@ def bourseview_product_revenue(
             seprate = "//*[@id='grid']/div/div[1]/span[1]/div[3]"
             webwait.until(clickable((By.XPATH, seprate)))
             driver.find_element(By.XPATH, seprate).click()
+            webwait.until(invisibility(loading))
             sleep(break_time)
 
             # download base excels
@@ -658,7 +670,8 @@ def bourseview_product_revenue(
                 product_count = f"//option[@value='{n}']"
                 webwait.until(clickable((By.XPATH, product_count)))
                 driver.find_element(By.XPATH, product_count).click()
-                sleep(8 * break_time)
+                webwait.until(invisibility(loading))
+                sleep(4 * break_time)
 
                 # click download excel
                 dl_btn = "//*[@id='grid']/div/div[1]/span[2]/span"
@@ -667,17 +680,19 @@ def bourseview_product_revenue(
                 sleep(2 * break_time)
 
                 # replace last file
-                new_path = f"{INDUSTRIES_PATH}/{wl_productive[stock_name]['indus']}/{stock_name}/{structure['product'][time_type+money_type]}"
+                new_path = f"{INDUSPATH}/{wl_prod[name]['indus']}/{name}/{structure['product'][time_type+money_type]}"
                 move_last_file(new_path)
                 sleep(2 * break_time)
+
+                # open and ctrl + s excel file
                 resave_excel(new_path)
                 sleep(2 * break_time)
 
     except Exception as err:
-        print(f"cant download product {stock_name} : {err}")
+        print(f"cant download product {name} : {err}")
 
 
-def bourseview_cost(stock_name, y=5, q=5, time_types=["yearly", "quarterly"]):
+def bourseview_cost(name, y=5, q=5, time_types=["yearly", "quarterly"]):
     """create 2 excel : yearly,quarterly
     <y = year : 5,10,20,50>
     <q = quarterly : 5,10,20,50>"""
@@ -689,11 +704,14 @@ def bourseview_cost(stock_name, y=5, q=5, time_types=["yearly", "quarterly"]):
         webwait.until(clickable((By.XPATH, cost)))
         driver.find_element(By.XPATH, cost).click()
         driver.find_element(By.XPATH, cost).click()
-        sleep(break_time)
+        sleep(2 * break_time)
 
-        # click blank page
+        # wait for loading page
         driver.find_element(By.XPATH, "/html").click()
-        sleep(break_time)
+        loading_xpath = "//*[@id='grid-cogs']/div/div[1]"
+        loading = driver.find_element(By.XPATH, loading_xpath)
+        webwait.until(invisibility(loading))
+        sleep(4 * break_time)
 
         # download excel
         for time_type in time_types:
@@ -714,7 +732,8 @@ def bourseview_cost(stock_name, y=5, q=5, time_types=["yearly", "quarterly"]):
             cost_count = f"//option[@value='{n}']"
             webwait.until(clickable((By.XPATH, cost_count)))
             driver.find_element(By.XPATH, cost_count).click()
-            sleep(8 * break_time)
+            webwait.until(invisibility(loading))
+            sleep(4 * break_time)
 
             # click 'hameye' data
             all_data = "//*[@id='grid-cogs']/div/div[4]/div/div[1]"
@@ -733,17 +752,19 @@ def bourseview_cost(stock_name, y=5, q=5, time_types=["yearly", "quarterly"]):
             sleep(2 * break_time)
 
             # replace last file
-            new_path = f"{INDUSTRIES_PATH}/{wl_productive[stock_name]['indus']}/{stock_name}/{structure['cost'][time_type]}"
+            new_path = f"{INDUSPATH}/{wl_prod[name]['indus']}/{name}/{structure['cost'][time_type]}"
             move_last_file(new_path)
             sleep(2 * break_time)
+
+            # open and ctrl + s excel file
             resave_excel(new_path)
             sleep(2 * break_time)
 
     except Exception as err:
-        print(f"cant download cost {stock_name} : {err}")
+        print(f"cant download cost {name} : {err}")
 
 
-def bourseview_official(stock_name, y=5, q=5, time_types=["yearly", "quarterly"]):
+def bourseview_official(name, y=5, q=5, time_types=["yearly", "quarterly"]):
     """create 2 excel : yearly,quarterly
     <y = year : 5,10,20,50>
     <q = quarterly : 5,10,20,50>"""
@@ -755,11 +776,14 @@ def bourseview_official(stock_name, y=5, q=5, time_types=["yearly", "quarterly"]
         webwait.until(clickable((By.XPATH, official)))
         driver.find_element(By.XPATH, official).click()
         driver.find_element(By.XPATH, official).click()
-        sleep(break_time)
+        sleep(2 * break_time)
 
-        # click blanck page
+        # wait for loading page
         driver.find_element(By.XPATH, "/html").click()
-        sleep(break_time)
+        loading_xpath = "//*[@id='grid']/div/div[1]"
+        loading = driver.find_element(By.XPATH, loading_xpath)
+        webwait.until(invisibility(loading))
+        sleep(4 * break_time)
 
         # 'salane','fasli'
         for time_type in time_types:
@@ -780,7 +804,8 @@ def bourseview_official(stock_name, y=5, q=5, time_types=["yearly", "quarterly"]
             official_count = f"//option[@value='{n}']"
             webwait.until(clickable((By.XPATH, official_count)))
             driver.find_element(By.XPATH, official_count).click()
-            sleep(8 * break_time)
+            webwait.until(invisibility(loading))
+            sleep(4 * break_time)
 
             # click download excel
             dl_btn = "//*[@id='grid']/div/div[2]/span[2]/span"
@@ -789,17 +814,17 @@ def bourseview_official(stock_name, y=5, q=5, time_types=["yearly", "quarterly"]
             sleep(2 * break_time)
 
             # replace last file
-            new_path = f"{INDUSTRIES_PATH}/{wl_productive[stock_name]['indus']}/{stock_name}/{structure['official'][time_type]}"
+            new_path = f"{INDUSPATH}/{wl_prod[name]['indus']}/{name}/{structure['official'][time_type]}"
             move_last_file(new_path)
             sleep(2 * break_time)
             resave_excel(new_path)
             sleep(2 * break_time)
 
     except Exception as err:
-        print(f"cant download official {stock_name} : {err}")
+        print(f"cant download official {name} : {err}")
 
 
-def bourseview_price_history(stock_name, start=year_ago, end=today_10char):
+def bourseview_price_history(name, start=year_ago, end=today_10char):
     """download pe
     <start : 1390/01/01>
     <end : 1400/01/01>"""
@@ -810,11 +835,14 @@ def bourseview_price_history(stock_name, start=year_ago, end=today_10char):
         webwait.until(clickable((By.XPATH, price)))
         driver.find_element(By.XPATH, price).click()
         driver.find_element(By.XPATH, price).click()
-        sleep(break_time)
+        sleep(2 * break_time)
 
-        # click blank page
+        # wait for loading page
         driver.find_element(By.XPATH, "/html").click()
-        sleep(break_time)
+        loading_xpath = "//*[@id='records-ag-grid']/div/div[2]/div[2]/div[6]/div/div"
+        loading = driver.find_element(By.XPATH, loading_xpath)
+        webwait.until(invisibility(loading))
+        sleep(4 * break_time)
 
         # send 'tarikh shoroea'
         first = "//*[@id='stocks-content-body']/div[1]/div[2]/div[1]/div[1]/div[1]/div[1]/input"
@@ -834,7 +862,7 @@ def bourseview_price_history(stock_name, start=year_ago, end=today_10char):
         show = "//*[@id='stocks-content-body']/div[1]/div[2]/div[1]/div[1]/button"
         webwait.until(clickable((By.XPATH, show)))
         driver.find_element(By.XPATH, show).click()
-        sleep(8 * break_time)
+        sleep(break_time)
 
         # click download excel
         dl_btn = "//*[@id='stocks-content-body']/div[1]/div[2]/div[1]/div[2]/div/div/div[2]/div"
@@ -843,14 +871,16 @@ def bourseview_price_history(stock_name, start=year_ago, end=today_10char):
         sleep(2 * break_time)
 
         # replace last file
-        new_path = f"{INDUSTRIES_PATH}/{wl_productive[stock_name]['indus']}/{stock_name}/{structure['pe']}"
+        new_path = f"{INDUSPATH}/{wl_prod[name]['indus']}/{name}/{structure['pe']}"
         move_last_file(new_path)
         sleep(2 * break_time)
+
+        # open and ctrl + s excel file
         resave_excel(new_path)
         sleep(2 * break_time)
 
     except Exception as err:
-        print(f"cant download price history of {stock_name} : {err}")
+        print(f"cant download price history of {name} : {err}")
 
 
 def bourseview_macro(start=year_ago, end=today_10char):
@@ -863,7 +893,7 @@ def bourseview_macro(start=year_ago, end=today_10char):
         webwait.until(clickable((By.XPATH, macro)))
         driver.find_element(By.XPATH, macro).click()
         driver.find_element(By.XPATH, macro).click()
-        sleep(break_time)
+        sleep(2 * break_time)
 
         # select 'shakhes boors iran'
         index = "//*[@id='macro-history-select-irex-wrapper']/span"
@@ -931,7 +961,7 @@ def bourseview_macro(start=year_ago, end=today_10char):
         driver.find_element(By.XPATH, risk).click()
         sleep(break_time)
 
-        # click download excel
+        # click download button
         dl_exl = "/html/body/div[2]/div/div/div/div/div[3]/div[3]/div/div[1]/div/div/div[3]/div/span"
         webwait.until(clickable((By.XPATH, dl_exl)))
         driver.find_element(By.XPATH, dl_exl).click()
@@ -953,9 +983,9 @@ def bourseview_macro(start=year_ago, end=today_10char):
         last = "//*[@id='collapseExample']/div/div/div[3]/div[1]/input"
         webwait.until(presence((By.XPATH, last)))
         driver.find_element(By.XPATH, last).send_keys(end)
-        sleep(2 * break_time)
+        sleep(4 * break_time)
 
-        # click download button
+        # click download excel
         dl_btn = "//*[@id='myModal']/div/div/div[3]/button"
         webwait.until(clickable((By.XPATH, dl_btn)))
         driver.find_element(By.XPATH, dl_btn).click()
@@ -966,7 +996,7 @@ def bourseview_macro(start=year_ago, end=today_10char):
         sleep(break_time)
 
         # replace last file
-        new_path = f"{MACRO_PATH}/macro.xlsx"
+        new_path = f"{MACROPATH}/macro.xlsx"
         move_last_file(new_path)
         sleep(2 * break_time)
 
@@ -974,47 +1004,52 @@ def bourseview_macro(start=year_ago, end=today_10char):
         print(f"cant download macro data : {err}")
 
 
-def integrate_database(stocks=list(wl_productive.keys()), dl_pe=True, dl_eps=True):
+def integrate_database(stocks=wl_prod_keys):
+    """download deficiencies of stock files"""
     create_database_structure()
 
     bourseview_login()
-    for stock_name in stocks:
-        print(f"integrate {stock_name} ...")
-        deficiencies = find_deficiencies(stock_name)[0]
+    for name in stocks:
+        print(f"integrate {name} ...")
+        deficiencies = find_deficiencies(name)[0]
         if deficiencies != {}:
-            bourseview_search(stock_name)
+            bourseview_search(name)
             for d in deficiencies:
                 if d == "balancesheet":
-                    bourseview_balancesheet(stock_name, time_types=deficiencies[d])
+                    bourseview_balancesheet(name, time_types=deficiencies[d])
                 if d == "income":
-                    bourseview_income_statement(stock_name, time_types=deficiencies[d])
+                    bourseview_income_statement(name, time_types=deficiencies[d])
                 if d == "product":
-                    bourseview_product_revenue(stock_name, time_types=deficiencies[d])
+                    bourseview_product_revenue(name, time_types=deficiencies[d])
                 if d == "official":
-                    bourseview_official(stock_name, time_types=deficiencies[d])
+                    bourseview_official(name, time_types=deficiencies[d])
                 if d == "cashflow":
-                    bourseview_cashflow(stock_name, time_types=deficiencies[d])
+                    bourseview_cashflow(name, time_types=deficiencies[d])
                 if d == "cost":
-                    bourseview_cost(stock_name, time_types=deficiencies[d])
+                    bourseview_cost(name, time_types=deficiencies[d])
 
-        if dl_pe and find_deficiencies(stock_name)[1]:
-            bourseview_search(stock_name)
-            bourseview_price_history(stock_name)
+        if find_deficiencies(name)[1]:
+            bourseview_search(name)
+            bourseview_price_history(name)
 
-    if dl_eps:
-        codal_login()
-        for stock_name in stocks:
-            if find_deficiencies(stock_name)[3]:
-                codal_search(stock_name)
-                codal_eps(stock_name)
+    codal_login()
+    for name in stocks:
+        if find_deficiencies(name)[3]:
+            codal_search(name)
+            codal_eps(name)
 
 
 def update_database(
-    stocks=list(wl_productive.keys()),
+    stocks=wl_prod_keys,
     yearly=False,
     quarterly=False,
     monthly=False,
+    dl_pe=True,
+    dl_eps=True,
 ):
+    """
+    update 20 excel of stock : 8 yearly + 8 quarterly + 2 monthly + pe + eps
+    """
     create_database_structure()
 
     t = []
@@ -1029,28 +1064,29 @@ def update_database(
         t2.append("monthly")
 
     bourseview_login()
-    for stock_name in stocks:
-        print(f"update {stock_name} ...")
-        bourseview_search(stock_name)
-        bourseview_balancesheet(stock_name, time_types=t)
-        bourseview_income_statement(stock_name, time_types=t)
-        bourseview_cashflow(stock_name, time_types=t)
-        bourseview_product_revenue(stock_name, time_types=t2)
-        bourseview_cost(stock_name, time_types=t)
-        bourseview_official(stock_name, time_types=t)
-        bourseview_price_history(stock_name)
+    for name in stocks:
+        print(f"update {name} ...")
+        bourseview_search(name)
+        bourseview_balancesheet(name, time_types=t)
+        bourseview_income_statement(name, time_types=t)
+        bourseview_cashflow(name, time_types=t)
+        bourseview_product_revenue(name, time_types=t2)
+        bourseview_cost(name, time_types=t)
+        bourseview_official(name, time_types=t)
+        if dl_pe:
+            bourseview_price_history(name)
 
     bourseview_macro()
 
-    if yearly:
+    if yearly and dl_eps:
         codal_login()
-        for stock_name in stocks:
-            codal_search(stock_name)
-            codal_eps(stock_name)
+        for name in stocks:
+            codal_search(name)
+            codal_eps(name)
 
 
 if __name__ == "__main__":
     integrate_database()
-    for i in wl_productive:
-        print(i, find_deficiencies(i))
+    for i in wl_prod:
         check_stock_files(i, action=True)
+        print(i, find_deficiencies(i))

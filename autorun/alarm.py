@@ -20,8 +20,8 @@ with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as server:
     data = {}
     alarm_text = []
 
-    # create all stocks in wl_productive
-    for s in list(wl_productive.keys())[-5:]:
+    # create all stocks in wl_prod
+    for s in wl_prod_keys[-5:]:
         stock = Stock(s)
 
         data[stock.Name] = stock

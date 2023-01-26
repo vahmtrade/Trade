@@ -34,21 +34,21 @@ def save_watchlist(date=today_8char):
     data = {}
     errs = {}
 
-    for stock in wl_productive:
+    for stock in wl_prod:
         try:
             data[stock] = Stock(stock)
 
         except Exception as err:
             errs[stock] = err
 
-    with open(f"{PICKLES_PATH}/{date}.pkl", "wb") as file:
+    with open(f"{PKLPATH}/{date}.pkl", "wb") as file:
         pickle.dump(data, file)
 
     return errs
 
 
 def read_watchlist(date):
-    with open(f"{PICKLES_PATH}/{date}.pkl", "rb") as f:
+    with open(f"{PKLPATH}/{date}.pkl", "rb") as f:
         data = pickle.load(f)
 
     return data
@@ -216,15 +216,15 @@ def update_watchlist(data):
 
 
 def plot_watchlist(data):
-    industries = list(set([wl_productive[i]["indus"] for i in wl_productive]))
+    industries = list(set([wl_prod[i]["indus"] for i in wl_prod]))
     for i in industries:
-        stocks = [data[x] for x in data if wl_productive[x]["indus"] == i]
+        stocks = [data[x] for x in data if wl_prod[x]["indus"] == i]
         plot_margin_trend(stocks)
 
 
 def plot_valuation_history(stock_name):
     x, y = [], []
-    for i in os.listdir(PICKLES_PATH):
+    for i in os.listdir(PKLPATH):
         try:
             date = i.split(".")[0]
             data = read_watchlist(date)
@@ -300,15 +300,15 @@ def load_stock_analyse(stock_name, name):
     """
     load your analyse from stock_name/analyse/name.pkl
     """
-    indus = wl_productive[stock_name]["indus"]
-    with open(f"{INDUSTRIES_PATH}/{indus}/{stock_name}/analyse/{name}.pkl", "rb") as f:
+    indus = wl_prod[stock_name]["indus"]
+    with open(f"{INDUSPATH}/{indus}/{stock_name}/analyse/{name}.pkl", "rb") as f:
         data = pickle.load(f)
     return data
 
 
 def show_analyze(stock_name):
-    indus = wl_productive[stock_name]["indus"]
-    for i in os.listdir(f"{INDUSTRIES_PATH}/{indus}/{stock_name}/analyse"):
+    indus = wl_prod[stock_name]["indus"]
+    for i in os.listdir(f"{INDUSPATH}/{indus}/{stock_name}/analyse"):
         print(i)
 
 
@@ -371,7 +371,7 @@ def type_record(symbol):
 
 def read_pe(sma, dev, start, end):
     pe = pd.read_excel(
-        f"{MACRO_PATH}/macro.xlsx",
+        f"{MACROPATH}/macro.xlsx",
         skiprows=3,
         parse_dates=["تاریخ میلادی"],
         engine="openpyxl",
@@ -405,7 +405,7 @@ def read_pe(sma, dev, start, end):
 
 def read_pd(start, end):
     p_d = pd.read_excel(
-        f"{MACRO_PATH}/macro.xlsx",
+        f"{MACROPATH}/macro.xlsx",
         skiprows=3,
         parse_dates=["تاریخ میلادی"],
         engine="openpyxl",
@@ -423,7 +423,7 @@ def read_pd(start, end):
 
 def read_dollar(start, end):
     dollar_azad = pd.read_excel(
-        f"{MACRO_PATH}/macro.xlsx",
+        f"{MACROPATH}/macro.xlsx",
         skiprows=3,
         parse_dates=["تاریخ میلادی"],
         engine="openpyxl",
@@ -434,7 +434,7 @@ def read_dollar(start, end):
         inplace=True,
     )
     dollar_nima = pd.read_excel(
-        f"{MACRO_PATH}/macro.xlsx",
+        f"{MACROPATH}/macro.xlsx",
         skiprows=3,
         parse_dates=["تاریخ میلادی"],
         engine="openpyxl",
@@ -461,7 +461,7 @@ def read_dollar(start, end):
 
 def read_ir():
     IR = pd.read_excel(
-        f"{MACRO_PATH}/macro.xlsx",
+        f"{MACROPATH}/macro.xlsx",
         skiprows=3,
         parse_dates=["تاریخ میلادی"],
         engine="openpyxl",
@@ -501,7 +501,7 @@ def read_ir():
 
 def read_direct(start, end, sma_s, sma_l):
     direct = pd.read_excel(
-        f"{MACRO_PATH}/macro.xlsx",
+        f"{MACROPATH}/macro.xlsx",
         skiprows=3,
         parse_dates=["تاریخ میلادی"],
         engine="openpyxl",
@@ -530,7 +530,7 @@ def read_direct(start, end, sma_s, sma_l):
 
 def read_value(start, end, sma_s, sma_l):
     value = pd.read_excel(
-        f"{MACRO_PATH}/macro.xlsx",
+        f"{MACROPATH}/macro.xlsx",
         skiprows=3,
         parse_dates=["تاریخ میلادی"],
         engine="openpyxl",
@@ -551,7 +551,7 @@ def read_value(start, end, sma_s, sma_l):
 
 def read_value_fix(start, end, sma_s, sma_l):
     value = pd.read_excel(
-        f"{MACRO_PATH}/macro.xlsx",
+        f"{MACROPATH}/macro.xlsx",
         skiprows=3,
         parse_dates=["تاریخ میلادی"],
         engine="openpyxl",
@@ -659,7 +659,7 @@ def read_portfolio(broker, owner, date, alpha):
     lst = []
     for i in Portfolio["Stock"]:
         try:
-            lst.append(wl_productive_df[wl_productive_df["token"] == i].index[0])
+            lst.append(wl_prod_df[wl_prod_df["token"] == i].index[0])
         except:
             print(f"no {i}")
     Portfolio["Stock"] = lst
@@ -667,7 +667,7 @@ def read_portfolio(broker, owner, date, alpha):
     data = read_watchlist("1401-10-15")
     Portfolio["pe_fw"] = np.zeros(len(Portfolio))
     for i in Portfolio.index:
-        Portfolio["Industry"].loc[i] = wl_productive[i]["indus"]
+        Portfolio["Industry"].loc[i] = wl_prod[i]["indus"]
         try:
             Portfolio["pe_fw"].loc[i] = data[i].pe_fw
         except:
@@ -698,7 +698,7 @@ def read_portfolio(broker, owner, date, alpha):
     a = []
     for i in Portfolio.index:
         try:
-            ticker = tse.Ticker(wl_productive[i]["token"])
+            ticker = tse.Ticker(wl_prod[i]["token"])
             a.append(ticker.p_e_ratio)
         except:
             a.append(np.nan)
@@ -730,8 +730,10 @@ def history(Broker, owner):
 
 
 def get_income_yearly(stock, money_type):
-    industry = wl_productive[stock]["indus"]
-    adress = f"{INDUSTRIES_PATH}/{industry}/{stock}/{structure['income']['yearly'][money_type]}"
+    industry = wl_prod[stock]["indus"]
+    adress = (
+        f"{INDUSPATH}/{industry}/{stock}/{structure['income']['yearly'][money_type]}"
+    )
     # read raw data
     stock_income = pd.read_excel(adress, engine="openpyxl")
     all_time_id = re.findall(regex_en_timeid_q, str(stock_income.loc[6]))
@@ -810,8 +812,10 @@ def get_income_yearly(stock, money_type):
 
 
 def get_income_quarterly(stock, money_type, fisal_year, my_year):
-    industry = wl_productive[stock]["indus"]
-    adress = f"{INDUSTRIES_PATH}/{industry}/{stock}/{structure['income']['quarterly'][money_type]}"
+    industry = wl_prod[stock]["indus"]
+    adress = (
+        f"{INDUSPATH}/{industry}/{stock}/{structure['income']['quarterly'][money_type]}"
+    )
     fiscal_dic = {
         12: {3: 1, 6: 2, 9: 3, 12: 4},
         9: {12: 1, 3: 2, 6: 3, 9: 4},
@@ -1293,9 +1297,7 @@ def mix_portfolio(names, prices, start, end):
 
 def get_pe_data(name):
 
-    adress = (
-        f"{INDUSTRIES_PATH}/{wl_productive[name]['indus']}/{name}/{structure['pe']}"
-    )
+    adress = f"{INDUSPATH}/{wl_prod[name]['indus']}/{name}/{structure['pe']}"
     pe = pd.read_excel(
         adress,
         engine="openpyxl",
@@ -2174,10 +2176,10 @@ class Macro:
 
     def get_historical_data(self):
         # call all historical data
-        history = pd.read_excel(f"{MACRO_PATH}/my.xlsx")
+        history = pd.read_excel(f"{MACROPATH}/my.xlsx")
         # call year_1400_data:
-        data_1400 = pd.read_excel(f"{MACRO_PATH}/my.xlsx", sheet_name="1400")
-        data_1401 = pd.read_excel(f"{MACRO_PATH}/my.xlsx", sheet_name="1401")
+        data_1400 = pd.read_excel(f"{MACROPATH}/my.xlsx", sheet_name="1400")
+        data_1401 = pd.read_excel(f"{MACROPATH}/my.xlsx", sheet_name="1401")
         my_col = [
             "year",
             "dollar",
@@ -2391,7 +2393,7 @@ class Macro:
 
     def get_como(self):
         como = pd.read_excel(
-            f"{MACRO_PATH}/commoditie/monthly.xlsx", sheet_name="Monthly Prices"
+            f"{MACROPATH}/commoditie/monthly.xlsx", sheet_name="Monthly Prices"
         )
         for i in como.index:
             for j in como.columns:
@@ -2463,8 +2465,8 @@ class Stock:
 
         self.discounted_n = discounted_n
         self.Name = Name
-        self.industry = wl_productive[Name]["indus"]
-        self.farsi = wl_productive[Name]["token"]
+        self.industry = wl_prod[Name]["indus"]
+        self.farsi = wl_prod[Name]["token"]
 
         self.start_date = pd.to_datetime(JalaliDate(year_s, month_s, 1).to_gregorian())
 
@@ -2650,7 +2652,7 @@ class Stock:
         ########## Load  Optimize_Strategy file ############
         try:
             opt = pd.read_excel(
-                f"{INDUSTRIES_PATH}/{self.industry}/{self.Name}/{structure['opt']}"
+                f"{INDUSPATH}/{self.industry}/{self.Name}/{structure['opt']}"
             )
             # simulate with opt file
             self.my_tester.test_strategy(
@@ -2671,7 +2673,7 @@ class Stock:
                     range(21, 60, 6),
                 )
                 opt = pd.read_excel(
-                    f"{INDUSTRIES_PATH}/{self.industry}/{self.Name}/{structure['opt']}"
+                    f"{INDUSPATH}/{self.industry}/{self.Name}/{structure['opt']}"
                 )
                 # simulate with opt file
                 self.my_tester.test_strategy(
@@ -3363,7 +3365,7 @@ class Stock:
         plt.title(f"price revenue {self.Name}")
 
     def create_eps_data(self):
-        adress = f"{INDUSTRIES_PATH}/{self.industry}/{self.Name}/{structure['eps']}"
+        adress = f"{INDUSPATH}/{self.industry}/{self.Name}/{structure['eps']}"
         df = pd.read_excel(adress, engine="openpyxl", index_col="year")
         df = df[::-1]
         # normalize_eps ans dps data
@@ -3464,7 +3466,9 @@ class Stock:
 
     def get_balance_sheet(self, periode):
         # create adress and coloumns proper tp peride
-        adress = f"{INDUSTRIES_PATH}/{self.industry}/{self.Name}/{structure['balance'][periode]}"
+        adress = (
+            f"{INDUSPATH}/{self.industry}/{self.Name}/{structure['balance'][periode]}"
+        )
         if periode == "yearly":
             my_col = list(self.income_rial_yearly.index)
             my_col.insert(0, "Data")
@@ -3603,7 +3607,7 @@ class Stock:
 
     def get_cash_flow(self, preiode):
 
-        adress = f"{INDUSTRIES_PATH}/{self.industry}/{self.Name}/{structure['cash'][preiode]}"
+        adress = f"{INDUSPATH}/{self.industry}/{self.Name}/{structure['cash'][preiode]}"
         if preiode == "yearly":
 
             my_col = list(self.income_rial_yearly.index)
@@ -3909,10 +3913,10 @@ class Stock:
     def get_cost(self, period):
         # read cost data
         cost_dl = pd.read_excel(
-            f"{INDUSTRIES_PATH}/{self.industry}/{self.Name}/{structure['cost'][period]}"
+            f"{INDUSPATH}/{self.industry}/{self.Name}/{structure['cost'][period]}"
         )
         official_dl = pd.read_excel(
-            f"{INDUSTRIES_PATH}/{self.industry}/{self.Name}/{structure['official'][period]}"
+            f"{INDUSPATH}/{self.industry}/{self.Name}/{structure['official'][period]}"
         )
         if period == "yearly":
             # all data is cost_dl
@@ -4355,7 +4359,7 @@ class Stock:
 
     def get_product(self, period):
         product_dl = pd.read_excel(
-            f"{INDUSTRIES_PATH}/{self.industry}/{self.Name}/{structure['product'][period]}"
+            f"{INDUSPATH}/{self.industry}/{self.Name}/{structure['product'][period]}"
         )
         if period == "yearly":
             # select desired data
@@ -4910,7 +4914,7 @@ class Stock:
         save your analyse in analyse/name
         """
         with open(
-            f"{INDUSTRIES_PATH}/{self.industry}/{self.Name}/analyse/{name}.pkl", "wb"
+            f"{INDUSPATH}/{self.industry}/{self.Name}/analyse/{name}.pkl", "wb"
         ) as f:
             pickle.dump(self, f)
 
@@ -4946,7 +4950,7 @@ class Stock:
     def analyse_detail_trade(self, date):
         # read raw data
         df = pd.read_excel(
-            f"{INDUSTRIES_PATH}/{self.industry}/{self.Name}/{structure['detail']}{date}.xlsx"
+            f"{INDUSPATH}/{self.industry}/{self.Name}/{structure['detail']}{date}.xlsx"
         )
         # select desired data
         data = df[["Unnamed: 2", "Unnamed: 3", "Unnamed: 4", "Unnamed: 5"]]

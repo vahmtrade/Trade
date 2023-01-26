@@ -2,7 +2,7 @@ import os
 import pandas as pd
 from persiantools.jdatetime import JalaliDate
 
-wl_productive = {
+wl_prod = {
     "fakhouz": {"indus": "folad", "token": "فخوز", "name": "فخوز"},
     "folad": {"indus": "folad", "token": "فولاد", "name": "فولاد مبارکه اصفهان"},
     "sekhouz": {"indus": "siman", "token": "سخوز", "name": "سیمان خوزستان"},
@@ -100,7 +100,7 @@ wl_productive = {
     "khodro": {"indus": "khodro", "token": "خودرو", "name": "ایران خودرو"},
     "kemina": {"indus": "shishe", "token": "کمینا", "name": "شیشه سازی مینا"},
 }
-wl_non_productive = {
+wl_nprod = {
     "kian": {"indus": "fixed_income", "token": "کیان", "name": "کیان"},
     "palayesh": {"indus": "etf", "token": "پالایش", "name": "پالایش"},
     "fars": {"indus": "holding", "token": "فارس", "name": "صنایع پتروشیمی خلیج فارس"},
@@ -150,16 +150,8 @@ structure = {
     "opt": "opt.xlsx",
 }
 
-ROOT_PATH = os.path.abspath(os.curdir).replace("\\", "/")
-DB = f"{ROOT_PATH}/database"
-WINDOWS_FIREFOX_DRIVER_PATH = f"{ROOT_PATH}/statics/geckodriver.exe"
-LINUX_FIREFOX_DRIVER_PATH = f"{ROOT_PATH}/statics/geckodriver"
-
-INDUSTRIES_PATH = f"{DB}/industries"
-MACRO_PATH = f"{DB}/macro"
-FOREX_PATH = f"{DB}/forex"
-PICKLES_PATH = f"{DB}/wl_productive"
-
+wl_prod_df = pd.DataFrame(wl_prod).T
+wl_prod_keys = list(wl_prod.keys())
 
 today = JalaliDate.today()
 today_8char = f"{today.year:02d}{today.month:02d}{today.day:02d}"
@@ -170,4 +162,12 @@ month_ago = f"{today.year:02d}/{today.month-1:02d}/{today.day:02d}"
 regex_per_timeid_y = "[۰۱۲۳۴۵۶۷۸۹]{4}/[۰۱۲۳۴۵۶۷۸۹]{2}/[۰۱۲۳۴۵۶۷۸۹]{2}"
 regex_en_timeid_q = "[0123456789]{4}/[0123456789]{2}"
 
-wl_productive_df = pd.DataFrame(wl_productive).T
+ROOT_PATH = os.path.abspath(os.curdir).replace("\\", "/")
+DB = f"{ROOT_PATH}/database"
+WINDOWS_FIREFOX_DRIVER_PATH = f"{ROOT_PATH}/statics/geckodriver.exe"
+LINUX_FIREFOX_DRIVER_PATH = f"{ROOT_PATH}/statics/geckodriver"
+
+INDUSPATH = f"{DB}/industries"
+MACROPATH = f"{DB}/macro"
+FOREXPATH = f"{DB}/forex"
+PKLPATH = f"{DB}/watchlist"
