@@ -2488,13 +2488,15 @@ class Stock:
             JalaliDate(year_tester_end, month_tester_end, 1).to_gregorian()
         )
         self.tc = 0.012
+        error = []
+        self.error=error
         ######## load price data ##########
         try:
             self.Price, self.Price_dollar = read_stock(
                 self.farsi, self.start_date, self.end_date
             )
-        except:
-            print(f"cant find {self.Name} price")
+        except Exception as err:
+            error.append((f"cant find {self.Name} price:{err}"))
         ######## load income yearly ############
         try:
             (
@@ -2506,8 +2508,8 @@ class Stock:
                 self.last_year,
                 self.income_cagr_rial_yearly,
             ) = get_income_yearly(self.Name, "rial")
-        except:
-            print(f"cant find {self.Name}income_yearly")
+        except Exception as err:
+            error.append(f"cant find {self.Name}income_yearly {err}")
         try:
             (
                 self.income_dollar_yearly,
@@ -2518,8 +2520,8 @@ class Stock:
                 j,
                 self.income_cagr_dollar_yearly,
             ) = get_income_yearly(self.Name, "dollar")
-        except:
-            print(f"cant find {self.Name} income_yearly dollar")
+        except Exception as err:
+            error.append(f"cant find {self.Name} income_yearly dollar {err}")
         ########### load income quarterly ############
         try:
             (
@@ -2531,8 +2533,8 @@ class Stock:
             ) = get_income_quarterly(
                 self.Name, "rial", self.fiscal_year, (self.last_year + 1)
             )
-        except:
-            print(f"cant find {self.Name} income_quarterly")
+        except Exception as err:
+            error.append(f"cant find {self.Name} income_quarterly {err}")
         try:
             (
                 self.income_dollar_quarterly,
@@ -2543,38 +2545,38 @@ class Stock:
             ) = get_income_quarterly(
                 self.Name, "dollar", self.fiscal_year, (self.last_year + 1)
             )
-        except:
-            print(f"cant find {self.Name} income_quarterly dollar")
+        except Exception as err:
+            error.append(f"cant find {self.Name} income_quarterly dollar {err}")
         ############# Download Buy_Power ##############
         try:
             self.Buy_Power = type_record(self.farsi)
             self.Buy_Power_w = self.Buy_Power.resample("W").mean()
             self.Buy_Power_m = self.Buy_Power.resample("M").mean()
         except:
-            print(f"cant find {self.Name}  buy power")
+            error.append(f"cant find {self.Name}  buy power")
         try:
             self.dollar_analyse = (
                 self.income_dollar_yearly[["Total_Revenue"]]
                 / self.income_dollar_yearly.iloc[0]["Total_Revenue"]
             )
         except:
-            print(f"cant find {self.Name}  dollar analyse")
+            error.append(f"cant find {self.Name}  dollar analyse")
         try:
             self.n = len(self.income_rial_quarterly.index)
         except:
-            print(f"cant find {self.Name}  income_rial_quarterly")
+            error.append(f"cant find {self.Name}  income_rial_quarterly")
         ######### Load balancesheet ############
         try:
             self.get_balance_sheet("yearly")
             self.get_balance_sheet("quarterly")
         except Exception as err:
-            print(f"add balance sheet {self.Name} : {err}")
+            error.append(f"add balance sheet {self.Name} : {err}")
         ########## Load cash_flow ##############
         try:
             self.get_cash_flow("yearly")
             self.get_cash_flow("quarterly")
         except Exception as err:
-            print(f"add cash_flow {self.Name} : {err}")
+            error.append(f"add cash_flow {self.Name} : {err}")
 
         try:
             self.dollar_analyse["Net_Profit"] = (
@@ -2606,13 +2608,13 @@ class Stock:
                 ]
             ]
             self.hazine_quarterly = abs(self.hazine_quarterly)
-        except:
-            pass
+        except Exception as err:
+            error.append(f"cant create {self.Name}  dollar analyse {err}")
         # self.daramad_quarterly=self.income_common_rial_quarterly[['Other_operating_Income_Expense','Other_non_operate_Income_Expense']]
         try:
             self.Vp, self.Price_bin = voloume_profile(self.Price, "2020", 60)
-        except:
-            print(f"cant find {self.Name} voloume profile")
+        except Exception as err:
+            error.append(f"cant find {self.Name} voloume profile {err}")
         ############ create tester module #############
         try:
             self.sma_tester = SmaTester(
@@ -2624,16 +2626,17 @@ class Stock:
             self.tester_price = TesterOneSidePrice(
                 self.Price, self.tester_start, self.tester_end, self.tc
             )
-        except:
-            print("cant create tester")
+        except Exception as err:
+            error.append(f"cant create tester {err}")
+
         ############ Load P/E Historical #############
         try:
             self.pe, self.pe_n, self.pe_u = get_pe_data(self.Name)
             self.dollar_azad, self.dollar_nima = read_dollar(
                 self.start_date, self.end_date
             )
-        except:
-            pass
+        except Exception as err:
+            error.append(f"cant create p/e historical {err}")
         mean_dollar = []
         mean_market = []
         ############ load product ###############
@@ -2643,19 +2646,19 @@ class Stock:
             self.get_product("quarterly")
             self.pre_process_product_data()
         except Exception as err:
-            print(f"add prouct data {self.Name} : {err}")
+            error.append(f"add prouct data {self.Name} : {err}")
 
         ########### load cost ###########
         try:
             self.get_cost("yearly")
             self.get_cost("quarterly")
         except Exception as err:
-            print(f"add cost {self.Name} : {err}")
+            error.append(f"add cost {self.Name} : {err}")
         ######### Load group p/e data #########
         try:
             self.group, self.gropu_n, self.group_u = get_pe_data(self.industry, "index")
-        except:
-            pass
+        except Exception as err:
+            error.append(f"cant load p/e group data {err}")
         ########## Load  Optimize_Strategy file ############
         try:
             opt = pd.read_excel(
@@ -2694,31 +2697,47 @@ class Stock:
         ########### Predict future ############
         try:
             self.create_interest_data()
+        except Exception as err:
+            error.append(f"cant create_interest_data {err}")
+        try:
             self.predict_income()
+        except Exception as err:
+            error.append(f"cant predict_income {err}")
+        try:
             self.predict_balance_sheet()
+        except Exception as err:
+            error.append(f"cant predict_balance_sheet {err}")
+        try:
             self.predict_interst()
+        except Exception as err:
+            error.append(f"cant predict_interest {err}")
+        try:
             self.create_end_data()
+        except Exception as err:
+            error.append(f" cant create_end_data {err}")
+        try:
             self.create_fcfe()
         except Exception as err:
-            print(f"cant predict future {self.Name} : {err}")
+            error.append(f" cant create_fcfe {err}")
         ########### add risk of falling ############
         try:
             self.risk_falling = len(self.pe[self.pe["P/E-ttm"] < self.pe_fw]) / len(
                 self.pe["P/E-ttm"]
             )
         except Exception as err:
-            print(f"cant calculate risk of falling {self.Name} : {err}")
+            error.append(f"cant calculate risk of falling {self.Name} : {err}")
 
         ######## add compare return data #########
         try:
             self.create_macro()
         except Exception as err:
-            print(f"cant compare returns {self.Name} : {err}")
+            error.append(f"cant compare returns {self.Name} : {err}")
         ############ add valueation of stock ###########
         try:
             self.predict_value()
         except Exception as err:
-            print(f"cant valuation of {self.Name} : {err}")
+            error.append(f"cant valuation of {self.Name} : {err}")
+        self.error = error
 
     def plot_income_yearly(self):
         plt.figure(figsize=[20, 15])
@@ -3008,6 +3027,20 @@ class Stock:
         income_y.loc[future_year + 1] = np.zeros(len(income_y.iloc[0]))
         ########################################### calculate Revenue #########################################
         # create_growth
+        df = pd.DataFrame(columns=self.count_revenue_yearly.columns)
+        df.drop("total", axis=1, inplace=True)
+        df.loc[1401] = self.count_revenue_yearly[
+            self.count_revenue_yearly.columns[:-1]
+        ].iloc[-1]
+        self.count_revenue_yearly[self.count_revenue_yearly.columns[:-1]]
+        df = self.search_df_quarterly_monthly(
+            df, self.count_revenue_quarterly, self.count_revenue_monthly
+        )
+        df.loc[1400] = self.count_revenue_yearly[
+            self.count_revenue_yearly.columns[:-1]
+        ].iloc[-1]
+        df["total"] = df.sum(axis=1) - df["جمع"]
+        self.mydf = df
         d_g = {}
         for i in self.count_revenue_yearly.columns:
             d_g[i] = search_df_month(
@@ -3016,6 +3049,7 @@ class Stock:
         since_revenue = pd.DataFrame(d_g)
         since_revenue.rename(index={0: future_year - 1, 1: future_year}, inplace=True)
         self.since_revenue = since_revenue
+
         pred_growth = since_revenue.pct_change()
         pred_growth.dropna(axis=0, how="all", inplace=True)
         pred_growth.fillna(0, inplace=True)
@@ -4044,7 +4078,14 @@ class Stock:
         my_cost["energy"] = official["energy"] + overhead["energy"]
         my_cost["depreciation"] = official["depreciation"] + overhead["depreciation"]
         my_cost["transport"] = official["transport"] + overhead["transport"]
-        my_cost["other"] = overhead["other"] + official["other"]
+        my_cost["other"] = (
+            overhead["other"]
+            + official["other"]
+            + official["commision_sell"]
+            + official["advertisingt"]
+            + overhead["commision_sell"]
+            + overhead["advertisingt"]
+        )
         my_cost["total"] = (
             my_cost["salary"]
             + my_cost["material"]
@@ -4370,7 +4411,10 @@ class Stock:
         )
         if period == "yearly":
             # select desired data
-            count_product = select_df(product_dl, "مقدار تولید", "جمع")
+            try:
+                count_product = select_df(product_dl, "مقدار تولید", "جمع")
+            except Exception as err:
+                self.error.append(f"cant create count_product yearly {err}")
             count_revenue = select_df(product_dl, "مقدار فروش", "جمع")
             price_revenue = select_df(product_dl, "مبلغ فروش", "جمع")
             categ_cost = select_df(product_dl, "مبلغ بهای تمام شده", "جمع")
@@ -4381,7 +4425,10 @@ class Stock:
 
         if period == "monthly":
             # selece desired data
-            count_product = select_df(product_dl, "مقدار تولید", "جمع")
+            try:
+                count_product = select_df(product_dl, "مقدار تولید", "جمع")
+            except Exception as err:
+                self.error.append(f"cant create count_product monthly {err}")
             count_revenue = select_df(product_dl, "مقدار فروش", "جمع")
             price_revenue = select_df(product_dl, "مبلغ فروش", "جمع")
             # define my_col
@@ -4391,7 +4438,10 @@ class Stock:
             my_col.insert(1, "unit")
         if period == "quarterly":
             # select desired data
-            count_product = select_df(product_dl, "مقدار تولید", "جمع")
+            try:
+                count_product = select_df(product_dl, "مقدار تولید", "جمع")
+            except Exception as err:
+                self.error.append(f"cant create count_product quarterly {err}")
             count_revenue = select_df(product_dl, "مقدار فروش", "جمع")
             price_revenue = select_df(product_dl, "مبلغ فروش", "جمع")
             categ_cost = select_df(product_dl, "مبلغ بهای تمام شده", "جمع")
@@ -4680,7 +4730,34 @@ class Stock:
         n_g=2,
         g=1,
         pe_terminal=1,
+        k=1,
     ):
+        try:
+            alpha_prod_update = float(input("enter alpha_prod_update:"))
+            alpha_prod_next_update = float(input("enter alpha_prod_next_update:"))
+            alpha_rate_update = float(input("enter alpha_rate_update:"))
+            alpha_rate_next_update = float(input("enter alpha_rate_next_update:"))
+            salary_g_update = float(input("enter salary_g_update:"))
+            salary_g_next_update = float(input("enter salary_g_next_update:"))
+            material_g_update = float(input("enter material_g_update:"))
+            material_g_next_update = float(input("enter material_g_next_update:"))
+            energy_g_update = float(input("enter energy_g_update:"))
+            energy_g_next_update = float(input("enter energy_g_next_update:"))
+            transport_g_update = float(input("enter transport_g_update:"))
+            transport_g_next_update = float(input("enter transport_g_next_update:"))
+            other_g_update = float(input("enter other_g_update:"))
+            other_g_next_update = float(input("enter other_g_next_update:"))
+            dep_g_update = float(input("enter dep_g_update:"))
+            dep_g_next_update = float(input("enter dep_g_next_update:"))
+            rf = float(input("enter Rf:"))
+            erp = float(input("enter ERP:"))
+            n_g = int(input("enter number of growth year:"))
+            pe_terminal = float(input("enter pe_terminal:"))
+            k = float(input("enter expected return:"))
+
+        except:
+            pass
+
         try:
             self.create_interest_data()
             self.predict_income(
@@ -4706,8 +4783,8 @@ class Stock:
             self.create_end_data()
             self.create_fcfe()
             self.predict_value(n_g, rf, erp, g, pe_terminal)
-        except:
-            print(f"cant update predict {self.Name}")
+        except Exception as err:
+            self.error.append(f"cant update predict {self.Name} : {err}")
 
     def plot_margin(self):
         plt.figure(figsize=[20, 8])
@@ -4814,7 +4891,7 @@ class Stock:
         )
         plt.legend()
 
-    def predict_value(self, n_g=2, rf=0.35, erp=0.15, g=1, pe_terminal=1):
+    def predict_value(self, n_g=2, rf=0.35, erp=0.15, g=1, pe_terminal=1, k=1):
         eps1 = self.pred_income.loc[self.future_year, "EPS_Capital"]
         eps2 = self.pred_income.loc[self.future_year + 1, "EPS_Capital"]
         ## number of mounth to majma
@@ -4840,7 +4917,8 @@ class Stock:
         ##### calculate expected_return #####
         k_capm = rf + beta * erp
         k_historical = re_historical - 1
-        k = np.average([k_capm, k_historical], weights=[1, min(years / 10, 1)])
+        if k == 1:
+            k = np.average([k_capm, k_historical], weights=[1, min(years / 10, 1)])
         self.k_historical = k_historical
         self.k_capm = k_capm
         self.k = k
@@ -4867,13 +4945,17 @@ class Stock:
             self.income_rial_yearly["Net_Profit"][-5:]
             / self.income_rial_yearly["Net_Profit"].iloc[-5]
         )
-        cagr_profit = math.pow(profit_aggr.iloc[-1], 1 / (len(profit_aggr) - 1))
         self.profit_aggr = profit_aggr
-        self.cagr_profit = cagr_profit
+        try:
+            cagr_profit = math.pow(profit_aggr.iloc[-1], 1 / (len(profit_aggr) - 1))
+            self.cagr_profit = cagr_profit
+        except Exception as err:
+            self.error.append(f"cant calculate cagr profit : {err}")
+
         ###### Calculate G #######
         if g == 1:
             g_economy = 0.02 + rf
-            g_stock = (cagr_count - 1) + (cagr_rate - 1)
+            g_stock = (cagr_count) * (cagr_rate)
             self.g_economy = g_economy
             self.g_stock = g_stock
             g = min(g_stock, g_economy)
@@ -4881,7 +4963,7 @@ class Stock:
         ##### estimate eps of ngrowth year ######
         i = 3
         while i < 3 + n_g:
-            vars()[f"eps{i}"] = (1 + g_stock) * vars()[f"eps{i-1}"]
+            vars()[f"eps{i}"] = (g_stock) * vars()[f"eps{i-1}"]
             # setattr(self,f"eps{i}",)
             self.__dict__[f"eps{i}"] = vars()[f"eps{i}"]
             value_d += vars()[f"eps{i}"] / (1 + k) ** (i - 1 + n)
