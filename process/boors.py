@@ -169,7 +169,10 @@ def analyse_watchlist(date):
             value.loc[stock.Name]["cagr_count"] = stock.cagr_count - 1
         except Exception as err:
             errs[stock.Name] = err
-    value.drop("deshimi", inplace=True)
+    try:
+        value.drop("deshimi", inplace=True)
+    except:
+        pass
     value["value/price"] = value["value"] / value["price"]
     d = {
         "analyse": analyse,
@@ -180,7 +183,10 @@ def analyse_watchlist(date):
     }
     value_price = value[["value/price"]].applymap(lambda x: 0 if x < 0 else x)
     group_analyse = analyse.groupby("sector").median()
-    group_analyse.drop("palayesh", inplace=True)
+    try:
+        group_analyse.drop("palayesh", inplace=True)
+    except:
+        pass
     group_value = value.groupby("sector").median()
     plt.figure(figsize=[20, 8])
     plt.subplot(1, 3, 1)
@@ -2489,7 +2495,7 @@ class Stock:
         )
         self.tc = 0.012
         error = []
-        self.error=error
+        self.error = error
         ######## load price data ##########
         try:
             self.Price, self.Price_dollar = read_stock(
@@ -4075,10 +4081,10 @@ class Stock:
             + overhead["consuming_material"]
             + official["consuming_material"]
         )
-        my_cost["energy"] = official["energy"] + overhead["energy"]
+        my_cost["energy"] = alpha * (official["energy"] + overhead["energy"])
         my_cost["depreciation"] = official["depreciation"] + overhead["depreciation"]
-        my_cost["transport"] = official["transport"] + overhead["transport"]
-        my_cost["other"] = (
+        my_cost["transport"] = alpha * (official["transport"] + overhead["transport"])
+        my_cost["other"] = alpha * (
             overhead["other"]
             + official["other"]
             + official["commision_sell"]
@@ -4923,20 +4929,29 @@ class Stock:
         self.k_capm = k_capm
         self.k = k
 
-        ### calculate aggregate growth #######
         value_d = eps1 / (1 + k) ** n + eps2 / (1 + k) ** (1 + n)
-        rate_aggr = self.rate_yearly["total"][-5:] / self.rate_yearly["total"].iloc[-5]
+        ### find majority goods
+        df = self.price_revenue_yearly.iloc[[-1]].copy()
+        df.drop(["total", "جمع"], axis=1, inplace=True)
+        major_good = df.idxmax(axis=1).values[0]
+        self.major_good = major_good
+        ### calculate aggregate growth #######
+
+        rate_aggr = (
+            self.rate_yearly[major_good][-5:] / self.rate_yearly[major_good].iloc[-5]
+        )
         cagr_rate = math.pow(
-            (self.rate_yearly["total"][-5:] / self.rate_yearly["total"].iloc[-5]).iloc[
-                -1
-            ],
+            (
+                self.rate_yearly[major_good][-5:]
+                / self.rate_yearly[major_good].iloc[-5]
+            ).iloc[-1],
             1 / (5 - 1),
         )
         self.rate_aggr = rate_aggr
         self.cagr_rate = cagr_rate
         count_aggr = (
-            self.count_revenue_yearly["total"][-5:]
-            / self.count_revenue_yearly["total"].iloc[-5]
+            self.count_revenue_yearly[major_good][-5:]
+            / self.count_revenue_yearly[major_good].iloc[-5]
         )
         cagr_count = math.pow(count_aggr.iloc[-1], 1 / (len(count_aggr) - 1))
         self.count_aggr = count_aggr
