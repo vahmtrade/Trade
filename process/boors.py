@@ -3183,14 +3183,14 @@ class Stock:
                 pred_categ_cost.loc[i] = (
                     pred_categ_cost.iloc[0]
                     / self.count_revenue_quarterly["total"].iloc[-1]
-                ) * self.categ_cost_unit_ratio_quarterly[i].median()
+                ) * self.categ_cost_unit_ratio_quarterly[i].iloc[-1]
             except:
                 pred_categ_cost.loc[i] = 0
             try:
                 pred_categ_cost_next.loc[i] = (
                     pred_categ_cost_next.iloc[0]
                     / self.count_revenue_quarterly["total"].iloc[-1]
-                ) * self.categ_cost_unit_ratio_quarterly[i].median()
+                ) * self.categ_cost_unit_ratio_quarterly[i].iloc[-1]
             except:
                 pred_categ_cost_next.loc[i] = 0
         pred_categ_cost.fillna(0, inplace=True)
