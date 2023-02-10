@@ -14,5 +14,5 @@ __pycache__
 /statics/secrets.py
 
 geckodriver.log
-test.py
-test.ipynb
+test*.py
+test*.ipynb
