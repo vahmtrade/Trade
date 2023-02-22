@@ -1,10 +1,10 @@
 import os
 import sys
 import shutil
+import subprocess
 import re
 import platform
 import pandas as pd
-import win32com.client as win32
 
 from datetime import datetime
 from pathlib import Path
@@ -12,6 +12,9 @@ from collections import defaultdict
 from itertools import tee
 
 from statics.setting import *
+
+if platform.system() == "Windows":
+    import win32com.client as win32  # type: ignore
 
 
 def benfords_law(nums):
@@ -150,7 +153,7 @@ def best_table_id(data_tables):
     return table_id
 
 
-def load_win_app(app_name):
+def load_windows_app(app_name):
     try:
         app = win32.gencache.EnsureDispatch(app_name)
     except AttributeError:
@@ -166,22 +169,36 @@ def load_win_app(app_name):
 
 
 def resave_excel(file_path):
+    folder, filename = os.path.split(file_path)
+
     if platform.system() == "Windows":
-        excel = load_win_app("Excel.Application")
+        excel = load_windows_app("Excel.Application")
         workbook = excel.Workbooks.Open(file_path)
         workbook.Save()
         excel.Application.Quit()
 
+    if platform.system() == "Linux":
+        subprocess.run(["libreoffice", "--convert-to", "xlsx", "--headless", file_path])
+        os.replace(f"./{filename}", file_path)
+
 
 def save_as_file(file_path, ext):
-    exts = {".xls": 56, ".html": 44}
+    folder, filename = os.path.split(file_path)
+
     if platform.system() == "Windows":
-        excel = load_win_app("Excel.Application")
+        exts = {"xls": 56, "html": 44}
+        new_name = os.path.splitext(file_path)[0] + "." + ext
+        excel = load_windows_app("Excel.Application")
         workbook = excel.Workbooks.Open(file_path)
-        new_name = os.path.splitext(file_path)[0] + ext
         workbook.SaveAs(new_name.replace("/", "\\"), FileFormat=exts[ext])
         excel.Application.Quit()
         os.remove(file_path)
+
+    if platform.system() == "Linux":
+        new_name = os.path.splitext(filename)[0] + "." + ext
+        subprocess.run(["libreoffice", "--convert-to", ext, "--headless", file_path])
+        os.remove(file_path)
+        shutil.move(f"./{new_name}", f"{folder}/{new_name}")
 
 
 def move_last_file(new_path):
@@ -240,7 +257,6 @@ def create_database_structure():
 
 
 def find_deficiencies(stock_name):
-
     base_files = [
         f"{INDUSPATH}/{wl_prod[stock_name]['indus']}/{stock_name}/{s}"
         for s in all_dict_values(structure)

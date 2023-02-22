@@ -122,21 +122,35 @@ structure = {
     },
     "income": {
         "yearly": {
-            "rial": "income/yearly/rial.xlsx",
-            "dollar": "income/yearly/dollar.xlsx",
+            "": {
+                "rial": "income/yearly/rial.xlsx",
+                "dollar": "income/yearly/dollar.xlsx",
+            }
         },
         "quarterly": {
-            "rial": "income/quarterly/rial.xlsx",
-            "dollar": "income/quarterly/dollar.xlsx",
+            "": {
+                "rial": "income/quarterly/rial.xlsx",
+                "dollar": "income/quarterly/dollar.xlsx",
+            },
+            "_cumulative": {
+                "rial": "income/quarterly/rial_cumulative.xlsx",
+                "dollar": "income/quarterly/dollar_cumulative.xlsx",
+            },
         },
     },
     "product": {
-        "yearly": "product/yearly.xlsx",
-        "yearly_seprated": "product/yearly_seprated.xlsx",
-        "quarterly": "product/quarterly.xlsx",
-        "quarterly_seprated": "product/quarterly_seprated.xlsx",
-        "monthly": "product/monthly.xlsx",
-        "monthly_seprated": "product/monthly_seprated.xlsx",
+        "yearly": {
+            "": "product/yearly.xlsx",
+            "_seprated": "product/yearly_seprated.xlsx",
+        },
+        "quarterly": {
+            "": "product/quarterly.xlsx",
+            "_seprated": "product/quarterly_seprated.xlsx",
+        },
+        "monthly": {
+            "": "product/monthly.xlsx",
+            "_seprated": "product/monthly_seprated.xlsx",
+        },
     },
     "official": {
         "yearly": "official/yearly.xlsx",
