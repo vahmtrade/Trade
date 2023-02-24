@@ -2027,6 +2027,8 @@ class Macro:
         self.get_historical_data()
         # create commo data
         self.get_como()
+        # Create kala data
+        self.get_kala()
 
     def plot_dollar(self):
         plt.figure(figsize=[20, 12])
@@ -2460,6 +2462,10 @@ class Macro:
         self.como = como
         self.como_uni = como_uni
 
+    def get_kala(self):
+        kala = pd.read_excel(f"{MACROPATH}/physical.xls")
+        self.kala = kala
+
 
 class Stock:
     def __init__(
@@ -2478,6 +2484,7 @@ class Stock:
 
         self.discounted_n = discounted_n
         self.Name = Name
+        self.ful_name = wl_prod[Name]["name"]
         self.industry = wl_prod[Name]["indus"]
         self.farsi = wl_prod[Name]["token"]
 
@@ -2717,10 +2724,7 @@ class Stock:
             self.predict_interst()
         except Exception as err:
             error.append(f"cant predict_interest {err}")
-        try:
-            self.create_end_data()
-        except Exception as err:
-            error.append(f" cant create_end_data {err}")
+
         try:
             self.create_fcfe()
         except Exception as err:
@@ -2738,11 +2742,20 @@ class Stock:
             self.create_macro()
         except Exception as err:
             error.append(f"cant compare returns {self.Name} : {err}")
+        ############# Create end_data ##############
+        try:
+            self.create_end_data()
+        except Exception as err:
+            error.append(f" cant create_end_data {err}")
         ############ add valueation of stock ###########
         try:
             self.predict_value()
         except Exception as err:
             error.append(f"cant valuation of {self.Name} : {err}")
+        try:
+            self.create_end_data()
+        except Exception as err:
+            error.append(f" cant create_end_data {err}")
         self.error = error
 
     def plot_income_yearly(self):
@@ -3079,7 +3092,7 @@ class Stock:
         pred_growth = 1 + pred_growth
 
         if alpha_prod == 1:
-            pred_growth = (2 + pred_growth) / 3
+            # pred_growth = (2 + pred_growth) / 3
             pred_growth.loc[future_year + 1] = alpha_prod_next * np.ones(
                 len(pred_growth.loc[future_year])
             )
@@ -3454,7 +3467,7 @@ class Stock:
         df["pe"] = df["price"] / df["EPS"]
         df["pd"] = df["price"] / df["DPS"]
 
-        ratio_mean = df["ratio"][-2:].mean()
+        ratio_mean = df["ratio"].median()
         # add future_year
         future_year = df.index[-1] + 1
         df.loc[future_year] = np.zeros(len(df.iloc[0]))
@@ -4073,24 +4086,25 @@ class Stock:
         # inventory ratio
         alpha = cost["total_cost"] / cost["total"]
         self.inventory_ratio = alpha
-        my_cost["salary"] = alpha * (
-            cost["direct_salary"] + official["salary"] + overhead["salary"]
+        my_cost["salary"] = (
+            alpha * (cost["direct_salary"] + overhead["salary"]) + official["salary"]
         )
-        my_cost["material"] = alpha * (
-            cost["direct_material"]
-            + overhead["consuming_material"]
+        my_cost["material"] = (
+            alpha * (cost["direct_material"] + overhead["consuming_material"])
             + official["consuming_material"]
         )
-        my_cost["energy"] = alpha * (official["energy"] + overhead["energy"])
-        my_cost["depreciation"] = official["depreciation"] + overhead["depreciation"]
-        my_cost["transport"] = alpha * (official["transport"] + overhead["transport"])
-        my_cost["other"] = alpha * (
-            overhead["other"]
+        my_cost["energy"] = official["energy"] + alpha * overhead["energy"]
+        my_cost["depreciation"] = (
+            official["depreciation"] + alpha * overhead["depreciation"]
+        )
+        my_cost["transport"] = official["transport"] + alpha * overhead["transport"]
+        my_cost["other"] = (
+            alpha * overhead["other"]
             + official["other"]
             + official["commision_sell"]
             + official["advertisingt"]
-            + overhead["commision_sell"]
-            + overhead["advertisingt"]
+            + alpha * overhead["commision_sell"]
+            + alpha * overhead["advertisingt"]
         )
         my_cost["total"] = (
             my_cost["salary"]
@@ -4813,6 +4827,13 @@ class Stock:
         # df_ret["profit"] = self.my_cost_unit_yearly["profit"].pct_change()
         # df_ret["total_cost"] = self.my_cost_unit_yearly["total"].pct_change()
         # df_ret.dropna(inplace=True)
+        # create boors_kala data
+        kala = macro.kala[["تولید کننده"]]
+        lst = []
+        for i in kala.index:
+            if self.ful_name in kala.loc[i].values[0]:
+                lst.append(i)
+        self.kala = macro.kala.loc[lst]
         self.macro = df
         self.shakhes = macro.shakhes_kol
         self.macro_ret = df_ret
@@ -4900,6 +4921,12 @@ class Stock:
     def predict_value(self, n_g=2, rf=0.35, erp=0.15, g=1, pe_terminal=1, k=1):
         eps1 = self.pred_income.loc[self.future_year, "EPS_Capital"]
         eps2 = self.pred_income.loc[self.future_year + 1, "EPS_Capital"]
+        dps_ratio = self.eps_data["ratio"].iloc[-1]
+        dps1 = eps1 * dps_ratio
+        dps2 = eps2 * dps_ratio
+        self.dps_ratio = dps_ratio
+        self.dps1 = dps1
+        self.dps2 = dps2
         ## number of mounth to majma
         n = self.discounted_n
         ## calculate historical expected_return
@@ -4930,6 +4957,7 @@ class Stock:
         self.k = k
 
         value_d = eps1 / (1 + k) ** n + eps2 / (1 + k) ** (1 + n)
+        value_d_dps = (dps1) / (1 + k) ** n + (dps2) / (1 + k) ** (1 + n)
         ### find majority goods
         df = self.price_revenue_yearly.iloc[[-1]].copy()
         df.drop(["total", "جمع"], axis=1, inplace=True)
@@ -4979,9 +5007,12 @@ class Stock:
         i = 3
         while i < 3 + n_g:
             vars()[f"eps{i}"] = (g_stock) * vars()[f"eps{i-1}"]
+            vars()[f"dps{i}"] = (g_stock) * vars()[f"dps{i-1}"]
             # setattr(self,f"eps{i}",)
             self.__dict__[f"eps{i}"] = vars()[f"eps{i}"]
+            self.__dict__[f"dps{i}"] = vars()[f"dps{i}"]
             value_d += vars()[f"eps{i}"] / (1 + k) ** (i - 1 + n)
+            value_d_dps += vars()[f"dps{i}"] / (1 + k) ** (i - 1 + n)
             i += 1
         ##### Calculate terminal p/e ##########
         if pe_terminal == 1:
@@ -4998,18 +5029,27 @@ class Stock:
         terminal_value = (vars()[f"eps{i-1}"] * pe_terminal) / ((1 + k) ** (i - 2 + n))
         self.terminal_value = terminal_value
         value = value_d + terminal_value
+        value_dps = value_d_dps + terminal_value
         self.value_d = value_d
+        self.value_dps = value_dps
+        self.value_d_dps = value_d_dps
         self.value = value
         self.potential_value_g = (value / self.Price["Close"].iloc[-1]) - 1
         # create eps estimate dataframe
         lst = list(range(self.future_year, self.future_year + n_g + 2))
-        df = pd.DataFrame(index=lst, columns=["EPS"])
-        df.loc[self.future_year] = self.pred_income["EPS_Capital"].loc[self.future_year]
-        df.loc[self.future_year + 1] = self.pred_income["EPS_Capital"].loc[
+        df = pd.DataFrame(index=lst, columns=["EPS", "DPS"])
+
+        df["EPS"].loc[self.future_year] = self.pred_income["EPS_Capital"].loc[
+            self.future_year
+        ]
+        df["EPS"].loc[self.future_year + 1] = self.pred_income["EPS_Capital"].loc[
             self.future_year + 1
         ]
+        df["DPS"].loc[self.future_year] = dps1
+        df["DPS"].loc[self.future_year + 1] = dps2
         for j in range(3, n_g + 2 + 1):
-            df.loc[self.future_year + j - 1] = vars()[f"eps{j}"]
+            df["EPS"].loc[self.future_year + j - 1] = vars()[f"eps{j}"]
+            df["DPS"].loc[self.future_year + j - 1] = vars()[f"dps{j}"]
         self.eps_estimate = df
 
     # save your analyse
@@ -5216,9 +5256,21 @@ class Stock:
         end_data["EPS_Capital"] = end_data["EPS_Capital"].apply(
             lambda x: 0.1 if x == 0 else x
         )
+        pe_forward_adjust = {}
         for i in end_data.index:
             date_1 = pd.to_datetime(JalaliDate(i, 1, 1).to_gregorian())
             date_2 = pd.to_datetime(JalaliDate(i, 12, 29).to_gregorian())
+            for j in pd.date_range(date_1, date_2):
+                dt = date_2 - j
+                dt = dt.days
+                try:
+                    adjust_eps = end_data.loc[i]["EPS_Capital"] / (
+                        (1 + self.k) ** (dt / 365)
+                    )
+                    pe_forward_adjust[j] = self.Price.loc[j]["Close"] / adjust_eps
+                except:
+                    pass
+
             price.append(self.Price.loc[date_1:date_2]["Close"].mean())
             min_price.append(self.Price.loc[date_1:date_2]["Close"].min())
             max_price.append(self.Price.loc[date_1:date_2]["Close"].max())
@@ -5234,12 +5286,15 @@ class Stock:
                 price_last.append(self.Price.loc[date_1:date_2]["Close"][-1])
             except:
                 price_last.append(np.nan)
-
+        pe_forward_adjust = pd.DataFrame([pe_forward_adjust]).T
+        pe_forward_adjust.rename(columns={0: "pe"}, inplace=True)
+        self.pe_forward_adjust = pe_forward_adjust
         end_data["price"] = price
         end_data["max_price"] = max_price
         end_data["min_price"] = min_price
         end_data["first_price"] = price_first
         end_data["last_price"] = price_last
+
         end_data["mean_price/eps"] = end_data["price"] / end_data["EPS_Capital"]
         end_data["max_price/eps"] = end_data["max_price"] / end_data["EPS_Capital"]
         end_data["min_price/eps"] = end_data["min_price"] / end_data["EPS_Capital"]
@@ -5248,6 +5303,19 @@ class Stock:
         end_data["volatility"] = (end_data["max_price"] / end_data["min_price"]) - 1
         end_data["yearly_ret"] = (end_data["last_price"] / end_data["first_price"]) - 1
         end_data["eps_ret"] = end_data["EPS_Capital"].pct_change()
+        ## predict future year+1
+        end_data["min_price"].loc[self.future_year + 1] = (
+            end_data["min_price/eps"].median()
+            * end_data.loc[self.future_year + 1]["EPS_Capital"]
+        )
+        end_data["max_price"].loc[self.future_year + 1] = (
+            end_data["max_price/eps"].median()
+            * end_data.loc[self.future_year + 1]["EPS_Capital"]
+        )
+        end_data["price"].loc[self.future_year + 1] = (
+            end_data["mean_price/eps"].median()
+            * end_data.loc[self.future_year + 1]["EPS_Capital"]
+        )
         self.end_data = end_data
         self.pe_fw_yearly = pe_fw_yearly
         pe_fw_historical = []
@@ -5349,6 +5417,55 @@ class Stock:
         plt.subplot(1, 2, 2)
         self.pred_com["Net_Profit"].plot(kind="box")
         plt.axhline(self.pred_com["Net_Profit"].iloc[-1], linestyle="dashed")
+
+    def plot_end_data(self, year, year_eps):
+        t1 = pd.to_datetime(JalaliDate(year, 1, 1).to_gregorian())
+        t2 = pd.to_datetime(JalaliDate(year, 12, 29).to_gregorian())
+        pe = {}
+        price = []
+        for i in pd.date_range(t1, t2):
+            dt = t2 - i
+            dt = dt.days
+            try:
+                adjust_eps = self.end_data["EPS_Capital"].loc[year_eps] / (
+                    1 + self.k
+                ) ** ((year_eps - year) + dt / 365)
+                pe[i] = self.Price.loc[i]["Close"] / adjust_eps
+                price.append(self.Price.loc[i]["Close"])
+            except:
+                pass
+        pe = pd.DataFrame([pe]).T
+        pe.rename(columns={0: "pe"}, inplace=True)
+        pe["price"] = price
+        pe["ret"] = pe["price"].pct_change()
+        pe["cret"] = pe["price"] / pe["price"].iloc[0]
+        plt.figure(figsize=[20, 12])
+        plt.subplot(2, 2, 1)
+        plt.plot(pe["pe"])
+        plt.title("pe")
+        plt.subplot(2, 2, 2)
+        plt.plot(pe["cret"])
+        plt.title("Cret")
+        plt.subplot(2, 2, 3)
+        plt.hist(pe["pe"], edgecolor="black")
+        plt.axvline(pe["pe"].iloc[-1], color="red")
+        plt.axvline(pe["pe"].median(), linestyle="dashed")
+        plt.title("pe")
+        plt.subplot(2, 2, 4)
+        plt.hist(pe["ret"], edgecolor="black")
+        plt.axvline(pe["ret"].iloc[-1], color="red")
+        plt.axvline(pe["ret"].median(), linestyle="dashed")
+        plt.title("ret")
+        plt.figure(figsize=[20, 8])
+        plt.subplot(2, 1, 1)
+        plt.plot(self.pe_forward_adjust["pe"])
+        plt.title("PE_Forward")
+        plt.subplot(2, 1, 2)
+        plt.hist(self.pe_forward_adjust["pe"], edgecolor="black", bins=40)
+        plt.axvline(self.pe_forward_adjust["pe"].iloc[-1], color="red")
+        plt.axvline(self.pe_forward_adjust["pe"].median(), linestyle="dashed")
+
+        return pe
 
 
 class OptPort:

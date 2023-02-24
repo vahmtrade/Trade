@@ -100,6 +100,11 @@ wl_prod = {
     "khodro": {"indus": "khodro", "token": "خودرو", "name": "ایران خودرو"},
     "kemina": {"indus": "shishe", "token": "کمینا", "name": "شیشه سازی مینا"},
     "sheranol": {"indus": "ravankar", "token": "شرانل", "name": "نفت ایرانول"},
+    "ofogh": {
+        "indus": "foroushgah",
+        "token": "افق",
+        "name": "فروشگاه های زنجیره ای افق",
+    },
 }
 wl_nprod = {
     "kian": {"indus": "fixed_income", "token": "کیان", "name": "کیان"},
