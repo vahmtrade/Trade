@@ -99,7 +99,7 @@ def ime_physical(start=month_ago, end=today_10char):
     sleep(2 * break_time)
 
     # save as excel file
-    save_as_file(new_path, ".xls")
+    save_as_file(new_path, "xls")
     sleep(2 * break_time)
 
 
@@ -422,11 +422,9 @@ def bourseview_search(name):
 def bourseview_balancesheet(name, y=5, q=5, time_types=["yearly", "quarterly"]):
     """download 2 files : yearly,quarterly"""
     try:
-
         # select 'tarazname'
         balancesheet = "//*[@id='stocks-sub-menu']/ul/li[2]/a[2]"
         webwait.until(clickable((By.XPATH, balancesheet)))
-        driver.find_element(By.XPATH, balancesheet).click()
         driver.find_element(By.XPATH, balancesheet).click()
         sleep(2 * break_time)
 
@@ -438,7 +436,6 @@ def bourseview_balancesheet(name, y=5, q=5, time_types=["yearly", "quarterly"]):
         sleep(4 * break_time)
 
         for time_type in time_types:
-
             if time_type == "yearly":
                 n = y
 
@@ -482,15 +479,61 @@ def bourseview_income_statement(
     y=5,
     q=5,
     time_types=["yearly", "quarterly"],
-    money_types=["rial", "dollar"],
+    currency_types=["rial", "dollar"],
+    report_types=["_cumulative", ""],
 ):
     """download 4 files : yearly,quarterly,rial,dollar"""
-    try:
 
+    def dl_excels(report_type=""):
+        # select 'nooe'
+        income_type = f"//option[@value='{time_type}']"
+        webwait.until(clickable((By.XPATH, income_type)))
+        driver.find_element(By.XPATH, income_type).click()
+        sleep(break_time)
+
+        # select 'dore'
+        income_count = f"//option[@value='{n}']"
+        webwait.until(clickable((By.XPATH, income_count)))
+        driver.find_element(By.XPATH, income_count).click()
+        webwait.until(invisibility(loading))
+        sleep(break_time)
+
+        if report_type == "_cumulative":
+            # click 'gozaresh tajmiee'
+            cumulative = "//*[@id='new-income-statement-grid']/div/div[1]/span[1]/div/span[1]/span[2]"
+            webwait.until(clickable((By.XPATH, cumulative)))
+            driver.find_element(By.XPATH, cumulative).click()
+            webwait.until(invisibility(loading))
+            sleep(break_time)
+
+        for currency_type in currency_types:
+            # click 'rial','dollar azad'
+            currency_options = {"rial": "IRR", "dollar": "USDf"}
+            currency = f"//option[@value='{currency_options[currency_type]}']"
+            webwait.until(clickable((By.XPATH, currency)))
+            driver.find_element(By.XPATH, currency).click()
+            webwait.until(invisibility(loading))
+            sleep(4 * break_time)
+
+            # click download excel
+            dl_btn = "//*[@id='new-income-statement-grid']/div/div[1]/span[2]/span"
+            webwait.until(clickable((By.XPATH, dl_btn)))
+            driver.find_element(By.XPATH, dl_btn).click()
+            sleep(2 * break_time)
+
+            # replace last file
+            new_path = f"{INDUSPATH}/{wl_prod[name]['indus']}/{name}/{structure['income'][time_type][report_type][currency_type]}"
+            move_last_file(new_path)
+            sleep(2 * break_time)
+
+            # open and ctrl + s excel file
+            resave_excel(new_path)
+            sleep(2 * break_time)
+
+    try:
         # select 'sood va zian'
         income = "//*[@id='stocks-sub-menu']/ul/li[3]"
         webwait.until(clickable((By.XPATH, income)))
-        driver.find_element(By.XPATH, income).click()
         driver.find_element(By.XPATH, income).click()
         sleep(2 * break_time)
 
@@ -500,51 +543,17 @@ def bourseview_income_statement(
         loading = driver.find_element(By.XPATH, loading_xpath)
         sleep(4 * break_time)
 
-        # download 4 excels
         for time_type in time_types:
-
             if time_type == "yearly":
                 n = y
+                # download 2 excels
+                dl_excels()
 
             if time_type == "quarterly":
                 n = q
-
-            # select 'nooe'
-            income_type = f"//option[@value='{time_type}']"
-            webwait.until(clickable((By.XPATH, income_type)))
-            driver.find_element(By.XPATH, income_type).click()
-            sleep(break_time)
-
-            # select 'dore'
-            income_count = f"//option[@value='{n}']"
-            webwait.until(clickable((By.XPATH, income_count)))
-            driver.find_element(By.XPATH, income_count).click()
-            sleep(break_time)
-
-            for money_type in money_types:
-
-                # click 'rial','dollar azad'
-                money_options = {"rial": "IRR", "dollar": "USDf"}
-                money = f"//option[@value='{money_options[money_type]}']"
-                webwait.until(clickable((By.XPATH, money)))
-                driver.find_element(By.XPATH, money).click()
-                webwait.until(invisibility(loading))
-                sleep(4 * break_time)
-
-                # click download excel
-                dl_btn = "//*[@id='new-income-statement-grid']/div/div[1]/span[2]/span"
-                webwait.until(clickable((By.XPATH, dl_btn)))
-                driver.find_element(By.XPATH, dl_btn).click()
-                sleep(2 * break_time)
-
-                # replace last file
-                new_path = f"{INDUSPATH}/{wl_prod[name]['indus']}/{name}/{structure['income'][time_type][money_type]}"
-                move_last_file(new_path)
-                sleep(2 * break_time)
-
-                # open and ctrl + s excel file
-                resave_excel(new_path)
-                sleep(2 * break_time)
+                for report_type in report_types:
+                    # download 4 excels
+                    dl_excels(report_type)
 
     except Exception as err:
         print(f"cant download incomestatement {name} : {err}")
@@ -554,11 +563,9 @@ def bourseview_cashflow(name, y=5, q=5, time_types=["yearly", "quarterly"]):
     """download 2 files : yearly,quarterly"""
 
     try:
-
         # select 'jaryan vojoh naghd'
         cashflow = "//*[@id='stocks-sub-menu']/ul/li[4]/a[2]"
         webwait.until(clickable((By.XPATH, cashflow)))
-        driver.find_element(By.XPATH, cashflow).click()
         driver.find_element(By.XPATH, cashflow).click()
         sleep(2 * break_time)
 
@@ -571,7 +578,6 @@ def bourseview_cashflow(name, y=5, q=5, time_types=["yearly", "quarterly"]):
 
         # download 2 file
         for time_type in time_types:
-
             if time_type == "yearly":
                 n = y
 
@@ -616,7 +622,7 @@ def bourseview_product_revenue(
     q=5,
     m=50,
     time_types=["yearly", "quarterly", "monthly"],
-    money_types=["_seprated", ""],
+    report_types=["_seprated", ""],
 ):
     """download 6 files : (yearly,quarterly,monthly) (_seprated)
     <y = year : 5,10,20,50>
@@ -624,11 +630,9 @@ def bourseview_product_revenue(
     <m = month : 5,10,20,50>"""
 
     try:
-
         # select 'tolid va frosh'
         product = "//*[@id='stocks-sub-menu']/ul/li[8]/a[2]"
         webwait.until(clickable((By.XPATH, product)))
-        driver.find_element(By.XPATH, product).click()
         driver.find_element(By.XPATH, product).click()
         sleep(2 * break_time)
 
@@ -639,8 +643,7 @@ def bourseview_product_revenue(
         webwait.until(invisibility(loading))
         sleep(4 * break_time)
 
-        for money_type in money_types:
-
+        for report_type in report_types:
             # click 'tafkik dakheli,khareji'
             seprate = "//*[@id='grid']/div/div[1]/span[1]/div[3]"
             webwait.until(clickable((By.XPATH, seprate)))
@@ -650,7 +653,6 @@ def bourseview_product_revenue(
 
             # download base excels
             for time_type in time_types:
-
                 if time_type == "yearly":
                     n = y
 
@@ -680,7 +682,7 @@ def bourseview_product_revenue(
                 sleep(2 * break_time)
 
                 # replace last file
-                new_path = f"{INDUSPATH}/{wl_prod[name]['indus']}/{name}/{structure['product'][time_type+money_type]}"
+                new_path = f"{INDUSPATH}/{wl_prod[name]['indus']}/{name}/{structure['product'][time_type][report_type]}"
                 move_last_file(new_path)
                 sleep(2 * break_time)
 
@@ -698,11 +700,9 @@ def bourseview_cost(name, y=5, q=5, time_types=["yearly", "quarterly"]):
     <q = quarterly : 5,10,20,50>"""
 
     try:
-
         # select 'bahaye tamam shode'
         cost = "//*[@id='stocks-sub-menu']/ul/li[13]/a[2]"
         webwait.until(clickable((By.XPATH, cost)))
-        driver.find_element(By.XPATH, cost).click()
         driver.find_element(By.XPATH, cost).click()
         sleep(2 * break_time)
 
@@ -715,7 +715,6 @@ def bourseview_cost(name, y=5, q=5, time_types=["yearly", "quarterly"]):
 
         # download excel
         for time_type in time_types:
-
             if time_type == "yearly":
                 n = y
 
@@ -770,11 +769,9 @@ def bourseview_official(name, y=5, q=5, time_types=["yearly", "quarterly"]):
     <q = quarterly : 5,10,20,50>"""
 
     try:
-
         # select 'hazine haye omomi edari'
         official = "//*[@id='stocks-sub-menu']/ul/li[16]/a[2]"
         webwait.until(clickable((By.XPATH, official)))
-        driver.find_element(By.XPATH, official).click()
         driver.find_element(By.XPATH, official).click()
         sleep(2 * break_time)
 
@@ -787,7 +784,6 @@ def bourseview_official(name, y=5, q=5, time_types=["yearly", "quarterly"]):
 
         # 'salane','fasli'
         for time_type in time_types:
-
             if time_type == "yearly":
                 n = y
 
@@ -829,11 +825,9 @@ def bourseview_price_history(name, start=year_ago, end=today_10char):
     <start : 1390/01/01>
     <end : 1400/01/01>"""
     try:
-
         # select 'tarikhche gheimat'
         price = "//*[@id='stocks-sub-menu']/ul/li[21]/a[2]"
         webwait.until(clickable((By.XPATH, price)))
-        driver.find_element(By.XPATH, price).click()
         driver.find_element(By.XPATH, price).click()
         sleep(2 * break_time)
 
@@ -891,7 +885,6 @@ def bourseview_macro(start=year_ago, end=today_10char):
         # select 'dadehaye kalan'
         macro = "//*[@id='step3']/li[9]"
         webwait.until(clickable((By.XPATH, macro)))
-        driver.find_element(By.XPATH, macro).click()
         driver.find_element(By.XPATH, macro).click()
         sleep(2 * break_time)
 
