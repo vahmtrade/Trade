@@ -744,9 +744,7 @@ def history(Broker, owner):
 
 def get_income_yearly(stock, money_type):
     industry = wl_prod[stock]["indus"]
-    adress = (
-        f"{INDUSPATH}/{industry}/{stock}/{structure['income']['yearly'][money_type]}"
-    )
+    adress = f"{INDUSPATH}/{industry}/{stock}/{structure['income']['yearly'][''][money_type]}"
     # read raw data
     stock_income = pd.read_excel(adress, engine="openpyxl")
     all_time_id = re.findall(regex_en_timeid_q, str(stock_income.loc[6]))
@@ -826,9 +824,7 @@ def get_income_yearly(stock, money_type):
 
 def get_income_quarterly(stock, money_type, fisal_year, my_year):
     industry = wl_prod[stock]["indus"]
-    adress = (
-        f"{INDUSPATH}/{industry}/{stock}/{structure['income']['quarterly'][money_type]}"
-    )
+    adress = f"{INDUSPATH}/{industry}/{stock}/{structure['income']['quarterly'][''][money_type]}"
     fiscal_dic = {
         12: {3: 1, 6: 2, 9: 3, 12: 4},
         9: {12: 1, 3: 2, 6: 3, 9: 4},
@@ -843,6 +839,8 @@ def get_income_quarterly(stock, money_type, fisal_year, my_year):
 
     my_month = int(all_time_id[-1][5:])
     my_Q = fiscal_dic[fisal_year][my_month]
+    if my_Q == 4:
+        my_year = my_year - 1
     stock_income = pd.read_excel(adress, skiprows=7, engine="openpyxl")
     stock_income.drop([1, 6, 14], inplace=True)
     stock_income.drop(["Unnamed: 2", "Unnamed: 0"], axis=1, inplace=True)
@@ -1511,7 +1509,17 @@ def rename_columns_dfs(df1, df2):
         df2.rename(columns=dic, inplace=True)
     except:
         print("2 error")
+
     return dic
+
+
+def add_extra_columns_dfs(df1, df2):
+    for i in df1.columns:
+        if i not in df2.columns:
+            df2[i] = 0
+    for i in df2.columns:
+        if i not in df1.columns:
+            df1[i] = 0
 
 
 def fill_out_data(df, alpha):
@@ -1557,6 +1565,49 @@ def merge_same_index(df):
 def converte_numeric(df):
     for i in df.columns:
         df[i] = pd.to_numeric(df[i])
+
+
+def monte_carlo_simulate(data, num_simulations=100, num_days=365):
+    prices = data.tolist()
+
+    # Calculate daily returns
+    returns = data.pct_change().dropna().tolist()
+
+    last_price = prices[-1]
+
+    # Set up simulation
+    simulation_df = pd.DataFrame()
+    for i in range(num_simulations):
+        count = 0
+        daily_volatility = np.std(returns)
+        price_series = []
+        price_series.append(last_price)
+
+        # Run simulation for each day
+        for d in range(num_days):
+            daily_returns = np.random.normal(np.mean(returns), daily_volatility)
+            price = price_series[count] * (1 + daily_returns)
+            price_series.append(price)
+            count += 1
+
+        simulation_df[i] = price_series
+
+    # Plot simulations
+    fig = plt.figure(figsize=(16, 8))
+    plt.plot(simulation_df)
+    plt.xlabel("Day")
+    plt.ylabel("Price")
+    plt.title("Monte Carlo Simulation for Stock Prices")
+    plt.show()
+    return simulation_df
+
+
+def create_month_id(month, year):
+    if month < 10:
+        id = f"{year}/0{month}"
+    if month >= 10:
+        id = f"{year}/{month}"
+    return id
 
 
 class DesiredPortfolio:
@@ -3068,8 +3119,20 @@ class Stock:
         since_revenue = pd.DataFrame(d_g)
         since_revenue.rename(index={0: future_year - 1, 1: future_year}, inplace=True)
         self.since_revenue = since_revenue
-
-        pred_growth = since_revenue.pct_change()
+        ### cumulative calculate from quarterly #############
+        add_extra_columns_dfs(self.count_revenue_quarterly, self.count_revenue_yearly)
+        last_q = int(self.count_revenue_quarterly.iloc[[-1]].index[0][-1])
+        last_m = int(self.count_revenue_monthly.iloc[[-1]].index[0][-2:])
+        df_cum_last_year = self.create_cumulative_data(
+            type_user="count", year=future_year - 1, q=last_q, m2=last_m
+        )
+        df_cum_future_year = self.create_cumulative_data(
+            type_user="count", year=future_year, q=last_q, m2=last_m
+        )
+        df_cum_count = pd.concat([df_cum_last_year, df_cum_future_year])
+        self.df_cum_count = df_cum_count
+        ######## create predict growth of count W#####
+        pred_growth = df_cum_count.pct_change()
         pred_growth.dropna(axis=0, how="all", inplace=True)
         pred_growth.fillna(0, inplace=True)
         # create last_rate df
@@ -3378,7 +3441,7 @@ class Stock:
             "alpha_prod_update": alpha_prod,
             "alpha_prod_next": alpha_prod_next,
             "alpha_rate_update": alpha_rate,
-            "alpha_rate_net": alpha_rate_next,
+            "alpha_rate_next": alpha_rate_next,
             "material_g_update": material_g,
             "material_g_next": material_next,
             "salary_g_update": salary_g,
@@ -3392,6 +3455,10 @@ class Stock:
         self.parameters = parameters
         self.pred_income = income_y
         self.hypothesis = hypothesis
+        self.pred_rate_cum = pd.concat([self.rate_yearly, self.predict_rate])
+        self.pred_count_cum = pd.concat(
+            [self.count_revenue_yearly, self.pred_count_revenue]
+        )
         pred_com = pd.DataFrame(index=income_y.index, columns=income_y.columns)
         for i in income_y.index:
             pred_com.loc[i] = income_y.loc[i] / income_y.loc[i]["Total_Revenue"]
@@ -4427,7 +4494,7 @@ class Stock:
 
     def get_product(self, period):
         product_dl = pd.read_excel(
-            f"{INDUSPATH}/{self.industry}/{self.Name}/{structure['product'][period]}"
+            f"{INDUSPATH}/{self.industry}/{self.Name}/{structure['product'][period]['']}"
         )
         if period == "yearly":
             # select desired data
@@ -5051,6 +5118,16 @@ class Stock:
             df["EPS"].loc[self.future_year + j - 1] = vars()[f"eps{j}"]
             df["DPS"].loc[self.future_year + j - 1] = vars()[f"dps{j}"]
         self.eps_estimate = df
+        value_parameter = {
+            "expected_return": k,
+            "pe_terminal": pe_terminal,
+            "number_of_year_estimate": n_g,
+            "g_stock": g_stock,
+            "cagr_rate": cagr_rate,
+            "cagr_count": cagr_count,
+            "value": value_dps,
+        }
+        self.value_parameter = value_parameter
 
     # save your analyse
     def save_analyse(self, name):
@@ -5423,6 +5500,7 @@ class Stock:
         t2 = pd.to_datetime(JalaliDate(year, 12, 29).to_gregorian())
         pe = {}
         price = []
+        lst_adjust_eps = []
         for i in pd.date_range(t1, t2):
             dt = t2 - i
             dt = dt.days
@@ -5430,7 +5508,9 @@ class Stock:
                 adjust_eps = self.end_data["EPS_Capital"].loc[year_eps] / (
                     1 + self.k
                 ) ** ((year_eps - year) + dt / 365)
+
                 pe[i] = self.Price.loc[i]["Close"] / adjust_eps
+                lst_adjust_eps.append(adjust_eps)
                 price.append(self.Price.loc[i]["Close"])
             except:
                 pass
@@ -5439,6 +5519,7 @@ class Stock:
         pe["price"] = price
         pe["ret"] = pe["price"].pct_change()
         pe["cret"] = pe["price"] / pe["price"].iloc[0]
+        pe["adjust_eps"] = lst_adjust_eps
         plt.figure(figsize=[20, 12])
         plt.subplot(2, 2, 1)
         plt.plot(pe["pe"])
@@ -5466,6 +5547,60 @@ class Stock:
         plt.axvline(self.pe_forward_adjust["pe"].median(), linestyle="dashed")
 
         return pe
+
+    def create_cumulative_data(self, type_user, year=1401, q=3, m2=11):
+        lst = []
+        if type_user == "count":
+            data_q = self.count_revenue_quarterly.copy()
+            data_m = self.count_revenue_monthly.copy()
+
+        if type_user == "price":
+            data_q = self.price_revenue_quarterly.copy()
+            data_m = self.price_revenue_monthly.copy()
+        if type_user == "income":
+            data_q = self.income_rial_quarterly.copy()
+        if type_user == "cost":
+            data_q = self.cost_quarterly.copy()
+
+        if (type_user == "count") or (type_user == "price"):
+            for i in data_q.index:
+                if (int(i[:4]) == year) and (int(i[-1]) <= q):
+                    lst.append(i)
+            if len(lst) != 0:
+                df_cum_q = data_q.loc[lst].cumsum().iloc[[-1]]
+            else:
+                df_cum_q = 0
+            m1 = self.fiscal_dic[self.fiscal_year][q] + 1
+            id_m1 = create_month_id(m1, year)
+            id_m2 = create_month_id(m2, year)
+            if m2 > m1:
+                try:
+                    df_cum_m = data_m.loc[id_m1:id_m2].cumsum().iloc[[-1]]
+                except:
+                    id_m1 = create_month_id(m1, year - 1)
+                    id_m2 = create_month_id(m2, year - 1)
+                    df_cum_m = data_m.loc[id_m1:id_m2].cumsum().iloc[[-1]]
+                if len(lst) != 0:
+                    df_cum_m.rename(
+                        index={df_cum_m.index[0]: df_cum_q.index[0]}, inplace=True
+                    )
+                    df = df_cum_m + df_cum_q
+                else:
+                    df = df_cum_m
+            else:
+                df = df_cum_q
+
+        if (type_user == "cost") or (type_user == "income"):
+            for i in data_q.index:
+                if (int(i[:4]) == year) and (int(i[-1]) <= q):
+                    lst.append(i)
+            if len(lst) != 0:
+                df = data_q.loc[lst].cumsum().iloc[[-1]]
+            else:
+                df = 0
+            df.drop("Realese_date", axis=1, inplace=True)
+        df.rename(index={df.index[0]: year}, inplace=True)
+        return df
 
 
 class OptPort:
