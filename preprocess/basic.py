@@ -256,6 +256,34 @@ def create_database_structure():
     Path(PKLPATH).mkdir(parents=True, exist_ok=True)
 
 
+def filepath_info(file):
+    stock_types = {
+        "balancesheet": "Balance Sheet",
+        "income": "Income Statements",
+        "cashflow": "Cash Flow",
+        "product": "تولید و فروش",
+        "cost": "بهای تمام شده",
+        "official": "هزینه های عمومی و اداری",
+        "pe": "تاریخچه قیمت",
+    }
+
+    stock_type, per_stock_type, stock_time = "", "", ""
+    try:
+        stock_type = [i for i in list(stock_types.keys()) if i in file][0]
+        per_stock_type = stock_types[stock_type]
+    except:
+        pass
+
+    try:
+        stock_times = ["monthly", "quarterly", "yearly"]
+        stock_time = [i for i in stock_times if i in file][0]
+
+    except:
+        pass
+
+    return [stock_type, per_stock_type, stock_time]
+
+
 def find_deficiencies(stock_name):
     base_files = [
         f"{INDUSPATH}/{wl_prod[stock_name]['indus']}/{stock_name}/{s}"
@@ -279,8 +307,9 @@ def find_deficiencies(stock_name):
             pe = True
 
         else:
-            stock_types.append(file.split("/")[6].split(".")[0])
-            time_types.append(file.split("/")[7].split(".")[0].split("_")[0])
+            stock_type, per_stock_type, stock_time = filepath_info(file)
+            stock_types.append(stock_type)
+            time_types.append(stock_time)
 
     for key, value in zip(stock_types, time_types):
         deficiencies[key].append(value)
@@ -322,8 +351,7 @@ def check_stock_files(
                 failed.append(file)
 
             try:
-                stock_type = file.split("/")[6]
-                stock_time = file.split("/")[7].split(".")[0].split("_")[0]
+                stock_type, per_stock_type, stock_time = filepath_info(file)
 
             except:
                 pass
@@ -360,22 +388,12 @@ def check_stock_files(
                 excel_type = df["Unnamed: 1"][4]
                 excel_token = (df["Unnamed: 1"][3]).replace("\u200c", "").split("-")[0]
 
-                stock_types = {
-                    "balancesheet": "Balance Sheet",
-                    "income": "Income Statements",
-                    "cashflow": "Cash Flow",
-                    "product": "تولید و فروش",
-                    "cost": "بهای تمام شده",
-                    "official": "هزینه های عمومی و اداری",
-                    "pe": "تاریخچه قیمت",
-                }
-
                 if excel_author != "Pouya Finance":
                     print("not bourseview : ", file)
                     failed.append(file)
 
-                if excel_type != stock_types[stock_type]:
-                    print("unmatch type : ", file)
+                if excel_type != per_stock_type:
+                    print("unmatch type : ", file, per_stock_type)
                     failed.append(file)
 
                 if excel_token != wl_prod[stock_name]["token"]:
