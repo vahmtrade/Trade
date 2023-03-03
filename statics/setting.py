@@ -105,6 +105,9 @@ wl_prod = {
         "token": "افق",
         "name": "فروشگاه های زنجیره ای افق",
     },
+    "kave": {"indus": "folad", "token": "کاوه", "name": "فولاد کاوه جنوب کیش"},
+    "hormoz": {"indus": "folad", "token": "هرمز", "name": "فولاد هرمزگان جنوب"},
+    "ghebshahr": {"indus": "ghaza", "token": "غبشهر", "name": "صنعتی بهشهر"},
 }
 wl_nprod = {
     "kian": {"indus": "fixed_income", "token": "کیان", "name": "کیان"},

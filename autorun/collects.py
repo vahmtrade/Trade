@@ -419,7 +419,7 @@ def bourseview_search(name):
         print(f"cant bourseview search {name} : {err}")
 
 
-def bourseview_balancesheet(name, y=5, q=5, time_types=["yearly", "quarterly"]):
+def bourseview_balancesheet(name, y=5, q=10, time_types=["yearly", "quarterly"]):
     """download 2 files : yearly,quarterly"""
     try:
         # select 'tarazname'
@@ -477,7 +477,7 @@ def bourseview_balancesheet(name, y=5, q=5, time_types=["yearly", "quarterly"]):
 def bourseview_income_statement(
     name,
     y=5,
-    q=5,
+    q=10,
     time_types=["yearly", "quarterly"],
     currency_types=["rial", "dollar"],
     report_types=["_cumulative", ""],
@@ -559,7 +559,7 @@ def bourseview_income_statement(
         print(f"cant download incomestatement {name} : {err}")
 
 
-def bourseview_cashflow(name, y=5, q=5, time_types=["yearly", "quarterly"]):
+def bourseview_cashflow(name, y=5, q=10, time_types=["yearly", "quarterly"]):
     """download 2 files : yearly,quarterly"""
 
     try:
@@ -619,7 +619,7 @@ def bourseview_cashflow(name, y=5, q=5, time_types=["yearly", "quarterly"]):
 def bourseview_product_revenue(
     name,
     y=5,
-    q=5,
+    q=10,
     m=50,
     time_types=["yearly", "quarterly", "monthly"],
     report_types=["_seprated", ""],
@@ -694,7 +694,7 @@ def bourseview_product_revenue(
         print(f"cant download product {name} : {err}")
 
 
-def bourseview_cost(name, y=5, q=5, time_types=["yearly", "quarterly"]):
+def bourseview_cost(name, y=5, q=10, time_types=["yearly", "quarterly"]):
     """create 2 excel : yearly,quarterly
     <y = year : 5,10,20,50>
     <q = quarterly : 5,10,20,50>"""
@@ -763,7 +763,7 @@ def bourseview_cost(name, y=5, q=5, time_types=["yearly", "quarterly"]):
         print(f"cant download cost {name} : {err}")
 
 
-def bourseview_official(name, y=5, q=5, time_types=["yearly", "quarterly"]):
+def bourseview_official(name, y=5, q=10, time_types=["yearly", "quarterly"]):
     """create 2 excel : yearly,quarterly
     <y = year : 5,10,20,50>
     <q = quarterly : 5,10,20,50>"""
