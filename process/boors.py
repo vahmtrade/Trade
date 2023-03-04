@@ -3121,8 +3121,17 @@ class Stock:
         self.since_revenue = since_revenue
         ### cumulative calculate from quarterly #############
         add_extra_columns_dfs(self.count_revenue_quarterly, self.count_revenue_yearly)
-        last_q = int(self.count_revenue_quarterly.iloc[[-1]].index[0][-1])
-        last_m = int(self.count_revenue_monthly.iloc[[-1]].index[0][-2:])
+        q = []
+        for i in self.count_revenue_quarterly.index:
+            if int(i[:4]) == future_year:
+                q.append(int(i[-1]))
+        if len(q) != 0:
+            last_q = max(q)
+        else:
+            last_q = 0
+        self.last_q = last_q
+        last_m = int(self.count_revenue_monthly.iloc[[-1]].index[0].split("/")[1])
+        self.last_m = last_m
         df_cum_last_year = self.create_cumulative_data(
             type_user="count", year=future_year - 1, q=last_q, m2=last_m
         )
@@ -3184,23 +3193,26 @@ class Stock:
         self.pred_count_revenue = pred_count_revenue
         # calculate count rev done
 
-        count_revenue_done = self.search_df_quarterly_monthly(
-            pred_count_revenue, self.count_revenue_quarterly, self.count_revenue_monthly
+        count_revenue_done = self.create_cumulative_data(
+            type_user="count", year=future_year, q=last_q, m2=last_m
         )
 
         count_revenue_done.loc[future_year + 1] = np.zeros(
             len(count_revenue_done.loc[future_year])
         )
+        count_revenue_done.drop(["جمع", "total"], axis=1, inplace=True)
         self.count_revenue_done = count_revenue_done
-        price_revenue_done = self.search_df_quarterly_monthly(
-            pred_count_revenue, self.price_revenue_quarterly, self.price_revenue_monthly
+        price_revenue_done = self.create_cumulative_data(
+            type_user="price", year=future_year, q=last_q, m2=last_m
         )
         price_revenue_done.loc[future_year + 1] = np.zeros(
             len(price_revenue_done.loc[future_year])
         )
+        price_revenue_done.drop(["جمع", "total"], axis=1, inplace=True)
         price_revenue_done["total"] = price_revenue_done.sum(axis=1)
         self.price_revenue_done = price_revenue_done
         count_revenue_residual = pred_count_revenue - count_revenue_done
+        self.count_revenue_residual = count_revenue_residual
         price_revenue_residual = pd.DataFrame(
             index=[future_year, future_year + 1], columns=["revenue"]
         )
@@ -4768,7 +4780,10 @@ class Stock:
             self.price_revenue_com_monthly = price_revenue_com
             self.price_revenue_major_monthly = price_revenue_major
             self.price_revenue_com_major_monthly = price_revenue_com_major
-            self.rate_monthly = rate
+            #### reindex monthly data ##########
+            self.reindex_monthly_data("count")
+            self.reindex_monthly_data("price")
+            self.rate_monthly = self.price_revenue_monthly / self.count_revenue_monthly
             self.rate_major_monthly = rate
             self.rate_change_monthly = rate_change
         if period == "quarterly":
@@ -4887,6 +4902,7 @@ class Stock:
     def create_macro(self):
         # macro economic data
         macro = Macro()
+        self.shakhes = macro.shakhes_kol
         df = macro.exchange[["dollar", "cpi", "cash"]][-(self.n + 1) :]
         # df["total_cost"] = self.my_cost_unit_yearly["total"]
         # df["profit"] = self.my_cost_unit_yearly["profit"]
@@ -4902,7 +4918,6 @@ class Stock:
                 lst.append(i)
         self.kala = macro.kala.loc[lst]
         self.macro = df
-        self.shakhes = macro.shakhes_kol
         self.macro_ret = df_ret
         # return net profit and market
         # compare returns
@@ -5570,16 +5585,13 @@ class Stock:
                 df_cum_q = data_q.loc[lst].cumsum().iloc[[-1]]
             else:
                 df_cum_q = 0
-            m1 = self.fiscal_dic[self.fiscal_year][q] + 1
-            id_m1 = create_month_id(m1, year)
-            id_m2 = create_month_id(m2, year)
+            m1 = q * 3 + 1
+            if m1 > 12:
+                m1 = m1 % 12
+            id_m1 = f"{year}/{m1}"
+            id_m2 = f"{year}/{m2}"
             if m2 > m1:
-                try:
-                    df_cum_m = data_m.loc[id_m1:id_m2].cumsum().iloc[[-1]]
-                except:
-                    id_m1 = create_month_id(m1, year - 1)
-                    id_m2 = create_month_id(m2, year - 1)
-                    df_cum_m = data_m.loc[id_m1:id_m2].cumsum().iloc[[-1]]
+                df_cum_m = data_m.loc[id_m1:id_m2].cumsum().iloc[[-1]]
                 if len(lst) != 0:
                     df_cum_m.rename(
                         index={df_cum_m.index[0]: df_cum_q.index[0]}, inplace=True
@@ -5601,6 +5613,28 @@ class Stock:
             df.drop("Realese_date", axis=1, inplace=True)
         df.rename(index={df.index[0]: year}, inplace=True)
         return df
+
+    def reindex_monthly_data(self, user_type="count"):
+        if user_type == "count":
+            df = self.count_revenue_monthly
+        if user_type == "price":
+            df = self.price_revenue_monthly
+        new_id = []
+        for i in df.index:
+            y = int(i[:4])
+            m = int(i[-2:])
+            if m > self.fiscal_year:
+                new_m = m % self.fiscal_year
+                new_y = y + 1
+            if m <= self.fiscal_year:
+                new_m = (12 - self.fiscal_year) + m
+                new_y = y
+            if new_m == 0:
+                new_m = self.fiscal_year
+            id = f"{new_y}/{new_m}"
+            new_id.append(id)
+        df["new_id"] = new_id
+        df.set_index("new_id", inplace=True)
 
 
 class OptPort:
