@@ -136,7 +136,7 @@ def codal_search(name):
         driver.find_element(By.XPATH, send).send_keys(wl_prod[name]["name"])
         sleep(break_time)
 
-        exceptions = {"simorgh": 1}
+        exceptions = {"simorgh": 2}
         if name in exceptions:
             # select exceptions choice
             exception = f"//*[@id='ui-select-choices-row-0-{exceptions[name]}']"
@@ -997,7 +997,7 @@ def bourseview_macro(start=year_ago, end=today_10char):
         print(f"cant download macro data : {err}")
 
 
-def integrate_database(stocks=wl_prod_keys):
+def integrate_database(stocks=wl_prod_keys, y=5, q=10, m=50):
     """download deficiencies of stock files"""
     create_database_structure()
 
@@ -1009,17 +1009,21 @@ def integrate_database(stocks=wl_prod_keys):
             bourseview_search(name)
             for d in deficiencies:
                 if d == "balancesheet":
-                    bourseview_balancesheet(name, time_types=deficiencies[d])
+                    bourseview_balancesheet(name, time_types=deficiencies[d], y=y, q=q)
                 if d == "income":
-                    bourseview_income_statement(name, time_types=deficiencies[d])
+                    bourseview_income_statement(
+                        name, time_types=deficiencies[d], y=y, q=q
+                    )
                 if d == "product":
-                    bourseview_product_revenue(name, time_types=deficiencies[d])
+                    bourseview_product_revenue(
+                        name, time_types=deficiencies[d], y=y, q=q, m=m
+                    )
                 if d == "official":
-                    bourseview_official(name, time_types=deficiencies[d])
+                    bourseview_official(name, time_types=deficiencies[d], y=y, q=q)
                 if d == "cashflow":
-                    bourseview_cashflow(name, time_types=deficiencies[d])
+                    bourseview_cashflow(name, time_types=deficiencies[d], y=y, q=q)
                 if d == "cost":
-                    bourseview_cost(name, time_types=deficiencies[d])
+                    bourseview_cost(name, time_types=deficiencies[d], y=y, q=q)
 
         if find_deficiencies(name)[1]:
             bourseview_search(name)
@@ -1039,9 +1043,12 @@ def update_database(
     monthly=False,
     dl_pe=True,
     dl_eps=True,
+    y=5,
+    q=10,
+    m=50,
 ):
     """
-    update 20 excel of stock : 8 yearly + 8 quarterly + 2 monthly + pe + eps
+    update 22 excel of stock : 8 yearly + 10 quarterly + 2 monthly + pe + eps
     """
     create_database_structure()
 
@@ -1060,12 +1067,12 @@ def update_database(
     for name in stocks:
         print(f"update {name} ...")
         bourseview_search(name)
-        bourseview_balancesheet(name, time_types=t)
-        bourseview_income_statement(name, time_types=t)
-        bourseview_cashflow(name, time_types=t)
-        bourseview_product_revenue(name, time_types=t2)
-        bourseview_cost(name, time_types=t)
-        bourseview_official(name, time_types=t)
+        bourseview_balancesheet(name, time_types=t, y=y, q=q)
+        bourseview_income_statement(name, time_types=t, y=y, q=q)
+        bourseview_cashflow(name, time_types=t, y=y, q=q)
+        bourseview_product_revenue(name, time_types=t2, y=y, q=q, m=m)
+        bourseview_cost(name, time_types=t, y=y, q=q)
+        bourseview_official(name, time_types=t, y=y, q=q)
         if dl_pe:
             bourseview_price_history(name)
 
