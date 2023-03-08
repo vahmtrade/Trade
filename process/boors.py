@@ -157,11 +157,9 @@ def analyse_watchlist(date):
             ] = stock.pe_terminal_historical
             value.loc[stock.Name]["pe_terminal_capm"] = stock.pe_terminal_capm
             value.loc[stock.Name]["pe_terminal"] = stock.pe_terminal
-            value.loc[stock.Name]["pe_fw"] = stock.end_data["last_price/eps"].loc[
-                stock.future_year
-            ]
+            value.loc[stock.Name]["pe_fw"] = stock.pe_fw
             value.loc[stock.Name]["g_stock"] = stock.g_stock
-            value.loc[stock.Name]["g_longterm"] = stock.g_economy
+            value.loc[stock.Name]["g_longterm"] = stock.g_economy + 1
             value.loc[stock.Name]["expected_return_historical"] = stock.k_historical
             value.loc[stock.Name]["expected_return_capm"] = stock.k_capm
             value.loc[stock.Name]["expected_return"] = stock.k
@@ -3085,9 +3083,7 @@ class Stock:
         income_common_f = self.income_common_rial_quarterly.copy()
 
         interest = self.interest
-        last_count_revenue = self.count_revenue_yearly.iloc[[-1]].copy()
-        last_count_revenue.drop(["جمع", "total"], axis=1, inplace=True)
-        self.last_count_revenue = last_count_revenue
+
         # weight_matrix
         w = [1, 3]
         # create future row
@@ -3121,6 +3117,10 @@ class Stock:
         self.since_revenue = since_revenue
         ### cumulative calculate from quarterly #############
         add_extra_columns_dfs(self.count_revenue_quarterly, self.count_revenue_yearly)
+        add_extra_columns_dfs(self.count_revenue_monthly, self.count_revenue_yearly)
+        last_count_revenue = self.count_revenue_yearly.iloc[[-1]].copy()
+        last_count_revenue.drop(["جمع", "total"], axis=1, inplace=True)
+        self.last_count_revenue = last_count_revenue
         q = []
         for i in self.count_revenue_quarterly.index:
             if int(i[:4]) == future_year:
@@ -3182,14 +3182,18 @@ class Stock:
                     pred_growth.loc[i, j] = 1.01
         self.pred_growth = pred_growth
         pred_count_revenue = pd.DataFrame(columns=last_count_revenue.columns)
-        pred_count_revenue.loc[future_year] = (
-            last_count_revenue.loc[future_year - 1].values
-            * pred_growth.loc[future_year].values
-        )
-        pred_count_revenue.loc[future_year + 1] = (
-            pred_count_revenue.loc[future_year].values
-            * pred_growth.loc[future_year + 1].values
-        )
+        pred_count_revenue.loc[future_year] = 0
+        pred_count_revenue.loc[future_year + 1] = 0
+        for i in pred_count_revenue.columns:
+            pred_count_revenue.loc[future_year, i] = (
+                pred_growth.loc[future_year, i]
+                * last_count_revenue.loc[future_year - 1, i]
+            )
+            pred_count_revenue.loc[future_year + 1, i] = (
+                pred_growth.loc[future_year + 1, i]
+                * pred_count_revenue.loc[future_year, i]
+            )
+
         self.pred_count_revenue = pred_count_revenue
         # calculate count rev done
 
@@ -3241,6 +3245,13 @@ class Stock:
             future_year + 1
         ].values[0]
         rev_pred = pred_revenue.loc[future_year].values[0]
+        ####################### Update_Parameter ##############
+        if material_g == 1:
+            material_g = (
+                self.rate_monthly["total"].iloc[-1]
+                / self.rate_quarterly["total"].iloc[-1]
+            )
+
         ######################### Calculate cost of revenue #############################
         pred_categ_cost = self.my_cost_quarterly[
             ["salary", "material", "energy", "depreciation", "transport", "other"]
@@ -3841,10 +3852,18 @@ class Stock:
         cash_com = pd.DataFrame(index=cash_flow.index, columns=cash_flow.columns)
         if preiode == "yearly":
             for i in cash_flow.columns:
-                cash_com[i] = cash_flow[i] / self.income_rial_yearly["Net_Profit"]
+                try:
+                    cash_com[i] = cash_flow[i] / self.income_rial_yearly["Net_Profit"]
+                except:
+                    cash_com[i] = 0
         elif preiode == "quarterly":
             for i in cash_flow.columns:
-                cash_com[i] = cash_flow[i] / self.income_rial_quarterly["Net_Profit"]
+                try:
+                    cash_com[i] = (
+                        cash_flow[i] / self.income_rial_quarterly["Net_Profit"]
+                    )
+                except:
+                    cash_com[i] = 0
         # send cashflow to self
         if preiode == "yearly":
             self.cash_flow_yearly = cash_flow
@@ -4057,6 +4076,7 @@ class Stock:
         official_dl = pd.read_excel(
             f"{INDUSPATH}/{self.industry}/{self.Name}/{structure['official'][period]}"
         )
+        self.cost_dl = cost_dl
         if period == "yearly":
             # all data is cost_dl
 
@@ -4066,6 +4086,7 @@ class Stock:
             official = select_df(official_dl, "هزینه های عمومی و اداری", "جمع")
             personnel = select_df(official_dl, "تعداد پرسنل", "تعداد پرسنل تولیدی شرکت")
             count_consump = select_df(cost_dl, "مقدار مصرف طی دوره", "جمع")
+            price_consump = select_df(cost_dl, "مبلغ مصرف طی دوره", "جمع")
             # define column
             my_col = list(self.income_rial_yearly.index)
             my_col.insert(0, "Data")
@@ -4077,14 +4098,18 @@ class Stock:
             official = select_df(official_dl, "هزینه های عمومی و اداری", "جمع")
             personnel = select_df(official_dl, "تعداد پرسنل", "تعداد پرسنل تولیدی شرکت")
             count_consump = select_df(cost_dl, "مقدار مصرف طی دوره", "جمع")
+            price_consump = select_df(cost_dl, "مبلغ مصرف طی دوره", "جمع")
             my_col = list(self.income_rial_quarterly.index)
             my_col.insert(0, "Data")
         # preprocess data
+        count_consump.drop("Unnamed: 2", axis=1, inplace=True)
+        price_consump.drop("Unnamed: 2", axis=1, inplace=True)
         cost.dropna(how="all", inplace=True)
         official.dropna(how="all", inplace=True)
         overhead.dropna(how="all", inplace=True)
         personnel.dropna(how="all", inplace=True)
         count_consump.dropna(how="all", inplace=True)
+        price_consump.dropna(how="all", inplace=True)
         # change column name
         for i in range(len(my_col)):
             cost.rename(columns={cost.columns[i]: my_col[i]}, inplace=True)
@@ -4094,23 +4119,29 @@ class Stock:
             count_consump.rename(
                 columns={count_consump.columns[i]: my_col[i]}, inplace=True
             )
+            price_consump.rename(
+                columns={price_consump.columns[i]: my_col[i]}, inplace=True
+            )
         cost.dropna(axis=0, inplace=True)
         official.dropna(axis=0, inplace=True)
         overhead.dropna(axis=0, inplace=True)
         personnel.dropna(axis=0, inplace=True)
         count_consump.dropna(axis=0, inplace=True)
+        price_consump.dropna(axis=0, inplace=True)
         # set Data is index
         cost.set_index("Data", inplace=True)
         official.set_index("Data", inplace=True)
         overhead.set_index("Data", inplace=True)
         personnel.set_index("Data", inplace=True)
         count_consump.set_index("Data", inplace=True)
+        price_consump.set_index("Data", inplace=True)
         # drop unnessecary data
         cost.drop("بهای تمام شده", inplace=True)
         overhead.drop("هزینه سربار", inplace=True)
         official.drop("هزینه های عمومی و اداری", inplace=True)
         personnel.drop("تعداد پرسنل", inplace=True)
-
+        count_consump.drop("مقدار مصرف طی دوره", inplace=True)
+        price_consump.drop("مبلغ مصرف طی دوره", inplace=True)
         cost_index = [
             "direct_material",
             "direct_salary",
@@ -4158,6 +4189,26 @@ class Stock:
         overhead = overhead.T
         official = official.T
         personnel = personnel.T
+        count_consump = count_consump.T
+        price_consump = price_consump.T
+        # remove_zero_from_data
+        remove_zero(count_consump)
+        remove_zero(price_consump)
+        rate_consump = price_consump / count_consump
+        count_consump_com = pd.DataFrame(
+            index=count_consump.index, columns=count_consump.columns
+        )
+        for i in count_consump_com.index:
+            count_consump_com.loc[i] = (
+                count_consump.loc[i] / count_consump.loc[i]["جمع"]
+            )
+        price_consump_com = pd.DataFrame(
+            index=price_consump.index, columns=price_consump.columns
+        )
+        for i in count_consump_com.index:
+            price_consump_com.loc[i] = (
+                price_consump.loc[i] / price_consump.loc[i]["جمع"]
+            )
         # add total to personel
         personnel["total"] = personnel["prod"] + personnel["non_prod"]
         # define new definition of cost extract units of cost
@@ -4201,6 +4252,11 @@ class Stock:
             self.official_yearly = official
             self.my_cost_yearly = my_cost
             self.personnel_yearly = personnel
+            self.count_consump_yearly = count_consump
+            self.price_consump_yearly = price_consump
+            self.rate_consump_yearly = rate_consump
+            self.count_consump_com_yearly = count_consump_com
+            self.price_consump_com_yearly = price_consump_com
             # create cost com to revenue
             my_cost_com = pd.DataFrame(columns=my_cost.columns)
             for i in my_cost:
@@ -4216,6 +4272,11 @@ class Stock:
             self.official_quarterly = official
             self.my_cost_quarterly = my_cost
             self.personnel_quarterly = personnel
+            self.count_consump_quarterly = count_consump
+            self.price_consump_quarterly = price_consump
+            self.rate_consump_quarterly = rate_consump
+            self.count_consump_com_quarterly = count_consump_com
+            self.price_consump_com_quarterly = price_consump_com
             # create cost com to revenue
             my_cost_com = pd.DataFrame(columns=my_cost.columns)
             for i in my_cost:
@@ -5000,7 +5061,7 @@ class Stock:
         )
         plt.legend()
 
-    def predict_value(self, n_g=2, rf=0.35, erp=0.15, g=1, pe_terminal=1, k=1):
+    def predict_value(self, n_g=0, rf=0.35, erp=0.15, g=1, pe_terminal=1, k=1):
         eps1 = self.pred_income.loc[self.future_year, "EPS_Capital"]
         eps2 = self.pred_income.loc[self.future_year + 1, "EPS_Capital"]
         dps_ratio = self.eps_data["ratio"].iloc[-1]
@@ -5106,6 +5167,8 @@ class Stock:
             pe_terminal = np.average(
                 [pe_terminal_historical, pe_terminal_capm], weights=[2, 1]
             )
+            if pe_terminal > 9:
+                pe_terminal = 9
         self.pe_terminal = pe_terminal
         ###### Calculate terminal value #######
         terminal_value = (vars()[f"eps{i-1}"] * pe_terminal) / ((1 + k) ** (i - 2 + n))
@@ -5612,6 +5675,7 @@ class Stock:
                 df = 0
             df.drop("Realese_date", axis=1, inplace=True)
         df.rename(index={df.index[0]: year}, inplace=True)
+        df.fillna(0, inplace=True)
         return df
 
     def reindex_monthly_data(self, user_type="count"):
