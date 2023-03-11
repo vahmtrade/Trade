@@ -1608,6 +1608,18 @@ def create_month_id(month, year):
     return id
 
 
+def replace_negative_data(df):
+
+    # iterate over each column of the DataFrame
+    for col in df.columns:
+        # check if any value in the column is negative
+        if df[col].lt(0).any():
+            # calculate the median of the column
+            median = df[col].median()
+            # replace negative values with the median
+            df.loc[df[col] < 0, col] = median
+
+
 class DesiredPortfolio:
     def __init__(self, names, farsi, start, end):
         self.names = names
@@ -3083,7 +3095,11 @@ class Stock:
         income_common_f = self.income_common_rial_quarterly.copy()
 
         interest = self.interest
-
+        ### find majority goods
+        df = self.price_revenue_yearly.iloc[[-1]].copy()
+        df.drop(["total", "جمع"], axis=1, inplace=True)
+        major_good = df.idxmax(axis=1).values[0]
+        self.major_good = major_good
         # weight_matrix
         w = [1, 3]
         # create future row
@@ -3176,10 +3192,10 @@ class Stock:
                 len(pred_growth.loc[future_year])
             )
         # delete noise of pred growth
-        for i in pred_growth.index:
-            for j in pred_growth.columns:
-                if (pred_growth.loc[i, j] > 2) | (pred_growth.loc[i, j] < 0.5):
-                    pred_growth.loc[i, j] = 1.01
+        # for i in pred_growth.index:
+        #     for j in pred_growth.columns:
+        #         if (pred_growth.loc[i, j] > 2) | (pred_growth.loc[i, j] < 0.5):
+        #             pred_growth.loc[i, j] = 1.01
         self.pred_growth = pred_growth
         pred_count_revenue = pd.DataFrame(columns=last_count_revenue.columns)
         pred_count_revenue.loc[future_year] = 0
@@ -3214,8 +3230,16 @@ class Stock:
         )
         price_revenue_done.drop(["جمع", "total"], axis=1, inplace=True)
         price_revenue_done["total"] = price_revenue_done.sum(axis=1)
+        try:
+            rate_done = price_revenue_done / count_revenue_done
+        except:
+            rate_done = 0
+        self.rate_done = rate_done
         self.price_revenue_done = price_revenue_done
         count_revenue_residual = pred_count_revenue - count_revenue_done
+        count_revenue_residual = count_revenue_residual.applymap(
+            lambda x: x if x > 0 else 0
+        )
         self.count_revenue_residual = count_revenue_residual
         price_revenue_residual = pd.DataFrame(
             index=[future_year, future_year + 1], columns=["revenue"]
@@ -3245,12 +3269,15 @@ class Stock:
             future_year + 1
         ].values[0]
         rev_pred = pred_revenue.loc[future_year].values[0]
-        ####################### Update_Parameter ##############
-        if material_g == 1:
-            material_g = (
-                self.rate_monthly["total"].iloc[-1]
-                / self.rate_quarterly["total"].iloc[-1]
-            )
+        ####################### Update_Parameter ########################
+        if (material_g == 1) and (self.industry != "palayesh"):
+            if (self.rate_monthly.iloc[-1][self.major_good] != 1) and (
+                self.rate_quarterly.iloc[-1][self.major_good] != 1
+            ):
+                material_g = (
+                    self.rate_monthly.iloc[-1][self.major_good]
+                    / self.rate_quarterly.iloc[-1][self.major_good]
+                )
 
         ######################### Calculate cost of revenue #############################
         pred_categ_cost = self.my_cost_quarterly[
@@ -4750,6 +4777,8 @@ class Stock:
                 ):
                     price_revenue.loc[i, j] = 0.01
 
+        # replace negative data in count_revenue
+        replace_negative_data(count_revenue)
         # create count_product_com
         count_product_com = pd.DataFrame(columns=count_product.columns)
         try:
@@ -5204,6 +5233,8 @@ class Stock:
             "cagr_rate": cagr_rate,
             "cagr_count": cagr_count,
             "value": value_dps,
+            "pe_forward": self.pe_fw,
+            "Price": self.Price["Close"].iloc[-1],
         }
         self.value_parameter = value_parameter
 
@@ -5394,10 +5425,12 @@ class Stock:
         plt.subplot(2, 1, 1)
         plt.plot(self.Price["Close"])
         plt.axhline(self.value, linestyle="dashed", color="red")
+        plt.title(self.Name)
         plt.subplot(2, 1, 2)
         plt.hist(pe_fw_historical["pe"], edgecolor="black", bins=50)
         plt.axvline(pe_fw_historical["pe"].iloc[-1], linestyle="dashed", color="red")
         plt.axvline(pe_2, linestyle="dashed", color="red", alpha=0.5)
+        plt.title(self.Name)
 
     def create_end_data(self):
         end_data = self.pred_income[["EPS_Capital"]]
@@ -5640,7 +5673,12 @@ class Stock:
         if type_user == "cost":
             data_q = self.cost_quarterly.copy()
 
-        if (type_user == "count") or (type_user == "price"):
+        if (
+            (type_user == "count")
+            or (type_user == "price")
+            and (self.industry != "palayesh")
+        ):
+            lst = []
             for i in data_q.index:
                 if (int(i[:4]) == year) and (int(i[-1]) <= q):
                     lst.append(i)
@@ -5664,8 +5702,21 @@ class Stock:
                     df = df_cum_m
             else:
                 df = df_cum_q
+        if ((type_user == "count") or (type_user == "price")) and (
+            self.industry == "palayesh"
+        ):
+            lst = []
+            for i in data_q.index:
+                if (int(i[:4]) == year) and (int(i[-1]) <= q):
+                    lst.append(i)
+            if len(lst) != 0:
+                df_cum_q = data_q.loc[lst].cumsum().iloc[[-1]]
+            else:
+                df_cum_q = 0
+            df = df_cum_q
 
         if (type_user == "cost") or (type_user == "income"):
+            lst = []
             for i in data_q.index:
                 if (int(i[:4]) == year) and (int(i[-1]) <= q):
                     lst.append(i)
