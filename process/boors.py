@@ -2042,7 +2042,7 @@ class Macro:
         self,
         year_s=1391,
         month_s=1,
-        year_end=1401,
+        year_end=1402,
         month_end=12,
         pe_f=6.5,
         sma_s=20,
@@ -2534,10 +2534,10 @@ class Stock:
         Name,
         year_s=1396,
         month_s=1,
-        year_end=1401,
+        year_end=1402,
         month_end=12,
         year_tester_s=1400,
-        year_tester_end=1401,
+        year_tester_end=1402,
         month_tester_s=1,
         month_tester_end=12,
         discounted_n=0.7,
@@ -2564,6 +2564,15 @@ class Stock:
         self.tc = 0.012
         error = []
         self.error = error
+        fiscal_dic = {
+            12: {1: 3, 2: 6, 3: 9, 4: 12},
+            9: {1: 12, 2: 3, 3: 6, 4: 9},
+            6: {1: 9, 2: 12, 3: 3, 4: 6},
+            3: {1: 6, 2: 9, 3: 12, 4: 3},
+            10: {1: 1, 2: 4, 3: 7, 4: 10},
+            8: {1: 11, 2: 2, 3: 5, 4: 8},
+        }
+        self.fiscal_dic = fiscal_dic
         ######## load price data ##########
         try:
             self.Price, self.Price_dollar = read_stock(
@@ -2684,7 +2693,7 @@ class Stock:
             self.hazine_quarterly = abs(self.hazine_quarterly)
         except Exception as err:
             error.append(f"cant create {self.Name}  dollar analyse {err}")
-        # self.daramad_quarterly=self.income_common_rial_quarterly[['Other_operating_Income_Expense','Other_non_operate_Income_Expense']]
+        ####### Create_volume_profile ##########
         try:
             self.Vp, self.Price_bin = voloume_profile(self.Price, "2020", 60)
         except Exception as err:
@@ -2767,7 +2776,11 @@ class Stock:
                     opt["VMA_l"].iloc[0],
                 )
                 self.opt = opt
-
+        ######## Create macro data(dollar rate) #########
+        try:
+            self.create_macro()
+        except Exception as err:
+            error.append(f"cant create_macro {self.Name} : {err}")
         ########### Predict future ############
         try:
             self.create_interest_data()
@@ -2798,11 +2811,6 @@ class Stock:
         except Exception as err:
             error.append(f"cant calculate risk of falling {self.Name} : {err}")
 
-        ######## add compare return data #########
-        try:
-            self.create_macro()
-        except Exception as err:
-            error.append(f"cant compare returns {self.Name} : {err}")
         ############# Create end_data ##############
         try:
             self.create_end_data()
@@ -3078,7 +3086,36 @@ class Stock:
         alpha rate: predict last rate
         alpha_prod :predict product
         """
+        ################ predict Parameters ###################
+        #### predict_alpha_rate ######
+        if alpha_rate == 1:
+            if (
+                (self.industry == "folad")
+                or (self.industry == "felezat")
+                or (self.industry == "urea")
+                or (self.industry == "methanol")
+                or (self.industry == "palayesh")
+                or (self.industry == "dode")
+            ):
+                alpha_rate = self.change_dollar_nima_monthly
         self.alpha_rate = alpha_rate
+        #######predict_material_g #######
+        if material_g == 1:
+            if (
+                (self.industry == "lastic")
+                or (self.industry == "shoyande")
+                or (self.industry == "darou")
+                or (self.industry == "palayesh")
+                or (self.industry == "felezat")
+                or (self.industry == "folad")
+                or (self.industry == "dode")
+            ):
+                material_g = np.average(
+                    [self.change_dollar_nima_quarterly, self.change_dollar_nima_monthly]
+                )
+
+        self.material_g = material_g
+
         fiscal_dic = {
             12: {1: 3, 2: 6, 3: 9, 4: 12},
             9: {1: 12, 2: 3, 3: 6, 4: 9},
@@ -3180,7 +3217,6 @@ class Stock:
         pred_growth = 1 + pred_growth
 
         if alpha_prod == 1:
-            # pred_growth = (2 + pred_growth) / 3
             pred_growth.loc[future_year + 1] = alpha_prod_next * np.ones(
                 len(pred_growth.loc[future_year])
             )
@@ -3191,26 +3227,7 @@ class Stock:
             pred_growth.loc[future_year + 1] = alpha_prod_next * np.ones(
                 len(pred_growth.loc[future_year])
             )
-        # delete noise of pred growth
-        # for i in pred_growth.index:
-        #     for j in pred_growth.columns:
-        #         if (pred_growth.loc[i, j] > 2) | (pred_growth.loc[i, j] < 0.5):
-        #             pred_growth.loc[i, j] = 1.01
-        self.pred_growth = pred_growth
-        pred_count_revenue = pd.DataFrame(columns=last_count_revenue.columns)
-        pred_count_revenue.loc[future_year] = 0
-        pred_count_revenue.loc[future_year + 1] = 0
-        for i in pred_count_revenue.columns:
-            pred_count_revenue.loc[future_year, i] = (
-                pred_growth.loc[future_year, i]
-                * last_count_revenue.loc[future_year - 1, i]
-            )
-            pred_count_revenue.loc[future_year + 1, i] = (
-                pred_growth.loc[future_year + 1, i]
-                * pred_count_revenue.loc[future_year, i]
-            )
 
-        self.pred_count_revenue = pred_count_revenue
         # calculate count rev done
 
         count_revenue_done = self.create_cumulative_data(
@@ -3236,6 +3253,36 @@ class Stock:
             rate_done = 0
         self.rate_done = rate_done
         self.price_revenue_done = price_revenue_done
+
+        # detect noise of pred growth
+        flag_unusual_g = 0
+        for i in pred_growth.index:
+            for j in pred_growth.columns:
+                if (pred_growth.loc[i, j] > 3) | (pred_growth.loc[i, j] < 0.2):
+                    flag_unusual_g = 1
+        self.pred_growth = pred_growth
+        # create pred count revenue
+        pred_count_revenue = pd.DataFrame(columns=last_count_revenue.columns)
+        pred_count_revenue.loc[future_year] = 0
+        pred_count_revenue.loc[future_year + 1] = 0
+
+        # calculate pred count revenue
+        if flag_unusual_g != 1:
+            for i in pred_count_revenue.columns:
+                pred_count_revenue.loc[future_year, i] = (
+                    pred_growth.loc[future_year, i]
+                    * last_count_revenue.loc[future_year - 1, i]
+                )
+                pred_count_revenue.loc[future_year + 1, i] = (
+                    pred_growth.loc[future_year + 1, i]
+                    * pred_count_revenue.loc[future_year, i]
+                )
+        if flag_unusual_g == 1:
+            pred_count_revenue = 12 / (self.last_m) * count_revenue_done
+            pred_count_revenue.loc[future_year + 1] = pred_count_revenue.loc[
+                future_year
+            ]
+        self.pred_count_revenue = pred_count_revenue
         count_revenue_residual = pred_count_revenue - count_revenue_done
         count_revenue_residual = count_revenue_residual.applymap(
             lambda x: x if x > 0 else 0
@@ -3269,16 +3316,6 @@ class Stock:
             future_year + 1
         ].values[0]
         rev_pred = pred_revenue.loc[future_year].values[0]
-        ####################### Update_Parameter ########################
-        if (material_g == 1) and (self.industry != "palayesh"):
-            if (self.rate_monthly.iloc[-1][self.major_good] != 1) and (
-                self.rate_quarterly.iloc[-1][self.major_good] != 1
-            ):
-                material_g = (
-                    self.rate_monthly.iloc[-1][self.major_good]
-                    / self.rate_quarterly.iloc[-1][self.major_good]
-                )
-
         ######################### Calculate cost of revenue #############################
         pred_categ_cost = self.my_cost_quarterly[
             ["salary", "material", "energy", "depreciation", "transport", "other"]
@@ -4237,6 +4274,7 @@ class Stock:
                 price_consump.loc[i] / price_consump.loc[i]["جمع"]
             )
         # add total to personel
+
         personnel["total"] = personnel["prod"] + personnel["non_prod"]
         # define new definition of cost extract units of cost
         my_cost = pd.DataFrame(columns=["salary", "material", "energy"])
@@ -4919,7 +4957,7 @@ class Stock:
         other_g_next_update=1,
         rf=0.35,
         erp=0.15,
-        n_g=2,
+        n_g=0,
         g=1,
         pe_terminal=1,
         k=1,
@@ -4992,58 +5030,117 @@ class Stock:
     def create_macro(self):
         # macro economic data
         macro = Macro()
+        #### create dollar yearly #########
+        dollar_yearly = pd.DataFrame(
+            index=self.income_rial_yearly.index, columns=["azad", "nima"]
+        )
+        for i in dollar_yearly.index:
+            if self.fiscal_year == 12:
+                date_1 = pd.to_datetime(JalaliDate(i, 1, 1).to_gregorian())
+                date_2 = pd.to_datetime(JalaliDate(i, 12, 29).to_gregorian())
+            else:
+                date_1 = pd.to_datetime(
+                    JalaliDate(i - 1, self.fiscal_year, 1).to_gregorian()
+                )
+                date_2 = pd.to_datetime(
+                    JalaliDate(i, self.fiscal_year, 29).to_gregorian()
+                )
+            dollar_yearly.loc[i, "azad"] = macro.dollar_azad.loc[date_1:date_2][
+                "Close"
+            ].mean()
+            dollar_yearly.loc[i, "nima"] = macro.dollar_nima.loc[date_1:date_2][
+                "Close"
+            ].mean()
+        dollar_yearly["ratio"] = dollar_yearly["nima"] / dollar_yearly["azad"]
+        self.dollar_yearly = dollar_yearly
+        #### create dollar quarterly #########
+        dollar_quarterly = pd.DataFrame(
+            index=self.income_rial_quarterly.index, columns=["azad", "nima"]
+        )
+        for i in dollar_quarterly.index:
+            year = int(i[:4])
+            quarter = int(i[-1])
+            month = self.fiscal_dic[self.fiscal_year][quarter]
+            if month > self.fiscal_year:
+                year = year - 1
+            m1 = month - 2
+            m2 = month
+            date_1 = pd.to_datetime(JalaliDate(year, m1, 1).to_gregorian())
+            date_2 = pd.to_datetime(JalaliDate(year, m2, 29).to_gregorian())
+            dollar_quarterly.loc[i, "azad"] = macro.dollar_azad.loc[date_1:date_2][
+                "Close"
+            ].mean()
+            dollar_quarterly.loc[i, "nima"] = macro.dollar_nima.loc[date_1:date_2][
+                "Close"
+            ].mean()
+        dollar_quarterly["ratio"] = dollar_quarterly["nima"] / dollar_quarterly["azad"]
+        self.dollar_quarterly = dollar_quarterly
+        ###### Create_dollar_monthly #########
+        dollar_monthly = pd.DataFrame(
+            index=self.count_revenue_monthly.index, columns=["azad", "nima"]
+        )
+        for i in dollar_monthly.index:
+            index = self.transformer_index[i]
+            year = int(index[:4])
+            month = int(index[-2:])
+            date_1 = pd.to_datetime(JalaliDate(year, month, 1).to_gregorian())
+            date_2 = pd.to_datetime(JalaliDate(year, month, 29).to_gregorian())
+            dollar_monthly.loc[i, "azad"] = macro.dollar_azad.loc[date_1:date_2][
+                "Close"
+            ].mean()
+            dollar_monthly.loc[i, "nima"] = macro.dollar_nima.loc[date_1:date_2][
+                "Close"
+            ].mean()
+        dollar_monthly["ratio"] = dollar_monthly["nima"] / dollar_monthly["azad"]
+        self.dollar_monthly = dollar_monthly
+        ##### Create dollar rate ########
+        (
+            self.rate_dollar_azad_yearly,
+            self.rate_dollar_nima_yearly,
+        ) = self.create_dollar_rate(self.rate_yearly, "yearly")
+        (
+            self.rate_dollar_azad_quarterly,
+            self.rate_dollar_nima_quarterly,
+        ) = self.create_dollar_rate(self.rate_quarterly, "quarterly")
+        (
+            self.rate_dollar_azad_monthly,
+            self.rate_dollar_nima_monthly,
+        ) = self.create_dollar_rate(self.rate_monthly, "monthly")
+        ##### Create dollar consump rate ########
+        (
+            self.rate_consump_dollar_azad_yearly,
+            self.rate_consump_dollar_nima_yearly,
+        ) = self.create_dollar_rate(self.rate_consump_yearly, "yearly")
+        (
+            self.rate_consump_dollar_azad_quarterly,
+            self.rate_consump_dollar_nima_quarterly,
+        ) = self.create_dollar_rate(self.rate_consump_quarterly, "quarterly")
+        ##### Change dollar last month ########
+        change_dollar_nima_monthly = (
+            macro.dollar_nima.iloc[-1]["Close"] / dollar_monthly.iloc[-1]["nima"]
+        )
+        change_dollar_nima_quarterly = (
+            self.dollar_nima.iloc[-1]["Close"] / dollar_quarterly.iloc[-1]["nima"]
+        )
+        dollar_nima_ratio = (
+            self.dollar_nima.iloc[-1]["Close"] / self.dollar_azad.iloc[-1]["Close"]
+        )
+        self.change_dollar_nima_monthly = change_dollar_nima_monthly
+        self.change_dollar_nima_quarterly = change_dollar_nima_quarterly
+        self.dollar_nima_ratio = dollar_nima_ratio
+
+        #######create shakhes #########
         self.shakhes = macro.shakhes_kol
-        df = macro.exchange[["dollar", "cpi", "cash"]][-(self.n + 1) :]
-        # df["total_cost"] = self.my_cost_unit_yearly["total"]
-        # df["profit"] = self.my_cost_unit_yearly["profit"]
-        df_ret = macro.exchange_ret[["dollar", "cpi", "cash"]][-(self.n + 1) :]
-        # df_ret["profit"] = self.my_cost_unit_yearly["profit"].pct_change()
-        # df_ret["total_cost"] = self.my_cost_unit_yearly["total"].pct_change()
-        # df_ret.dropna(inplace=True)
-        # create boors_kala data
+        ####### create boors_kala data ############
         kala = macro.kala[["تولید کننده"]]
         lst = []
-        for i in kala.index:
-            if self.ful_name in kala.loc[i].values[0]:
-                lst.append(i)
-        self.kala = macro.kala.loc[lst]
-        self.macro = df
-        self.macro_ret = df_ret
-        # return net profit and market
-        # compare returns
-        mean_dollar = []
-        mean_market = []
-        for i in range(self.last_year - self.n + 1, self.last_year + 1):
-            date_1 = pd.to_datetime(JalaliDate(i, 1, 1).to_gregorian())
-            date_2 = pd.to_datetime(JalaliDate(i, 12, 29).to_gregorian())
-            mean_dollar.append(self.dollar_nima[date_1:date_2]["Close"].mean())
-            mean_market.append(self.Price[date_1:date_2]["Close"].mean())
-        mean_dollar.append(self.dollar_nima.iloc[-1]["Close"])
-        mean_dollar.append(self.dollar_nima.iloc[-1]["Close"])
-        mean_market.append(self.Price.iloc[-1]["Close"])
-        mean_market.append(self.Price.iloc[-1]["Close"])
-        self.mean_dollar = mean_dollar
-        data = pd.DataFrame(columns=["Net_Profit", "dollar"])
-        data["Net_Profit"] = self.pred_income["Net_Profit"]
-        data["Net_margin"] = self.pred_com["Net_Profit"]
-        data["dollar"] = mean_dollar
-        data["Market"] = mean_market
-        data["cpi"] = df["cpi"]
-        # add ret and cret to data
-        data["dollar_ret"] = np.log(data["dollar"] / data["dollar"].shift(1))
-        data["Market_ret"] = np.log(data["Market"] / data["Market"].shift(1))
-        data["dollar_cret"] = data["dollar_ret"].cumsum().apply(np.exp)
-        data["Market_cret"] = data["Market_ret"].cumsum().apply(np.exp)
-        data["Net_Profit_cret"] = data["Net_Profit"] / np.abs(
-            data["Net_Profit"].iloc[0]
-        )
-        data["Net_Profit_ret"] = data["Net_Profit"].pct_change()
-        data["cpi_ret"] = data["cpi"].pct_change()
-        data.loc[self.future_year, "cpi_ret"] = 0.48
-        compare_ret = data[["Net_Profit_ret", "Market_ret", "dollar_ret", "cpi_ret"]]
-        compare_ret.dropna(inplace=True)
-        self.compare_ret = compare_ret
-        self.data = data
+        try:
+            for i in kala.index:
+                if self.ful_name in kala.loc[i].values[0]:
+                    lst.append(i)
+            self.kala = macro.kala.loc[lst]
+        except:
+            pass
 
     def plot_compare(self):
         plt.figure(figsize=[20, 15])
@@ -5749,7 +5846,27 @@ class Stock:
             id = f"{new_y}/{new_m}"
             new_id.append(id)
         df["new_id"] = new_id
+        last_id = df.index.values
+        transformer = dict(zip(new_id, last_id))
+        self.transformer_index = transformer
         df.set_index("new_id", inplace=True)
+
+    def create_dollar_rate(self, df, time_type):
+        """
+        time_type : yearly,quarterly,monthly
+        return : azad and nima rate
+        """
+        time_dic = {
+            "yearly": self.dollar_yearly,
+            "quarterly": self.dollar_quarterly,
+            "monthly": self.dollar_monthly,
+        }
+        rate_dollar_azad = pd.DataFrame(index=df.index, columns=df.columns)
+        rate_dollar_nima = pd.DataFrame(index=df.index, columns=df.columns)
+        for i in rate_dollar_azad.columns:
+            rate_dollar_azad[i] = (df[i] / time_dic[time_type]["azad"]) * 1000000
+            rate_dollar_nima[i] = (df[i] / time_dic[time_type]["nima"]) * 1000000
+        return rate_dollar_azad, rate_dollar_nima
 
 
 class OptPort:
