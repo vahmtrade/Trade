@@ -3115,7 +3115,7 @@ class Stock:
                 )
 
         self.material_g = material_g
-
+        self.material_g_next = material_next
         fiscal_dic = {
             12: {1: 3, 2: 6, 3: 9, 4: 12},
             9: {1: 12, 2: 3, 3: 6, 4: 9},
@@ -4151,6 +4151,8 @@ class Stock:
             personnel = select_df(official_dl, "تعداد پرسنل", "تعداد پرسنل تولیدی شرکت")
             count_consump = select_df(cost_dl, "مقدار مصرف طی دوره", "جمع")
             price_consump = select_df(cost_dl, "مبلغ مصرف طی دوره", "جمع")
+            count_buy = select_df(cost_dl, "مقدار خرید طی دوره", "جمع")
+            price_buy = select_df(cost_dl, "مبلغ خرید طی دوره", "جمع")
             # define column
             my_col = list(self.income_rial_yearly.index)
             my_col.insert(0, "Data")
@@ -4163,17 +4165,23 @@ class Stock:
             personnel = select_df(official_dl, "تعداد پرسنل", "تعداد پرسنل تولیدی شرکت")
             count_consump = select_df(cost_dl, "مقدار مصرف طی دوره", "جمع")
             price_consump = select_df(cost_dl, "مبلغ مصرف طی دوره", "جمع")
+            count_buy = select_df(cost_dl, "مقدار خرید طی دوره", "جمع")
+            price_buy = select_df(cost_dl, "مبلغ خرید طی دوره", "جمع")
             my_col = list(self.income_rial_quarterly.index)
             my_col.insert(0, "Data")
         # preprocess data
         count_consump.drop("Unnamed: 2", axis=1, inplace=True)
         price_consump.drop("Unnamed: 2", axis=1, inplace=True)
+        count_buy.drop("Unnamed: 2", axis=1, inplace=True)
+        price_buy.drop("Unnamed: 2", axis=1, inplace=True)
         cost.dropna(how="all", inplace=True)
         official.dropna(how="all", inplace=True)
         overhead.dropna(how="all", inplace=True)
         personnel.dropna(how="all", inplace=True)
         count_consump.dropna(how="all", inplace=True)
         price_consump.dropna(how="all", inplace=True)
+        count_buy.dropna(how="all", inplace=True)
+        price_buy.dropna(how="all", inplace=True)
         # change column name
         for i in range(len(my_col)):
             cost.rename(columns={cost.columns[i]: my_col[i]}, inplace=True)
@@ -4186,12 +4194,16 @@ class Stock:
             price_consump.rename(
                 columns={price_consump.columns[i]: my_col[i]}, inplace=True
             )
+            count_buy.rename(columns={count_buy.columns[i]: my_col[i]}, inplace=True)
+            price_buy.rename(columns={price_buy.columns[i]: my_col[i]}, inplace=True)
         cost.dropna(axis=0, inplace=True)
         official.dropna(axis=0, inplace=True)
         overhead.dropna(axis=0, inplace=True)
         personnel.dropna(axis=0, inplace=True)
         count_consump.dropna(axis=0, inplace=True)
         price_consump.dropna(axis=0, inplace=True)
+        count_buy.dropna(axis=0, inplace=True)
+        price_buy.dropna(axis=0, inplace=True)
         # set Data is index
         cost.set_index("Data", inplace=True)
         official.set_index("Data", inplace=True)
@@ -4199,6 +4211,8 @@ class Stock:
         personnel.set_index("Data", inplace=True)
         count_consump.set_index("Data", inplace=True)
         price_consump.set_index("Data", inplace=True)
+        count_buy.set_index("Data", inplace=True)
+        price_buy.set_index("Data", inplace=True)
         # drop unnessecary data
         cost.drop("بهای تمام شده", inplace=True)
         overhead.drop("هزینه سربار", inplace=True)
@@ -4206,6 +4220,8 @@ class Stock:
         personnel.drop("تعداد پرسنل", inplace=True)
         count_consump.drop("مقدار مصرف طی دوره", inplace=True)
         price_consump.drop("مبلغ مصرف طی دوره", inplace=True)
+        count_buy.drop("مقدار خرید طی دوره", inplace=True)
+        price_buy.drop("مبلغ خرید طی دوره", inplace=True)
         cost_index = [
             "direct_material",
             "direct_salary",
@@ -4255,10 +4271,15 @@ class Stock:
         personnel = personnel.T
         count_consump = count_consump.T
         price_consump = price_consump.T
+        count_buy = count_buy.T
+        price_buy = price_buy.T
         # remove_zero_from_data
         remove_zero(count_consump)
         remove_zero(price_consump)
+        remove_zero(count_buy)
+        remove_zero(price_buy)
         rate_consump = price_consump / count_consump
+        rate_buy = price_buy / count_buy
         count_consump_com = pd.DataFrame(
             index=count_consump.index, columns=count_consump.columns
         )
@@ -4322,6 +4343,9 @@ class Stock:
             self.rate_consump_yearly = rate_consump
             self.count_consump_com_yearly = count_consump_com
             self.price_consump_com_yearly = price_consump_com
+            self.count_buy_yearly = count_buy
+            self.price_buy_yearly = price_buy
+            self.rate_buy_yearly = rate_buy
             # create cost com to revenue
             my_cost_com = pd.DataFrame(columns=my_cost.columns)
             for i in my_cost:
@@ -4342,6 +4366,9 @@ class Stock:
             self.rate_consump_quarterly = rate_consump
             self.count_consump_com_quarterly = count_consump_com
             self.price_consump_com_quarterly = price_consump_com
+            self.count_buy_quarterly = count_buy
+            self.price_buy_quarterly = price_buy
+            self.rate_buy_quarterly = rate_buy
             # create cost com to revenue
             my_cost_com = pd.DataFrame(columns=my_cost.columns)
             for i in my_cost:
@@ -5821,7 +5848,8 @@ class Stock:
                 df = data_q.loc[lst].cumsum().iloc[[-1]]
             else:
                 df = 0
-            df.drop("Realese_date", axis=1, inplace=True)
+            if type_user == "income":
+                df.drop("Realese_date", axis=1, inplace=True)
         df.rename(index={df.index[0]: year}, inplace=True)
         df.fillna(0, inplace=True)
         return df
@@ -5867,6 +5895,52 @@ class Stock:
             rate_dollar_azad[i] = (df[i] / time_dic[time_type]["azad"]) * 1000000
             rate_dollar_nima[i] = (df[i] / time_dic[time_type]["nima"]) * 1000000
         return rate_dollar_azad, rate_dollar_nima
+
+    def predict_cost(self):
+        convert_revenue_yearly = (
+            self.count_consump_yearly["جمع"] / self.count_revenue_yearly["جمع"]
+        )
+        convert_revenue_quarterly = (
+            self.count_consump_quarterly["جمع"] / self.count_revenue_quarterly["جمع"]
+        )
+        self.convert_revenue_yearly = convert_revenue_yearly
+        self.convert_revenue_quarterly = convert_revenue_quarterly
+        convert_parameter = convert_revenue_yearly.iloc[-2:].median()
+        self.convert_parameter = convert_parameter
+        pred_count_revenue = self.pred_count_revenue.copy()
+        pred_count_revenue["total"] = pred_count_revenue.sum(axis=1)
+        pred_count_material = pd.DataFrame(
+            columns=self.count_consump_yearly.columns,
+            index=[self.future_year, self.future_year + 1],
+        )
+        pred_count_material["جمع"] = (
+            convert_revenue_yearly.iloc[-2:].median() * pred_count_revenue["total"]
+        )
+        pred_count_material_com = pred_count_material.copy()
+        for i in pred_count_material_com.columns:
+            pred_count_material_com[i] = self.count_consump_com_yearly.iloc[-2:][
+                i
+            ].median()
+        self.pred_count_material_com = pred_count_material_com
+        for i in pred_count_material.columns:
+            pred_count_material[i] = (
+                pred_count_material_com[i] * pred_count_material["جمع"]
+            )
+        self.pred_count_material = pred_count_material
+        pred_price_material = pd.DataFrame(
+            index=pred_count_material.index, columns=pred_count_material.columns
+        )
+        pred_rate_material = pd.DataFrame(
+            index=pred_count_material.index, columns=pred_count_material.columns
+        )
+        for i in pred_rate_material.loc[[self.future_year]].columns:
+            pred_rate_material.loc[self.future_year, i] = self.material_g * find_rate(
+                self.rate_buy_quarterly, i
+            )
+        pred_rate_material.loc[[self.future_year + 1]] = (
+            pred_rate_material.loc[[self.future_year]].values * self.material_g_next
+        )
+        self.pred_rate_material = pred_rate_material
 
 
 class OptPort:
