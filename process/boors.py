@@ -28,6 +28,103 @@ from process.strategy import SmaTester, TesterOneSide, TesterOneSidePrice
 plt.style.use("seaborn")
 
 
+class IncomeDataFrame(pd.DataFrame):
+    def __init__(
+        self,
+        data=None,
+        dependent_df=None,
+        index=None,
+        columns=None,
+        dtype=None,
+        copy=False,
+    ):
+        super().__init__(
+            data=data, index=index, columns=columns, dtype=dtype, copy=copy
+        )
+        self.dependent_df = dependent_df
+        self.update_dependent_columns()
+
+    def __setitem__(self, key, value):
+        super().__setitem__(key, value)
+        if key == "Total_Revenue" or key == "Cost_of_Revenue":
+            self.update_dependent_columns()
+
+    def update_dependent_columns(self):
+        if self.dependent_df is not None:
+            self.loc[:, "Cost_of_Revenue"] = -self.dependent_df["total_cost"]
+        self.loc[:, "Gross_Profit"] = self["Total_Revenue"] + self["Cost_of_Revenue"]
+        self.loc[:, "Operating_Income"] = (
+            self["Gross_Profit"]
+            + self["Operating_Expense"]
+            + self["Other_operating_Income_Expense"]
+        )
+        self.loc[:, "Pretax_Income"] = (
+            self["Operating_Income"]
+            + self["Interest_Expense"]
+            + self["Other_non_operate_Income_Expense"]
+        )
+        self.loc[:, "Net_Income_Common"] = self["Pretax_Income"] + self["Tax_Provision"]
+        self.loc[:, "Net_Profit"] = self.loc[:, "Net_Income_Common"]
+        self.loc[:, "EPS"] = self.loc[:, "Net_Profit"] * 1000 / self["Capital"]
+
+
+class CostDataFrame(pd.DataFrame):
+    def __init__(
+        self,
+        data=None,
+        dependent_df=None,
+        index=None,
+        columns=None,
+        dtype=None,
+        copy=False,
+    ):
+        super().__init__(
+            data=data, index=index, columns=columns, dtype=dtype, copy=copy
+        )
+        self.dependent_df = dependent_df
+        self.update_dependent_columns()
+
+    def __setitem__(self, key, value):
+        super().__setitem__(key, value)
+        if key == "Total_Revenue" or key == "Cost_of_Revenue":
+            self.update_dependent_columns()
+
+    def update_dependent_columns(self):
+        if self.dependent_df is not None:
+            self.loc[:, "overhead"] = self.dependent_df["total"]
+        self.loc[:, "total"] = (
+            self["direct_material"] + self["direct_salary"] + self["overhead"]
+        )
+        self.loc[:, "total_cost_prod"] = self["total"] + self["unabsorbed_cost"]
+        self.loc[:, "cost_prod"] = (
+            self["total_cost_prod"]
+            + self["inventory_of_goods_under_costruction"]
+            + self["wastage"]
+        )
+        self.loc[:, "cost_of_sell_goods"] = (
+            self["cost_prod"]
+            + self["inventory_of_goods_first_periode"]
+            + self["inventory_of_goods_last_periode"]
+        )
+        self.loc[:, "total_cost"] = self["cost_of_sell_goods"] + self["cost_of_service"]
+
+
+class OverheadDataFrame(pd.DataFrame):
+    def __init__(self, data=None, index=None, columns=None, dtype=None, copy=False):
+        super().__init__(
+            data=data, index=index, columns=columns, dtype=dtype, copy=copy
+        )
+        self.update_dependent_columns()
+
+    def __setitem__(self, key, value):
+        super().__setitem__(key, value)
+        if key == "Total_Revenue" or key == "Cost_of_Revenue":
+            self.update_dependent_columns()
+
+    def update_dependent_columns(self):
+        self.loc[:, "total"] = self.sum(axis=1) - self["total"]
+
+
 def save_watchlist(date=today_8char):
     """save all stocks data in one file"""
 
@@ -81,7 +178,7 @@ def analyse_watchlist(date):
             converte_numeric(df)
             max_com = df.idxmax(axis=1).iloc[-1]
             analyse.loc[stock.Name]["sector"] = stock.industry
-            analyse.loc[stock.Name]["margin"] = stock.Risk_income_yearly[0]
+            analyse.loc[stock.Name]["margin"] = stock.Risk_pred_incomeearly[0]
             analyse.loc[stock.Name]["margin_var"] = stock.Risk_income_yearly[1]
             analyse.loc[stock.Name][
                 "last_gross_margin"
@@ -2791,15 +2888,6 @@ class Stock:
         except Exception as err:
             error.append(f"cant predict_income {err}")
         try:
-            self.predict_balance_sheet()
-        except Exception as err:
-            error.append(f"cant predict_balance_sheet {err}")
-        try:
-            self.predict_interst()
-        except Exception as err:
-            error.append(f"cant predict_interest {err}")
-
-        try:
             self.create_fcfe()
         except Exception as err:
             error.append(f" cant create_fcfe {err}")
@@ -3070,459 +3158,132 @@ class Stock:
         alpha_prod_next=1,
         alpha_rate_next=1,
         salary_g=1,
+        salary_g_next=1,
         material_g=1,
+        material_g_next=1,
         energy_g=1,
+        energy_g_next=1,
         dep_g=1,
+        dep_g_next=1,
         transport_g=1,
+        transport_g_next=1,
         other_g=1,
-        salary_next=1,
-        material_next=1,
-        energy_next=1,
-        dep_next=1,
-        transport_next=1,
-        other_next=1,
+        other_g_next=1,
     ):
-        """
-        alpha rate: predict last rate
-        alpha_prod :predict product
-        """
-        ################ predict Parameters ###################
-        #### predict_alpha_rate ######
-        if alpha_rate == 1:
-            if (
-                (self.industry == "folad")
-                or (self.industry == "felezat")
-                or (self.industry == "urea")
-                or (self.industry == "methanol")
-                or (self.industry == "palayesh")
-                or (self.industry == "dode")
-            ):
-                alpha_rate = self.change_dollar_nima_monthly
-        self.alpha_rate = alpha_rate
-        #######predict_material_g #######
-        if material_g == 1:
-            if (
-                (self.industry == "lastic")
-                or (self.industry == "shoyande")
-                or (self.industry == "darou")
-                or (self.industry == "palayesh")
-                or (self.industry == "felezat")
-                or (self.industry == "folad")
-                or (self.industry == "dode")
-            ):
-                material_g = np.average(
-                    [self.change_dollar_nima_quarterly, self.change_dollar_nima_monthly]
-                )
-
-        self.material_g = material_g
-        self.material_g_next = material_next
-        fiscal_dic = {
-            12: {1: 3, 2: 6, 3: 9, 4: 12},
-            9: {1: 12, 2: 3, 3: 6, 4: 9},
-            6: {1: 9, 2: 12, 3: 3, 4: 6},
-            3: {1: 6, 2: 9, 3: 12, 4: 3},
-            10: {1: 1, 2: 4, 3: 7, 4: 10},
-            8: {1: 11, 2: 2, 3: 5, 4: 8},
-        }
-        self.fiscal_dic = fiscal_dic
-
-        ######## call data ##########
-        income_y = self.income_rial_yearly.copy()
-        income_f = self.income_rial_quarterly.copy()
-        income_common_f = self.income_common_rial_quarterly.copy()
-
-        interest = self.interest
-        ### find majority goods
-        df = self.price_revenue_yearly.iloc[[-1]].copy()
-        df.drop(["total", "جمع"], axis=1, inplace=True)
-        major_good = df.idxmax(axis=1).values[0]
-        self.major_good = major_good
-        # weight_matrix
-        w = [1, 3]
-        # create future row
-        future_year = income_y.index[-1] + 1
+        future_year = self.income_rial_yearly.index[-1] + 1
         self.future_year = future_year
-        income_y.loc[future_year] = np.zeros(len(income_y.iloc[0]))
-        income_y.loc[future_year + 1] = np.zeros(len(income_y.iloc[0]))
-        ########################################### calculate Revenue #########################################
-        # create_growth
-        df = pd.DataFrame(columns=self.count_revenue_yearly.columns)
-        df.drop("total", axis=1, inplace=True)
-        df.loc[1401] = self.count_revenue_yearly[
-            self.count_revenue_yearly.columns[:-1]
-        ].iloc[-1]
-        self.count_revenue_yearly[self.count_revenue_yearly.columns[:-1]]
-        df = self.search_df_quarterly_monthly(
-            df, self.count_revenue_quarterly, self.count_revenue_monthly
-        )
-        df.loc[1400] = self.count_revenue_yearly[
-            self.count_revenue_yearly.columns[:-1]
-        ].iloc[-1]
-        df["total"] = df.sum(axis=1) - df["جمع"]
-        self.mydf = df
-        d_g = {}
-        for i in self.count_revenue_yearly.columns:
-            d_g[i] = search_df_month(
-                self.count_revenue_monthly, self.fiscal_year, future_year, i
-            )
-        since_revenue = pd.DataFrame(d_g)
-        since_revenue.rename(index={0: future_year - 1, 1: future_year}, inplace=True)
-        self.since_revenue = since_revenue
-        ### cumulative calculate from quarterly #############
-        add_extra_columns_dfs(self.count_revenue_quarterly, self.count_revenue_yearly)
-        add_extra_columns_dfs(self.count_revenue_monthly, self.count_revenue_yearly)
-        last_count_revenue = self.count_revenue_yearly.iloc[[-1]].copy()
-        last_count_revenue.drop(["جمع", "total"], axis=1, inplace=True)
-        self.last_count_revenue = last_count_revenue
         q = []
         for i in self.count_revenue_quarterly.index:
-            if int(i[:4]) == future_year:
+            if int(i[:4]) == self.future_year:
                 q.append(int(i[-1]))
         if len(q) != 0:
             last_q = max(q)
         else:
             last_q = 0
         self.last_q = last_q
+
         last_m = int(self.count_revenue_monthly.iloc[[-1]].index[0].split("/")[1])
         self.last_m = last_m
-        df_cum_last_year = self.create_cumulative_data(
-            type_user="count", year=future_year - 1, q=last_q, m2=last_m
-        )
-        df_cum_future_year = self.create_cumulative_data(
-            type_user="count", year=future_year, q=last_q, m2=last_m
-        )
-        df_cum_count = pd.concat([df_cum_last_year, df_cum_future_year])
-        self.df_cum_count = df_cum_count
-        ######## create predict growth of count W#####
-        pred_growth = df_cum_count.pct_change()
-        pred_growth.dropna(axis=0, how="all", inplace=True)
-        pred_growth.fillna(0, inplace=True)
-        # create last_rate df
-        d_r = {}
-        for i in self.count_revenue_yearly.columns:
-            if self.industry != "palayesh":
-                d_r[i] = find_rate(self.rate_monthly, i)
-            if self.industry == "palayesh":
-                d_r[i] = find_rate(self.rate_quarterly, i)
-        predict_rate = pd.DataFrame(d_r, index=[future_year])
-        predict_rate.loc[future_year] = alpha_rate * predict_rate.loc[future_year]
-        predict_rate.loc[future_year + 1] = (
-            alpha_rate_next * predict_rate.loc[future_year]
-        )
-        predict_rate.drop(["جمع", "total"], axis=1, inplace=True)
-        predict_rate.fillna(0, inplace=True)
-        self.predict_rate = predict_rate
+        """
+        alpha rate: predict last rate
+        alpha_prod :predict product
+        """
+        ################ predict Parameters ###################
 
-        pred_growth.drop(["جمع", "total"], axis=1, inplace=True)
-        pred_growth = 1 + pred_growth
+        ###### gather parameters ######
+        self.material_g = material_g
+        self.material_g_next = material_g_next
+        self.salary_g = salary_g
+        self.salary_g_next = salary_g_next
+        self.energy_g = energy_g
+        self.energy_g_next = energy_g_next
+        self.other_g = other_g
+        self.other_g_next = other_g_next
+        self.transport_g = transport_g
+        self.transport_g_next = transport_g_next
+        self.dep_g = dep_g
+        self.dep_g_next = dep_g_next
+        self.alpha_prod_next = alpha_prod_next
+        self.alpha_rate = alpha_rate
+        self.alpha_rate_next = alpha_rate_next
+        self.alpha_prod = alpha_prod
 
-        if alpha_prod == 1:
-            pred_growth.loc[future_year + 1] = alpha_prod_next * np.ones(
-                len(pred_growth.loc[future_year])
-            )
-        if alpha_prod != 1:
-            pred_growth.loc[future_year] = alpha_prod * np.ones(
-                len(pred_growth.loc[future_year])
-            )
-            pred_growth.loc[future_year + 1] = alpha_prod_next * np.ones(
-                len(pred_growth.loc[future_year])
-            )
-
-        # calculate count rev done
-
-        count_revenue_done = self.create_cumulative_data(
-            type_user="count", year=future_year, q=last_q, m2=last_m
+        self.predict_parameter()
+        self.predict_revenue(
+            self.alpha_rate, self.alpha_rate_next, self.alpha_prod, self.alpha_prod_next
         )
-
-        count_revenue_done.loc[future_year + 1] = np.zeros(
-            len(count_revenue_done.loc[future_year])
+        self.predict_cost(
+            self.material_g,
+            self.material_g_next,
+            self.salary_g,
+            self.salary_g_next,
+            self.other_g,
+            self.other_g_next,
+            self.energy_g,
+            self.energy_g_next,
+            self.transport_g,
+            self.transport_g_next,
+            self.dep_g,
+            self.dep_g_next,
         )
-        count_revenue_done.drop(["جمع", "total"], axis=1, inplace=True)
-        self.count_revenue_done = count_revenue_done
-        price_revenue_done = self.create_cumulative_data(
-            type_user="price", year=future_year, q=last_q, m2=last_m
-        )
-        price_revenue_done.loc[future_year + 1] = np.zeros(
-            len(price_revenue_done.loc[future_year])
-        )
-        price_revenue_done.drop(["جمع", "total"], axis=1, inplace=True)
-        price_revenue_done["total"] = price_revenue_done.sum(axis=1)
-        try:
-            rate_done = price_revenue_done / count_revenue_done
-        except:
-            rate_done = 0
-        self.rate_done = rate_done
-        self.price_revenue_done = price_revenue_done
-
-        # detect noise of pred growth
-        flag_unusual_g = 0
-        for i in pred_growth.index:
-            for j in pred_growth.columns:
-                if (pred_growth.loc[i, j] > 3) | (pred_growth.loc[i, j] < 0.2):
-                    flag_unusual_g = 1
-        self.pred_growth = pred_growth
-        # create pred count revenue
-        pred_count_revenue = pd.DataFrame(columns=last_count_revenue.columns)
-        pred_count_revenue.loc[future_year] = 0
-        pred_count_revenue.loc[future_year + 1] = 0
-
-        # calculate pred count revenue
-        if flag_unusual_g != 1:
-            for i in pred_count_revenue.columns:
-                pred_count_revenue.loc[future_year, i] = (
-                    pred_growth.loc[future_year, i]
-                    * last_count_revenue.loc[future_year - 1, i]
-                )
-                pred_count_revenue.loc[future_year + 1, i] = (
-                    pred_growth.loc[future_year + 1, i]
-                    * pred_count_revenue.loc[future_year, i]
-                )
-        if flag_unusual_g == 1:
-            pred_count_revenue = 12 / (self.last_m) * count_revenue_done
-            pred_count_revenue.loc[future_year + 1] = pred_count_revenue.loc[
-                future_year
-            ]
-        self.pred_count_revenue = pred_count_revenue
-        count_revenue_residual = pred_count_revenue - count_revenue_done
-        count_revenue_residual = count_revenue_residual.applymap(
-            lambda x: x if x > 0 else 0
-        )
-        self.count_revenue_residual = count_revenue_residual
-        price_revenue_residual = pd.DataFrame(
-            index=[future_year, future_year + 1], columns=["revenue"]
-        )
-
-        price_revenue_residual.loc[future_year] = count_revenue_residual.loc[
-            future_year
-        ].dot(predict_rate.loc[future_year].T)
-        price_revenue_residual.loc[future_year + 1] = count_revenue_residual.loc[
-            future_year + 1
-        ].dot(predict_rate.loc[future_year + 1].T)
-        self.price_revenue_residual = price_revenue_residual
-        pred_revenue = pd.DataFrame(
-            index=[future_year, future_year + 1], columns=["revenue"]
-        )
-        pred_revenue["revenue"] = np.squeeze(
-            price_revenue_residual["revenue"].values
-            + price_revenue_done["total"].values
-        )
-        self.price_revenue_residual = price_revenue_residual
-        self.pred_revenue = pred_revenue
-        # add income to data frame
-        income_y.loc[future_year, "Total_Revenue"] = pred_revenue.loc[
-            future_year
+        self.predict_opex()
+        self.predict_other()
+        df = self.income_rial_yearly.copy()
+        df.loc[self.future_year] = 0
+        df.loc[self.future_year + 1] = 0
+        pred_income = IncomeDataFrame(df, self.pred_cost)
+        pred_income.loc[self.future_year, "Total_Revenue"] = self.pred_revenue.loc[
+            self.future_year
         ].values[0]
-        income_y.loc[future_year + 1, "Total_Revenue"] = pred_revenue.loc[
-            future_year + 1
+        pred_income.loc[self.future_year + 1, "Total_Revenue"] = self.pred_revenue.loc[
+            self.future_year + 1
         ].values[0]
-        rev_pred = pred_revenue.loc[future_year].values[0]
-        ######################### Calculate cost of revenue #############################
-        pred_categ_cost = self.my_cost_quarterly[
-            ["salary", "material", "energy", "depreciation", "transport", "other"]
-        ].iloc[[-1]]
-        pred_categ_cost.rename(
-            index={pred_categ_cost.index[0]: future_year}, inplace=True
-        )
-        pred_categ_cost = pred_categ_cost * [
-            salary_g,
-            material_g,
-            energy_g,
-            dep_g,
-            transport_g,
-            other_g,
-        ]
-        pred_categ_cost_next = pred_categ_cost * [
-            salary_next,
-            material_next,
-            energy_next,
-            dep_next,
-            transport_next,
-            other_next,
-        ]
-        pred_categ_cost["total"] = pred_categ_cost.sum(axis=1)
-        pred_categ_cost_next["total"] = pred_categ_cost_next.sum(axis=1)
-        for i in pred_count_revenue.columns:
-            try:
-                pred_categ_cost.loc[i] = (
-                    pred_categ_cost.iloc[0]
-                    / self.count_revenue_quarterly["total"].iloc[-1]
-                ) * self.categ_cost_unit_ratio_quarterly[i].iloc[-1]
-            except:
-                pred_categ_cost.loc[i] = 0
-            try:
-                pred_categ_cost_next.loc[i] = (
-                    pred_categ_cost_next.iloc[0]
-                    / self.count_revenue_quarterly["total"].iloc[-1]
-                ) * self.categ_cost_unit_ratio_quarterly[i].iloc[-1]
-            except:
-                pred_categ_cost_next.loc[i] = 0
-        pred_categ_cost.fillna(0, inplace=True)
-        pred_categ_cost_next.fillna(0, inplace=True)
-        self.pred_categ_cost = pred_categ_cost
-        self.pred_categ_cost_next = pred_categ_cost_next
-        ### create_cost done
-        cost_done = pd.DataFrame(index=[future_year, future_year + 1], columns=["cost"])
-        count_cost_done = pd.DataFrame(
-            columns=pred_count_revenue.columns, index=[future_year, future_year + 1]
-        )
-        cost_done.loc[future_year] = -search_df_quarterly(
-            self.my_cost_quarterly, future_year, "total"
-        )[0]
-        cost_done.loc[future_year + 1] = 0
-        self.cost_done = cost_done
-        for i in count_cost_done.columns:
-            count_cost_done.loc[future_year, i] = search_df_quarterly(
-                self.count_revenue_quarterly, future_year, i
-            )[0]
-        count_cost_done.loc[future_year + 1] = np.zeros(len(count_cost_done.iloc[0]))
-        count_cost_residual = pred_count_revenue - count_cost_done
-        self.count_cost_done = count_cost_done
-        self.count_cost_residual = count_cost_residual
-        cost_residual = pd.DataFrame(
-            index=[future_year, future_year + 1], columns=["total"]
-        )
-        cost_residual.loc[future_year] = -self.count_cost_residual.loc[future_year].dot(
-            self.pred_categ_cost.iloc[1:][["total"]]
-        )
-        cost_residual.loc[future_year + 1] = -self.count_cost_residual.loc[
-            future_year + 1
-        ].dot(self.pred_categ_cost_next.iloc[1:][["total"]])
-        pred_cost = cost_residual + cost_done.values
-        self.cost_residual = cost_residual
-        self.pred_cost = pred_cost
-        ############## predict operating expense ################
-        op_exp_rev_ratio = (
-            self.income_rial_yearly["Operating_Expense"]
-            / self.income_rial_yearly["Total_Revenue"]
-        )
-        ratio_exp = np.average(op_exp_rev_ratio[-2:], weights=w)
-        operating_expense_pred = ratio_exp * rev_pred
-        # add operating expense to data frame
-        income_y.loc[future_year]["Operating_Expense"] = int(operating_expense_pred)
-        income_y.loc[future_year + 1]["Operating_Expense"] = int(
-            ratio_exp * income_y.loc[future_year + 1]["Total_Revenue"]
-        )
-        # add cost to data frame
-        income_y.loc[future_year]["Cost_of_Revenue"] = (
-            pred_cost.loc[future_year].values[0] - operating_expense_pred
-        )
-        income_y.loc[future_year + 1]["Cost_of_Revenue"] = (
-            pred_cost.loc[future_year + 1].values[0]
-            - income_y.loc[future_year + 1]["Operating_Expense"]
-        )
-        # add gross profit to data frame
-        income_y.loc[future_year]["Gross_Profit"] = (
-            income_y.loc[future_year]["Total_Revenue"]
-            + income_y.loc[future_year]["Cost_of_Revenue"]
-        )
-        income_y.loc[future_year + 1]["Gross_Profit"] = (
-            income_y.loc[future_year + 1]["Total_Revenue"]
-            + income_y.loc[future_year + 1]["Cost_of_Revenue"]
-        )
-        self.income_y = income_y
-        ############ predict other operating ################
-        other_rev_ratio = (
-            self.income_rial_yearly["Other_operating_Income_Expense"]
-            / self.income_rial_yearly["Total_Revenue"]
-        )
-        ratio_other = np.average(other_rev_ratio[-2:], weights=w)
-        other_pred = ratio_other * rev_pred
-        # add other operating to data frame
-        income_y.loc[future_year]["Other_operating_Income_Expense"] = int(other_pred)
-        income_y.loc[future_year + 1]["Other_operating_Income_Expense"] = int(
-            ratio_other * income_y.loc[future_year + 1]["Total_Revenue"]
-        )
-        # add operating_income to data frame
-        income_y.loc[future_year]["Operating_Income"] = (
-            income_y.loc[future_year]["Gross_Profit"]
-            + income_y.loc[future_year]["Operating_Expense"]
-            + income_y.loc[future_year]["Other_operating_Income_Expense"]
-        )
-        income_y.loc[future_year + 1]["Operating_Income"] = (
-            income_y.loc[future_year + 1]["Gross_Profit"]
-            + income_y.loc[future_year + 1]["Operating_Expense"]
-            + income_y.loc[future_year + 1]["Other_operating_Income_Expense"]
-        )
+        pred_income.loc[self.future_year, "Operating_Expense"] = -self.pred_opex.loc[
+            self.future_year
+        ].values[0]
+        pred_income.loc[
+            self.future_year + 1, "Operating_Expense"
+        ] = -self.pred_opex.loc[self.future_year + 1].values[0]
 
-        ############# add Other_non_operate_Income_Expense ################
-        other_non_rev_ratio = (
-            self.income_rial_yearly["Other_non_operate_Income_Expense"]
-            / self.income_rial_yearly["Total_Revenue"]
-        )
-        ratio_other_non = np.average(other_non_rev_ratio[-2:], weights=w)
-        ############# predic other non operating #################
-        other_non_pred = ratio_other_non * rev_pred
-        # add other non to dataframe
-        income_y.loc[future_year]["Other_non_operate_Income_Expense"] = int(
-            other_non_pred
-        )
-        income_y.loc[future_year + 1]["Other_non_operate_Income_Expense"] = int(
-            ratio_other_non * income_y.loc[future_year + 1]["Total_Revenue"]
-        )
-        # add pre tax to data frame
-        income_y.loc[future_year]["Pretax_Income"] = (
-            income_y.loc[future_year]["Operating_Income"]
-            + income_y.loc[future_year]["Interest_Expense"]
-            + income_y.loc[future_year]["Other_non_operate_Income_Expense"]
-        )
-        income_y.loc[future_year + 1]["Pretax_Income"] = (
-            income_y.loc[future_year + 1]["Operating_Income"]
-            + income_y.loc[future_year + 1]["Interest_Expense"]
-            + income_y.loc[future_year + 1]["Other_non_operate_Income_Expense"]
-        )
-        # add tax provision
-        tax_ratio = (
-            self.income_rial_yearly["Tax_Provision"]
-            / self.income_rial_yearly["Pretax_Income"]
-        )
-        tax_ratio_mean = np.average(tax_ratio[-3:-1], weights=w)
-        tax_pred = tax_ratio_mean * income_y.loc[future_year]["Pretax_Income"]
-        income_y.loc[future_year]["Tax_Provision"] = int(tax_pred)
-        income_y.loc[future_year]["Tax_Provision"] = int(
-            tax_ratio_mean * income_y.loc[future_year]["Pretax_Income"]
-        )
-        # add net_income_common
-        income_y.loc[future_year]["Net_Income_Common"] = (
-            income_y.loc[future_year]["Pretax_Income"]
-            + income_y.loc[future_year]["Tax_Provision"]
-        )
-        income_y.loc[future_year + 1]["Net_Income_Common"] = (
-            income_y.loc[future_year + 1]["Pretax_Income"]
-            + income_y.loc[future_year + 1]["Tax_Provision"]
-        )
-        income_y.loc[future_year]["Net_Profit"] = (
-            income_y.loc[future_year]["Pretax_Income"]
-            + income_y.loc[future_year]["Tax_Provision"]
-        )
-        income_y.loc[future_year + 1]["Net_Profit"] = (
-            income_y.loc[future_year + 1]["Pretax_Income"]
-            + income_y.loc[future_year + 1]["Tax_Provision"]
-        )
+        pred_income.loc[
+            self.future_year, "Other_operating_Income_Expense"
+        ] = self.pred_other_operating.loc[self.future_year].values[0]
+        pred_income.loc[
+            self.future_year + 1, "Other_operating_Income_Expense"
+        ] = self.pred_other_operating.loc[self.future_year + 1].values[0]
+        pred_income.loc[
+            self.future_year, "Other_non_operate_Income_Expense"
+        ] = self.pred_other_non_operating.loc[self.future_year].values[0]
+        pred_income.loc[
+            self.future_year + 1, "Other_non_operate_Income_Expense"
+        ] = self.pred_other_non_operating.loc[self.future_year + 1].values[0]
+
+        pred_income.update_dependent_columns()
+        self.pred_income = pred_income
+        self.predict_balance_sheet()
+        self.predict_interest()
+        self.predict_tax()
         # add capital to data frame
-        income_y.loc[future_year]["Capital"] = income_f["Capital"].iloc[-1]
-        income_y.loc[future_year + 1]["Capital"] = income_f["Capital"].iloc[-1]
+        pred_income.loc[future_year, "Capital"] = self.income_rial_quarterly[
+            "Capital"
+        ].iloc[-1]
+        pred_income.loc[future_year + 1, "Capital"] = self.income_rial_quarterly[
+            "Capital"
+        ].iloc[-1]
         # add eps to data frame
-        income_y.loc[future_year]["EPS"] = (
-            income_y.loc[future_year]["Net_Profit"]
-            * 1000
-            / income_y.loc[future_year]["Capital"]
-        )
-        income_y.loc[future_year + 1]["EPS"] = (
-            income_y.loc[future_year + 1]["Net_Profit"]
-            * 1000
-            / income_y.loc[future_year + 1]["Capital"]
-        )
-        income_y.loc[future_year]["EPS_Capital"] = income_y.loc[future_year]["EPS"]
-        income_y.loc[future_year + 1]["EPS_Capital"] = income_y.loc[future_year + 1][
-            "EPS"
-        ]
-
+        pred_income.update_dependent_columns()
+        self.pred_income = pred_income
         ############## Create Hypothesis dictionary #############
         hypothesis = {
-            "tax_ratio": tax_ratio_mean,
-            "ratio_other_invest": ratio_other_non,
-            "ratio_exp": ratio_exp,
-            "Net_Profit": income_y.loc[future_year]["Net_Profit"],
+            "tax_ratio": -self.pred_income.loc[self.future_year]["Tax_Provision"]
+            / self.pred_income.loc[self.future_year]["Pretax_Income"],
+            "ratio_other_invest": self.pred_income.loc[self.future_year][
+                "Other_non_operate_Income_Expense"
+            ]
+            / self.pred_income.loc[self.future_year]["Total_Revenue"],
+            "ratio_exp": -self.pred_income.loc[self.future_year]["Operating_Expense"]
+            / self.pred_income.loc[self.future_year]["Total_Revenue"],
+            "Net_Profit": pred_income.loc[future_year]["Net_Profit"],
         }
         parameters = {
             "alpha_prod_update": alpha_prod,
@@ -3530,27 +3291,29 @@ class Stock:
             "alpha_rate_update": alpha_rate,
             "alpha_rate_next": alpha_rate_next,
             "material_g_update": material_g,
-            "material_g_next": material_next,
+            "material_g_next": material_g_next,
             "salary_g_update": salary_g,
-            "salary_g_next": salary_next,
+            "salary_g_next": salary_g_next,
             "other_g_update": other_g,
-            "other_g_next": other_next,
-            "transport_g_update": transport_g,
-            "transport_g_next": transport_next,
+            "other_g_next": other_g_next,
+            "transport_g_update": transport_g_next,
+            "transport_g_next": transport_g_next,
         }
         ######### send data to self ##############3
         self.parameters = parameters
-        self.pred_income = income_y
+        self.pred_income = pred_income
         self.hypothesis = hypothesis
         self.pred_rate_cum = pd.concat([self.rate_yearly, self.predict_rate])
         self.pred_count_cum = pd.concat(
             [self.count_revenue_yearly, self.pred_count_revenue]
         )
-        pred_com = pd.DataFrame(index=income_y.index, columns=income_y.columns)
-        for i in income_y.index:
-            pred_com.loc[i] = income_y.loc[i] / income_y.loc[i]["Total_Revenue"]
+        pred_com = pd.DataFrame(index=pred_income.index, columns=pred_income.columns)
+        for i in pred_income.index:
+            pred_com.loc[i] = pred_income.loc[i] / pred_income.loc[i]["Total_Revenue"]
         self.pred_com = pred_com
-        df = pd.concat([income_y.loc[[future_year - 1]], income_y.loc[[future_year]]])
+        df = pd.concat(
+            [pred_income.loc[[future_year - 1]], pred_income.loc[[future_year]]]
+        )
         for i in df.index:
             for j in df.columns:
                 if df.loc[i][j] == 0:
@@ -4278,8 +4041,26 @@ class Stock:
         remove_zero(price_consump)
         remove_zero(count_buy)
         remove_zero(price_buy)
+        # merge_Same_columns
+        merge_same_columns(count_consump)
+        merge_same_columns(price_consump)
+        merge_same_columns(count_buy)
+        merge_same_columns(price_buy)
+        # merge_similar_columns
+        count_consump = merge_similar_columns(count_consump)
+        price_consump = merge_similar_columns(price_consump)
+        count_consump = merge_similar_columns(count_buy)
+        price_consump = merge_similar_columns(price_buy)
         rate_consump = price_consump / count_consump
         rate_buy = price_buy / count_buy
+        for i in rate_consump.index:
+            for j in rate_consump.columns:
+                if (count_consump.loc[i, j] == 0.01) or (count_consump.loc[i, j] <= 0):
+                    rate_consump.loc[i, j] = 0
+        for i in rate_buy.index:
+            for j in rate_buy.columns:
+                if (count_buy.loc[i, j] == 0.01) or (count_buy.loc[i, j] <= 0):
+                    rate_buy.loc[i, j] = 0
         count_consump_com = pd.DataFrame(
             index=count_consump.index, columns=count_consump.columns
         )
@@ -4301,7 +4082,6 @@ class Stock:
         my_cost = pd.DataFrame(columns=["salary", "material", "energy"])
         # inventory ratio
         alpha = cost["total_cost"] / cost["total"]
-        self.inventory_ratio = alpha
         my_cost["salary"] = (
             alpha * (cost["direct_salary"] + overhead["salary"]) + official["salary"]
         )
@@ -4330,7 +4110,6 @@ class Stock:
             + my_cost["transport"]
             + my_cost["other"]
         )
-
         # send data to self
         if period == "yearly":
             self.cost_yearly = cost
@@ -4346,6 +4125,7 @@ class Stock:
             self.count_buy_yearly = count_buy
             self.price_buy_yearly = price_buy
             self.rate_buy_yearly = rate_buy
+            self.inventory_ratio_yearly = alpha
             # create cost com to revenue
             my_cost_com = pd.DataFrame(columns=my_cost.columns)
             for i in my_cost:
@@ -4354,7 +4134,12 @@ class Stock:
                 np.ones(len(my_cost_com["total"])) - my_cost_com["total"]
             )
             self.my_cost_com_yearly = my_cost_com
-
+            cost_com = pd.DataFrame(index=cost.index, columns=cost.columns)
+            for i in cost_com.index:
+                cost_com.loc[i] = (
+                    cost.loc[i] / self.income_rial_yearly.loc[i, "Total_Revenue"]
+                )
+            self.cost_com_yearly = cost_com
         elif period == "quarterly":
             self.cost_quarterly = cost
             self.overhead_quarterly = overhead
@@ -4369,6 +4154,7 @@ class Stock:
             self.count_buy_quarterly = count_buy
             self.price_buy_quarterly = price_buy
             self.rate_buy_quarterly = rate_buy
+            self.inventory_ratio_quarterly = alpha
             # create cost com to revenue
             my_cost_com = pd.DataFrame(columns=my_cost.columns)
             for i in my_cost:
@@ -4379,6 +4165,12 @@ class Stock:
                 np.ones(len(my_cost_com["total"])) - my_cost_com["total"]
             )
             self.my_cost_com_quarterly = my_cost_com
+            cost_com = pd.DataFrame(index=cost.index, columns=cost.columns)
+            for i in cost_com.index:
+                cost_com.loc[i] = (
+                    cost.loc[i] / self.income_rial_quarterly.loc[i, "Total_Revenue"]
+                )
+            self.cost_com_quarterly = cost_com
 
     def sensitivity(self):
         rate = []
@@ -4388,7 +4180,7 @@ class Stock:
         p_fcfe = []
         for i in np.linspace(0.5, 2, 40):
             self.predict_income(i, 1)
-            self.predict_interst()
+            self.predict_interest()
             self.create_end_data()
             self.create_fcfe()
             rate.append(self.hypothesis["Last_Rate"])
@@ -4476,7 +4268,7 @@ class Stock:
         self.interest = interest
         self.tangible = tangible
 
-    def predict_interst(self):
+    def predict_interest(self):
         w = [1, 3]
         future_year = self.income_rial_yearly.index[-1] + 1
         self.future_year = future_year
@@ -4542,6 +4334,7 @@ class Stock:
             + interest.loc[future_year + 1, "add"]
             - interest.loc[future_year + 1, "pay"]
         )
+        self.interest = interest
         # add interest to pred_income
         self.pred_income.loc[future_year, "Interest_Expense"] = -interest.loc[
             future_year, "interest"
@@ -4549,98 +4342,6 @@ class Stock:
         self.pred_income.loc[future_year + 1, "Interest_Expense"] = -interest.loc[
             future_year + 1, "interest"
         ]
-        # add financial facilities to pred_balance
-        self.pred_balance.loc[future_year]["financial facilities"] = interest.loc[
-            future_year
-        ]["end"]
-        self.pred_balance.loc[future_year + 1]["financial facilities"] = interest.loc[
-            future_year + 1
-        ]["end"]
-        # add pre tax to data frame
-        self.pred_income.loc[future_year, "Pretax_Income"] = (
-            self.pred_income.loc[future_year]["Operating_Income"]
-            + self.pred_income.loc[future_year]["Interest_Expense"]
-            + self.pred_income.loc[future_year]["Other_non_operate_Income_Expense"]
-        )
-        self.pred_income.loc[future_year + 1, "Pretax_Income"] = (
-            self.pred_income.loc[future_year + 1]["Operating_Income"]
-            + self.pred_income.loc[future_year + 1]["Interest_Expense"]
-            + self.pred_income.loc[future_year + 1]["Other_non_operate_Income_Expense"]
-        )
-        # add tax provision
-        tax_ratio = (
-            self.income_rial_yearly["Tax_Provision"]
-            / self.income_rial_yearly["Pretax_Income"]
-        )
-        tax_ratio_mean = np.average(tax_ratio[-3:-1], weights=w)
-        tax_pred = tax_ratio_mean * self.pred_income.loc[future_year]["Pretax_Income"]
-        self.pred_income.loc[future_year, "Tax_Provision"] = tax_pred
-        self.pred_income.loc[future_year + 1, "Tax_Provision"] = (
-            tax_ratio_mean * self.pred_income.loc[future_year]["Pretax_Income"]
-        )
-        # add net_income_common
-        self.pred_income.loc[future_year, "Net_Income_Common"] = (
-            self.pred_income.loc[future_year]["Pretax_Income"]
-            + self.pred_income.loc[future_year]["Tax_Provision"]
-        )
-        self.pred_income.loc[future_year + 1, "Net_Income_Common"] = (
-            self.pred_income.loc[future_year + 1]["Pretax_Income"]
-            + self.pred_income.loc[future_year + 1]["Tax_Provision"]
-        )
-        self.pred_income.loc[future_year, "Net_Profit"] = (
-            self.pred_income.loc[future_year]["Pretax_Income"]
-            + self.pred_income.loc[future_year]["Tax_Provision"]
-        )
-        self.pred_income.loc[future_year + 1, "Net_Profit"] = (
-            self.pred_income.loc[future_year + 1]["Pretax_Income"]
-            + self.pred_income.loc[future_year + 1]["Tax_Provision"]
-        )
-        # add capital to data frame
-        self.pred_income.loc[future_year, "Capital"] = self.income_rial_quarterly[
-            "Capital"
-        ].iloc[-1]
-        self.pred_income.loc[future_year + 1, "Capital"] = self.income_rial_quarterly[
-            "Capital"
-        ].iloc[-1]
-        # add eps to data frame
-        self.pred_income.loc[future_year, "EPS"] = (
-            self.pred_income.loc[future_year]["Net_Profit"]
-            * 1000
-            / self.pred_income.loc[future_year]["Capital"]
-        )
-        self.pred_income.loc[future_year + 1, "EPS"] = (
-            self.pred_income.loc[future_year + 1]["Net_Profit"]
-            * 1000
-            / self.pred_income.loc[future_year + 1]["Capital"]
-        )
-        self.pred_income.loc[future_year, "EPS_Capital"] = self.pred_income.loc[
-            future_year
-        ]["EPS"]
-        self.pred_income.loc[future_year + 1, "EPS_Capital"] = self.pred_income.loc[
-            future_year + 1
-        ]["EPS"]
-
-        # create pred_income_cagr
-        self.pred_income_cagr = pd.DataFrame(columns=self.pred_income.columns)
-        for i in self.pred_income.columns:
-            self.pred_income_cagr[i] = self.pred_income[i].pct_change()
-        self.pred_income_cagr.dropna(axis=0, how="all", inplace=True)
-        pred_com = pd.DataFrame(
-            index=self.pred_income.index, columns=self.pred_income.columns
-        )
-        for i in self.pred_income.index:
-            pred_com.loc[i] = (
-                self.pred_income.loc[i] / self.pred_income.loc[i]["Total_Revenue"]
-            )
-        self.pred_com = pred_com
-        self.pe_fw = (
-            self.Price["Close"].iloc[-1]
-            / self.pred_income.loc[future_year]["EPS_Capital"]
-        )
-        try:
-            self.create_eps_data()
-        except:
-            print(f"add eps data {self.Name}")
 
     def create_fcfe(self):
         fcfe = pd.DataFrame(
@@ -5023,20 +4724,18 @@ class Stock:
                 alpha_prod_next_update,
                 alpha_rate_next_update,
                 salary_g_update,
-                material_g_update,
-                energy_g_update,
-                dep_g_update,
-                transport_g_update,
-                other_g_update,
                 salary_g_next_update,
+                material_g_update,
                 material_g_next_update,
+                energy_g_update,
                 energy_g_next_update,
+                dep_g_update,
                 dep_g_next_update,
+                transport_g_update,
                 transport_g_next_update,
+                other_g_update,
                 other_g_next_update,
             )
-            self.predict_balance_sheet()
-            self.predict_interst()
             self.create_end_data()
             self.create_fcfe()
             self.predict_value(n_g, rf, erp, g, pe_terminal)
@@ -5784,6 +5483,9 @@ class Stock:
         return pe
 
     def create_cumulative_data(self, type_user, year=1401, q=3, m2=11):
+        """
+        type_user=count,price,income,cost,count_consump,price_consump
+        """
         lst = []
         if type_user == "count":
             data_q = self.count_revenue_quarterly.copy()
@@ -5796,7 +5498,12 @@ class Stock:
             data_q = self.income_rial_quarterly.copy()
         if type_user == "cost":
             data_q = self.cost_quarterly.copy()
-
+        if type_user == "overhead":
+            data_q = self.overhead_quarterly.copy()
+        if type_user == "count_consump":
+            data_q = self.count_consump_quarterly.copy()
+        if type_user == "price_consump":
+            data_q = self.price_consump_quarterly.copy()
         if (
             (type_user == "count")
             or (type_user == "price")
@@ -5839,19 +5546,39 @@ class Stock:
                 df_cum_q = 0
             df = df_cum_q
 
-        if (type_user == "cost") or (type_user == "income"):
+        if (
+            (type_user == "cost")
+            or (type_user == "income")
+            or (type_user == "count_consump")
+            or (type_user == "price_consump")
+            or (type_user == "overhead")
+        ):
             lst = []
             for i in data_q.index:
                 if (int(i[:4]) == year) and (int(i[-1]) <= q):
                     lst.append(i)
             if len(lst) != 0:
-                df = data_q.loc[lst].cumsum().iloc[[-1]]
+                if (
+                    (type_user == "cost")
+                    or (type_user == "income")
+                    or (type_user == "overhead")
+                ):
+                    df = data_q.loc[lst].cumsum().iloc[[-1]]
+                if (type_user == "count_consump") or (type_user == "price_consump"):
+                    for i in data_q.loc[lst].index:
+                        for j in data_q.loc[lst].columns:
+                            data_q.loc[i, j] = (
+                                data_q.loc[i, j] * self.inventory_ratio_quarterly.loc[i]
+                            )
+                    df = data_q.loc[lst].cumsum().iloc[[-1]]
             else:
                 df = 0
-            if type_user == "income":
+            if (type_user == "income") and (isinstance(df, pd.DataFrame)):
+
                 df.drop("Realese_date", axis=1, inplace=True)
-        df.rename(index={df.index[0]: year}, inplace=True)
-        df.fillna(0, inplace=True)
+        if isinstance(df, pd.DataFrame):
+            df.rename(index={df.index[0]: year}, inplace=True)
+            df.fillna(0, inplace=True)
         return df
 
     def reindex_monthly_data(self, user_type="count"):
@@ -5896,51 +5623,693 @@ class Stock:
             rate_dollar_nima[i] = (df[i] / time_dic[time_type]["nima"]) * 1000000
         return rate_dollar_azad, rate_dollar_nima
 
-    def predict_cost(self):
+    def predict_cost(
+        self,
+        material_g=1,
+        material_g_next=1,
+        salary_g=1,
+        salary_g_next=1,
+        other_g=1,
+        other_g_next=1,
+        energy_g=1,
+        energy_g_next=1,
+        transport_g=1,
+        transport_g_next=1,
+        dep_g=1,
+        dep_g_next=1,
+    ):
+
+        self.predict_material(material_g, material_g_next)
+        self.predict_overhead(
+            energy_g,
+            energy_g_next,
+            salary_g,
+            salary_g_next,
+            other_g,
+            other_g_next,
+            transport_g,
+            transport_g_next,
+            dep_g,
+            dep_g_next,
+        )
+        pred_cost = CostDataFrame(self.cost_yearly.copy(), self.pred_overhead)
+        pred_cost.loc[self.future_year] = 0
+        pred_cost.loc[self.future_year + 1] = 0
+        pred_cost.loc[self.future_year, "direct_material"] = self.pred_material.loc[
+            self.future_year
+        ].values[0]
+        pred_cost.loc[self.future_year + 1, "direct_material"] = self.pred_material.loc[
+            self.future_year + 1
+        ].values[0]
+        pred_cost.loc[self.future_year, "direct_salary"] = (
+            salary_g * pred_cost.loc[self.future_year - 1, "direct_salary"]
+        )
+        pred_cost.loc[self.future_year + 1, "direct_salary"] = (
+            salary_g_next * pred_cost.loc[self.future_year, "direct_salary"]
+        )
+        pred_cost.loc[self.future_year]
+        pred_cost.update_dependent_columns()
+        self.pred_cost = pred_cost
+
+    def predict_revenue(
+        self, alpha_rate=1, alpha_rate_next=1, alpha_prod=1, alpha_prod_next=1
+    ):
+        ########################################### calculate Revenue #########################################
+
+        self.alpha_rate = alpha_rate
+        self.alpha_rate_next = alpha_rate_next
+        self.alpha_prod = alpha_prod
+
+        ### find majority goods
+        df = self.price_revenue_yearly.iloc[[-1]].copy()
+        df.drop(["total", "جمع"], axis=1, inplace=True)
+        major_good = df.idxmax(axis=1).values[0]
+        self.major_good = major_good
+        ### cumulative calculate from quarterly #############
+        add_extra_columns_dfs(self.count_revenue_quarterly, self.count_revenue_yearly)
+        add_extra_columns_dfs(self.count_revenue_monthly, self.count_revenue_yearly)
+        last_count_revenue = self.count_revenue_yearly.iloc[[-1]].copy()
+        last_count_revenue.drop(["جمع", "total"], axis=1, inplace=True)
+        self.last_count_revenue = last_count_revenue
+        q = []
+        for i in self.count_revenue_quarterly.index:
+            if int(i[:4]) == self.future_year:
+                q.append(int(i[-1]))
+        if len(q) != 0:
+            last_q = max(q)
+        else:
+            last_q = 0
+        self.last_q = last_q
+        last_m = int(self.count_revenue_monthly.iloc[[-1]].index[0].split("/")[1])
+        self.last_m = last_m
+        df_cum_last_year = self.create_cumulative_data(
+            type_user="count", year=self.future_year - 1, q=last_q, m2=last_m
+        )
+        df_cum_future_year = self.create_cumulative_data(
+            type_user="count", year=self.future_year, q=last_q, m2=last_m
+        )
+        df_cum_count = pd.concat([df_cum_last_year, df_cum_future_year])
+        self.df_cum_count = df_cum_count
+        ######## create predict growth of count W#####
+        pred_growth = df_cum_count.pct_change()
+        pred_growth.dropna(axis=0, how="all", inplace=True)
+        pred_growth.fillna(0, inplace=True)
+        # create last_rate df
+        d_r = {}
+        for i in self.count_revenue_yearly.columns:
+            if self.industry != "palayesh":
+                d_r[i] = find_rate(self.rate_monthly, i)
+            if self.industry == "palayesh":
+                d_r[i] = find_rate(self.rate_quarterly, i)
+        predict_rate = pd.DataFrame(d_r, index=[self.future_year])
+        predict_rate.loc[self.future_year] = (
+            alpha_rate * predict_rate.loc[self.future_year]
+        )
+        predict_rate.loc[self.future_year + 1] = (
+            alpha_rate_next * predict_rate.loc[self.future_year]
+        )
+        predict_rate.drop(["جمع", "total"], axis=1, inplace=True)
+        predict_rate.fillna(0, inplace=True)
+        self.predict_rate = predict_rate
+
+        pred_growth.drop(["جمع", "total"], axis=1, inplace=True)
+        pred_growth = 1 + pred_growth
+
+        if alpha_prod == 1:
+            pred_growth.loc[self.future_year + 1] = alpha_prod_next * np.ones(
+                len(pred_growth.loc[self.future_year])
+            )
+        if alpha_prod != 1:
+            pred_growth.loc[self.future_year] = alpha_prod * np.ones(
+                len(pred_growth.loc[self.future_year])
+            )
+            pred_growth.loc[self.future_year + 1] = alpha_prod_next * np.ones(
+                len(pred_growth.loc[self.future_year])
+            )
+
+        # calculate count rev done
+
+        count_revenue_done = self.create_cumulative_data(
+            type_user="count", year=self.future_year, q=last_q, m2=last_m
+        )
+
+        count_revenue_done.loc[self.future_year + 1] = np.zeros(
+            len(count_revenue_done.loc[self.future_year])
+        )
+        count_revenue_done.drop(["جمع", "total"], axis=1, inplace=True)
+        self.count_revenue_done = count_revenue_done
+        price_revenue_done = self.create_cumulative_data(
+            type_user="price", year=self.future_year, q=last_q, m2=last_m
+        )
+        price_revenue_done.loc[self.future_year + 1] = np.zeros(
+            len(price_revenue_done.loc[self.future_year])
+        )
+        price_revenue_done.drop(["جمع", "total"], axis=1, inplace=True)
+        price_revenue_done["total"] = price_revenue_done.sum(axis=1)
+        try:
+            rate_done = price_revenue_done / count_revenue_done
+        except:
+            rate_done = 0
+        self.rate_done = rate_done
+        self.price_revenue_done = price_revenue_done
+
+        # detect noise of pred growth
+        flag_unusual_g = 0
+        for i in pred_growth.index:
+            for j in pred_growth.columns:
+                if (pred_growth.loc[i, j] > 3) | (pred_growth.loc[i, j] < 0.2):
+                    flag_unusual_g = 1
+        self.pred_growth = pred_growth
+        # create pred count revenue
+        pred_count_revenue = pd.DataFrame(columns=last_count_revenue.columns)
+        pred_count_revenue.loc[self.future_year] = 0
+        pred_count_revenue.loc[self.future_year + 1] = 0
+
+        # calculate pred count revenue
+        if flag_unusual_g != 1:
+            for i in pred_count_revenue.columns:
+                pred_count_revenue.loc[self.future_year, i] = (
+                    pred_growth.loc[self.future_year, i]
+                    * last_count_revenue.loc[self.future_year - 1, i]
+                )
+                pred_count_revenue.loc[self.future_year + 1, i] = (
+                    pred_growth.loc[self.future_year + 1, i]
+                    * pred_count_revenue.loc[self.future_year, i]
+                )
+        if flag_unusual_g == 1:
+            pred_count_revenue = 12 / (self.last_m) * count_revenue_done
+            pred_count_revenue.loc[self.future_year + 1] = pred_count_revenue.loc[
+                self.future_year
+            ]
+        self.pred_count_revenue = pred_count_revenue
+        count_revenue_residual = pred_count_revenue - count_revenue_done
+        count_revenue_residual = count_revenue_residual.applymap(
+            lambda x: x if x > 0 else 0
+        )
+        self.count_revenue_residual = count_revenue_residual
+        price_revenue_residual = pd.DataFrame(
+            index=[self.future_year, self.future_year + 1], columns=["revenue"]
+        )
+
+        price_revenue_residual.loc[self.future_year] = count_revenue_residual.loc[
+            self.future_year
+        ].dot(predict_rate.loc[self.future_year].T)
+        price_revenue_residual.loc[self.future_year + 1] = count_revenue_residual.loc[
+            self.future_year + 1
+        ].dot(predict_rate.loc[self.future_year + 1].T)
+        self.price_revenue_residual = price_revenue_residual
+        pred_revenue = pd.DataFrame(
+            index=[self.future_year, self.future_year + 1], columns=["revenue"]
+        )
+        pred_revenue["revenue"] = np.squeeze(
+            price_revenue_residual["revenue"].values
+            + price_revenue_done["total"].values
+        )
+        self.price_revenue_residual = price_revenue_residual
+        self.pred_revenue = pred_revenue
+
+    def predict_material(self, material_g=1, material_g_next=1):
+        self.material_g = material_g
+        self.material_g_next = material_g_next
         convert_revenue_yearly = (
             self.count_consump_yearly["جمع"] / self.count_revenue_yearly["جمع"]
         )
         convert_revenue_quarterly = (
             self.count_consump_quarterly["جمع"] / self.count_revenue_quarterly["جمع"]
         )
+        convert_revenue_major = (
+            self.count_consump_yearly["جمع"]
+            / self.count_revenue_yearly[self.major_good]
+        )
+        self.convert_revenue_major = convert_revenue_major
         self.convert_revenue_yearly = convert_revenue_yearly
         self.convert_revenue_quarterly = convert_revenue_quarterly
-        convert_parameter = convert_revenue_yearly.iloc[-2:].median()
-        self.convert_parameter = convert_parameter
-        pred_count_revenue = self.pred_count_revenue.copy()
-        pred_count_revenue["total"] = pred_count_revenue.sum(axis=1)
-        pred_count_material = pd.DataFrame(
-            columns=self.count_consump_yearly.columns,
+        rev_mat_quarterly = pd.DataFrame(columns=["revenue", "material"])
+        rev_mat_quarterly["revenue"] = self.income_rial_quarterly["Total_Revenue"]
+        rev_mat_quarterly["material"] = self.cost_quarterly["direct_material"]
+        rev_mat_quarterly["material_adj"] = (
+            self.cost_quarterly["direct_material"] * self.inventory_ratio_quarterly
+        )
+        rev_mat_quarterly["ratio"] = (
+            rev_mat_quarterly["material_adj"] / rev_mat_quarterly["revenue"]
+        )
+
+        rev_mat_yearly = pd.DataFrame(columns=["revenue", "material"])
+        rev_mat_yearly["revenue"] = self.income_rial_yearly["Total_Revenue"]
+        rev_mat_yearly["material"] = self.cost_yearly["direct_material"]
+        rev_mat_yearly["material_adj"] = (
+            self.cost_yearly["direct_material"] * self.inventory_ratio_yearly
+        )
+        rev_mat_yearly["ratio"] = (
+            rev_mat_yearly["material_adj"] / rev_mat_yearly["revenue"]
+        )
+
+        count_rev_mat_yearly = pd.concat(
+            [self.count_revenue_yearly, self.count_consump_yearly], axis=1
+        )
+        count_rev_mat_quarterly = pd.concat(
+            [self.count_revenue_quarterly, self.count_consump_quarterly], axis=1
+        )
+        self.count_rev_mat_yearly = count_rev_mat_yearly
+        self.count_rev_mat_quarterly = count_rev_mat_quarterly
+        model_material_quarterly = linear.LinearRegression()
+        model_material_quarterly.fit(
+            rev_mat_quarterly[["revenue"]], rev_mat_quarterly["material_adj"]
+        )
+        rev_mat_quarterly["pred"] = model_material_quarterly.predict(
+            rev_mat_quarterly[["revenue"]]
+        )
+        rev_mat_quarterly["error"] = (
+            rev_mat_quarterly["pred"] - rev_mat_quarterly["material_adj"]
+        )
+        self.rev_mat_quarterly = rev_mat_quarterly
+        self.model_material_quarterly = model_material_quarterly
+        model_material_yearly = linear.LinearRegression()
+        model_material_yearly.fit(
+            rev_mat_yearly[["revenue"]], rev_mat_yearly["material_adj"]
+        )
+        rev_mat_yearly["pred"] = model_material_yearly.predict(
+            rev_mat_yearly[["revenue"]]
+        )
+        rev_mat_yearly["error"] = (
+            rev_mat_yearly["pred"] - rev_mat_yearly["material_adj"]
+        )
+        self.rev_mat_yearly = rev_mat_yearly
+        self.model_material_yearly = model_material_yearly
+        self.cost_done = self.create_cumulative_data(
+            "cost", year=self.future_year, q=self.last_q
+        )
+        self.income_done = self.create_cumulative_data(
+            "income", year=self.future_year, q=self.last_q
+        )
+        income_residual = pd.DataFrame(
+            columns=["revenue"], index=[self.future_year, self.future_year + 1]
+        )
+        if isinstance(self.income_done, pd.DataFrame):
+            income_residual.loc[self.future_year] = np.squeeze(
+                self.pred_revenue.loc[self.future_year].values
+                - self.income_done["Total_Revenue"].values
+            )
+            income_residual.loc[self.future_year + 1] = np.squeeze(
+                self.pred_revenue.loc[self.future_year + 1].values
+            )
+        else:
+            income_residual.loc[self.future_year] = self.pred_revenue.loc[
+                self.future_year
+            ].values[0]
+            income_residual.loc[self.future_year + 1] = self.pred_revenue.loc[
+                self.future_year + 1
+            ].values[0]
+        self.income_residual = income_residual
+        material_residual = pd.DataFrame(
+            columns=["material"], index=[self.future_year, self.future_year + 1]
+        )
+        material_residual["material"] = self.model_material_quarterly.predict(
+            self.income_residual
+        )
+        material_residual = material_residual * np.array(
+            [
+                [self.material_g / self.alpha_rate],
+                [
+                    (self.material_g * self.material_g_next)
+                    / (self.alpha_rate * self.alpha_rate_next)
+                ],
+            ]
+        )
+        pred_material = pd.DataFrame(
+            columns=["material"], index=[self.future_year, self.future_year + 1]
+        )
+        if isinstance(self.cost_done, pd.DataFrame):
+            pred_material.loc[self.future_year] = (
+                self.cost_done["direct_material"].loc[self.future_year]
+                + material_residual.loc[self.future_year]["material"]
+            )
+            pred_material.loc[self.future_year + 1] = material_residual.loc[
+                self.future_year + 1
+            ]["material"]
+        else:
+            pred_material.loc[self.future_year] = material_residual.loc[
+                self.future_year
+            ]["material"]
+            pred_material.loc[self.future_year + 1] = material_residual.loc[
+                self.future_year + 1
+            ]["material"]
+        self.material_residual = material_residual
+        self.pred_material = pred_material
+
+    def plot_rev_mat(self):
+        x_min = self.rev_mat_quarterly["revenue"].min()
+        x_max = self.rev_mat_quarterly["revenue"].max()
+        x = np.linspace(x_min, x_max, 1000)
+        x = x.reshape(-1, 1)
+        y_q = self.model_material_quarterly.predict(x)
+        y_y = self.model_material_yearly.predict(x)
+        plt.scatter(
+            self.rev_mat_quarterly["revenue"], self.rev_mat_quarterly["material"]
+        )
+        plt.scatter(
+            self.rev_mat_quarterly["revenue"].iloc[-1],
+            self.rev_mat_quarterly["material"].iloc[-1],
+            color="red",
+        )
+        plt.plot(x, y_q, label="quarterly")
+
+        plt.plot(x, y_y, label="yearly", linestyle="dashed")
+        plt.legend()
+        plt.title(f"Rev_Mat quarterly {self.Name}")
+        plt.figure(figsize=[20, 8])
+        plt.bar(x=self.rev_mat_quarterly.index, height=self.rev_mat_quarterly["ratio"])
+        plt.title(f"rev_op_ratio {self.Name}")
+
+    def predict_overhead(
+        self,
+        energy_g,
+        energy_g_next,
+        salary_g,
+        salary_g_next,
+        other_g,
+        other_g_next,
+        transport_g,
+        transport_g_next,
+        dep_g,
+        dep_g_next,
+    ):
+        pred_overhead = OverheadDataFrame(self.overhead_yearly)
+        pred_overhead.loc[self.future_year] = 0
+        pred_overhead.loc[self.future_year + 1] = 0
+        pred_overhead.loc[self.future_year, "energy"] = (
+            energy_g * pred_overhead.loc[self.future_year - 1, "energy"]
+        )
+        pred_overhead.loc[self.future_year + 1, "energy"] = (
+            energy_g_next * pred_overhead.loc[self.future_year, "energy"]
+        )
+        pred_overhead.loc[self.future_year, "salary"] = (
+            salary_g * pred_overhead.loc[self.future_year - 1, "salary"]
+        )
+        pred_overhead.loc[self.future_year + 1, "salary"] = (
+            salary_g_next * pred_overhead.loc[self.future_year, "salary"]
+        )
+        pred_overhead.loc[self.future_year, "other"] = (
+            other_g * pred_overhead.loc[self.future_year - 1, "other"]
+        )
+        pred_overhead.loc[self.future_year + 1, "other"] = (
+            other_g_next * pred_overhead.loc[self.future_year, "other"]
+        )
+        pred_overhead.loc[self.future_year, "transport"] = (
+            transport_g * pred_overhead.loc[self.future_year - 1, "transport"]
+        )
+        pred_overhead.loc[self.future_year + 1, "transport"] = (
+            transport_g_next * pred_overhead.loc[self.future_year, "transport"]
+        )
+        pred_overhead.loc[self.future_year, "depreciation"] = (
+            dep_g * pred_overhead.loc[self.future_year - 1, "depreciation"]
+        )
+        pred_overhead.loc[self.future_year + 1, "depreciation"] = (
+            dep_g_next * pred_overhead.loc[self.future_year, "depreciation"]
+        )
+
+        pred_overhead.update_dependent_columns()
+        self.pred_overhead = pred_overhead
+
+    def predict_parameter(self):
+
+        overhead_done = self.create_cumulative_data(
+            "overhead", year=self.future_year, q=self.last_q
+        )
+        overhead_last = self.create_cumulative_data(
+            "overhead", year=self.future_year - 1, q=self.last_q
+        )
+        if isinstance(overhead_done, pd.DataFrame):
+            overhead_cum = pd.concat([overhead_last, overhead_done])
+        else:
+            overhead_cum = 0
+        self.overhead_cum = overhead_cum
+        cost_done = self.create_cumulative_data(
+            "cost", year=self.future_year, q=self.last_q
+        )
+        cost_last = self.create_cumulative_data(
+            "cost", year=self.future_year - 1, q=self.last_q
+        )
+        if isinstance(cost_done, pd.DataFrame):
+            cost_cum = pd.concat([cost_last, cost_done])
+        else:
+            cost_cum = 0
+        self.cost_cum = cost_cum
+        if isinstance(overhead_cum, pd.DataFrame):
+            overhead_cum_ch = overhead_cum.pct_change()
+        else:
+            overhead_cum_ch = 0
+        self.overhead_cum_ch = overhead_cum_ch
+        if isinstance(cost_cum, pd.DataFrame):
+            cost_cum_ch = cost_cum.pct_change()
+        else:
+            cost_cum_ch = 0
+        self.cost_cum_ch = cost_cum_ch
+        ##### create_parameters ########
+
+        if isinstance(cost_cum_ch, pd.DataFrame):
+            if math.isnan(cost_cum_ch["direct_salary"].iloc[-1]) == False:
+                salary_g = 1 + cost_cum_ch["direct_salary"].iloc[-1]
+                if self.salary_g == 1:
+                    self.salary_g = salary_g
+        if isinstance(overhead_cum_ch, pd.DataFrame):
+            if math.isnan(overhead_cum_ch["energy"].iloc[-1]) == False:
+                energy_g = 1 + overhead_cum_ch["energy"].iloc[-1]
+                if self.energy_g == 1:
+                    self.energy_g = energy_g
+            if math.isnan(overhead_cum_ch["other"].iloc[-1]) == False:
+                other_g = 1 + overhead_cum_ch["other"].iloc[-1]
+                if self.other_g == 1:
+                    self.other_g = other_g
+
+        ##### predict alpha and material parameters #######
+        #### predict_alpha_rate ######
+        if self.alpha_rate == 1:
+            if (
+                (self.industry == "folad")
+                or (self.industry == "felezat")
+                or (self.industry == "urea")
+                or (self.industry == "methanol")
+                or (self.industry == "palayesh")
+                or (self.industry == "dode")
+            ):
+                self.alpha_rate = self.change_dollar_nima_monthly
+        #######predict_material_g #######
+        if self.material_g == 1:
+            if (
+                (self.industry == "lastic")
+                or (self.industry == "shoyande")
+                or (self.industry == "darou")
+                or (self.industry == "palayesh")
+                or (self.industry == "felezat")
+                or (self.industry == "folad")
+                or (self.industry == "dode")
+            ):
+                self.material_g = np.average(
+                    [self.change_dollar_nima_quarterly, self.change_dollar_nima_monthly]
+                )
+
+    def predict_opex(self):
+        rev_op_quarterly = pd.DataFrame(columns=["rev", "opex"])
+        rev_op_quarterly["rev"] = self.income_rial_quarterly["Total_Revenue"]
+        rev_op_quarterly["opex"] = -self.income_rial_quarterly["Operating_Expense"]
+        rev_op_quarterly["ratio"] = rev_op_quarterly["opex"] / rev_op_quarterly["rev"]
+        model_rev_op_quarterly = linear.LinearRegression()
+        model_rev_op_quarterly.fit(rev_op_quarterly[["rev"]], rev_op_quarterly["opex"])
+        rev_op_quarterly["pred"] = model_rev_op_quarterly.predict(
+            rev_op_quarterly[["rev"]]
+        )
+        rev_op_quarterly["error"] = rev_op_quarterly["opex"] - rev_op_quarterly["pred"]
+        self.rev_op_quarterly = rev_op_quarterly
+        self.model_rev_op_quarterly = model_rev_op_quarterly
+
+        rev_op_yearly = pd.DataFrame(columns=["rev", "opex"])
+        rev_op_yearly["rev"] = self.income_rial_yearly["Total_Revenue"]
+        rev_op_yearly["opex"] = -self.income_rial_yearly["Operating_Expense"]
+        rev_op_yearly["ratio"] = rev_op_yearly["opex"] / rev_op_yearly["rev"]
+        model_rev_op_yearly = linear.LinearRegression()
+        model_rev_op_yearly.fit(rev_op_yearly[["rev"]], rev_op_yearly["opex"])
+        rev_op_yearly["pred"] = model_rev_op_yearly.predict(rev_op_yearly[["rev"]])
+        rev_op_yearly["error"] = rev_op_yearly["opex"] - rev_op_yearly["pred"]
+        self.rev_op_yearly = rev_op_yearly
+        self.model_rev_op_yearly = model_rev_op_yearly
+        opex_residual = pd.DataFrame(
+            columns=["opex"], index=[self.future_year, self.future_year + 1]
+        )
+        opex_done = pd.DataFrame(
+            columns=["opex"], index=[self.future_year, self.future_year + 1]
+        )
+        pred_opex = pd.DataFrame(
+            columns=["opex"], index=[self.future_year, self.future_year + 1]
+        )
+        opex_residual["opex"] = model_rev_op_quarterly.predict(
+            self.income_residual[["revenue"]]
+        )
+        if isinstance(self.income_done, pd.DataFrame):
+            opex_done.loc[self.future_year] = -self.income_done[
+                "Operating_Expense"
+            ].values[0]
+        else:
+            opex_done.loc[self.future_year] = 0
+        opex_done.loc[self.future_year + 1] = 0
+        pred_opex = opex_done + opex_residual
+        self.opex_done = opex_done
+        self.opex_residual = opex_residual
+        self.pred_opex = pred_opex
+
+    def plot_rev_op(self):
+        x_min = self.rev_op_quarterly["rev"].min()
+        x_max = self.rev_op_quarterly["rev"].max()
+        x = np.linspace(x_min, x_max, 1000)
+        x = x.reshape(-1, 1)
+        y_q = self.model_rev_op_quarterly.predict(x)
+        y_y = self.model_rev_op_yearly.predict(x)
+        plt.scatter(self.rev_op_quarterly["rev"], self.rev_op_quarterly["opex"])
+        plt.scatter(
+            self.rev_op_quarterly["rev"].iloc[-1],
+            self.rev_op_quarterly["opex"].iloc[-1],
+            color="red",
+        )
+        plt.plot(x, y_q, label="quarterly")
+
+        plt.plot(x, y_y, label="yearly", linestyle="dashed")
+        plt.xlabel("revenue")
+        plt.ylabel("operating_expense")
+        plt.legend()
+        plt.title(f"rev_op quarterly {self.Name}")
+        plt.figure(figsize=[20, 8])
+        plt.bar(x=self.rev_op_quarterly.index, height=self.rev_op_quarterly["ratio"])
+        plt.title(f"rev_op_ratio {self.Name}")
+
+    def predict_other(self):
+        rev_other_yearly = pd.DataFrame(columns=["rev", "other"])
+        rev_other_yearly["rev"] = self.income_rial_yearly["Total_Revenue"]
+        rev_other_yearly["other"] = self.income_rial_yearly[
+            "Other_operating_Income_Expense"
+        ]
+        rev_other_yearly["ratio"] = rev_other_yearly["other"] / rev_other_yearly["rev"]
+        model_rev_other_yearly = linear.LinearRegression()
+        model_rev_other_yearly.fit(rev_other_yearly[["rev"]], rev_other_yearly["other"])
+        rev_other_yearly["pred"] = model_rev_other_yearly.predict(
+            rev_other_yearly[["rev"]]
+        )
+        rev_other_yearly["error"] = rev_other_yearly["other"] - rev_other_yearly["pred"]
+        self.rev_other_yearly = rev_other_yearly
+        self.model_rev_other_yearly = model_rev_other_yearly
+        pred_other_operating = pd.DataFrame(
+            columns=["other_operating"], index=[self.future_year, self.future_year + 1]
+        )
+        pred_other_operating["other_operating"] = model_rev_other_yearly.predict(
+            self.pred_revenue[["revenue"]]
+        )
+        self.pred_other_operating = pred_other_operating
+        rev_other_non_yearly = pd.DataFrame(columns=["rev", "other_non"])
+        rev_other_non_yearly["rev"] = self.income_rial_yearly["Total_Revenue"]
+        rev_other_non_yearly["other_non"] = self.income_rial_yearly[
+            "Other_non_operate_Income_Expense"
+        ]
+        rev_other_non_yearly["ratio"] = (
+            rev_other_non_yearly["other_non"] / rev_other_non_yearly["rev"]
+        )
+        model_rev_other_non_yearly = linear.LinearRegression()
+        model_rev_other_non_yearly.fit(
+            rev_other_non_yearly[["rev"]], rev_other_non_yearly["other_non"]
+        )
+        rev_other_non_yearly["pred"] = model_rev_other_non_yearly.predict(
+            rev_other_non_yearly[["rev"]]
+        )
+        rev_other_non_yearly["error"] = (
+            rev_other_non_yearly["other_non"] - rev_other_non_yearly["pred"]
+        )
+        self.rev_other_non_yearly = rev_other_non_yearly
+        self.model_rev_other_non_yearly = model_rev_other_non_yearly
+        pred_other_non_operating = pd.DataFrame(
+            columns=["other_non_operating"],
             index=[self.future_year, self.future_year + 1],
         )
-        pred_count_material["جمع"] = (
-            convert_revenue_yearly.iloc[-2:].median() * pred_count_revenue["total"]
+        pred_other_non_operating[
+            "other_non_operating"
+        ] = model_rev_other_non_yearly.predict(self.pred_revenue[["revenue"]])
+        self.pred_other_non_operating = pred_other_non_operating
+
+    def plot_other(self):
+        x_min = self.rev_other_yearly["rev"].min()
+        x_max = self.rev_other_yearly["rev"].max()
+        x = np.linspace(x_min, x_max, 1000)
+        x = x.reshape(-1, 1)
+        y = self.model_rev_other_yearly.predict(x)
+        plt.scatter(self.rev_other_yearly["rev"], self.rev_other_yearly["other"])
+        plt.scatter(
+            self.rev_other_yearly["rev"].iloc[-1],
+            self.rev_other_yearly["other"].iloc[-1],
+            color="red",
         )
-        pred_count_material_com = pred_count_material.copy()
-        for i in pred_count_material_com.columns:
-            pred_count_material_com[i] = self.count_consump_com_yearly.iloc[-2:][
-                i
-            ].median()
-        self.pred_count_material_com = pred_count_material_com
-        for i in pred_count_material.columns:
-            pred_count_material[i] = (
-                pred_count_material_com[i] * pred_count_material["جمع"]
-            )
-        self.pred_count_material = pred_count_material
-        pred_price_material = pd.DataFrame(
-            index=pred_count_material.index, columns=pred_count_material.columns
+        plt.plot(x, y)
+        plt.xlabel("revenue")
+        plt.ylabel("other_operating")
+        plt.title(f"Rev_Other_op_{self.Name}")
+        x_min = self.rev_other_non_yearly["rev"].min()
+        x_max = self.rev_other_non_yearly["rev"].max()
+        x = np.linspace(x_min, x_max, 1000)
+        x = x.reshape(-1, 1)
+        y = self.model_rev_other_non_yearly.predict(x)
+        plt.figure()
+        plt.scatter(
+            self.rev_other_non_yearly["rev"], self.rev_other_non_yearly["other_non"]
         )
-        pred_rate_material = pd.DataFrame(
-            index=pred_count_material.index, columns=pred_count_material.columns
+        plt.scatter(
+            self.rev_other_non_yearly["rev"].iloc[-1],
+            self.rev_other_non_yearly["other_non"].iloc[-1],
+            color="red",
         )
-        for i in pred_rate_material.loc[[self.future_year]].columns:
-            pred_rate_material.loc[self.future_year, i] = self.material_g * find_rate(
-                self.rate_buy_quarterly, i
-            )
-        pred_rate_material.loc[[self.future_year + 1]] = (
-            pred_rate_material.loc[[self.future_year]].values * self.material_g_next
+
+        plt.plot(x, y)
+        plt.xlabel("revenue")
+        plt.ylabel("other_non_operating")
+        plt.title(f"Rev_other_non_op_{self.Name}")
+
+    def predict_tax(self):
+        rev_tax = pd.DataFrame(columns=["pretax", "tax"])
+        rev_tax["pretax"] = self.income_rial_yearly["Pretax_Income"]
+        rev_tax["tax"] = -self.income_rial_yearly["Tax_Provision"]
+        rev_tax["ratio"] = rev_tax["tax"] / rev_tax["pretax"]
+        model = linear.LinearRegression()
+        model.fit(rev_tax[["pretax"]], rev_tax["tax"])
+        self.model_rev_tax = model
+        rev_tax["pred"] = model.predict(rev_tax[["pretax"]])
+        rev_tax["error"] = rev_tax["tax"] - rev_tax["pred"]
+        self.rev_tax = rev_tax
+        tax_future = self.model_rev_tax.predict(
+            self.pred_income[["Pretax_Income"]].iloc[-2:]
         )
-        self.pred_rate_material = pred_rate_material
+        self.pred_income.loc[self.future_year, "Tax_Provision"] = -tax_future[0]
+        self.pred_income.loc[self.future_year + 1, "Tax_Provision"] = -tax_future[1]
+
+    def plot_tax(self):
+        x_min = self.rev_tax["pretax"].min()
+        x_max = self.rev_tax["pretax"].max()
+        x = np.linspace(x_min, x_max, 1000)
+        x = x.reshape(-1, 1)
+        y = self.model_rev_tax.predict(x)
+        plt.scatter(self.rev_tax["pretax"], self.rev_tax["tax"])
+        plt.scatter(
+            self.rev_tax["pretax"].iloc[-1], self.rev_tax["tax"].iloc[-1], color="red"
+        )
+        plt.plot(x, y)
+        plt.xlabel("pretax")
+        plt.ylabel("tax")
+        plt.title(f"rev_tax {self.Name}")
+        plt.figure()
+        plt.bar(x=self.rev_tax.index, height=self.rev_tax["ratio"])
+        plt.title(f"tax_ratio {self.Name}")
+
+    def update_dfs(self):
+        self.pred_overhead.update_dependent_columns()
+        self.pred_cost.update_dependent_columns()
+        self.pred_income.update_dependent_columns()
+        self.create_end_data()
+        self.create_fcfe()
+        self.predict_value()
 
 
 class OptPort:
