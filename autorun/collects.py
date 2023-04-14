@@ -104,7 +104,6 @@ def ime_physical(start=month_ago, end=today_10char):
 
 
 def codal_login():
-    """login into codal"""
     try:
         # get page
         driver.get("https://www.codal.ir")
@@ -121,7 +120,6 @@ def codal_login():
 
 
 def codal_search(name):
-    """search stock in codal"""
     try:
         # click searck button
         search = "//*[@id='collapse-search-1']/div[2]/div[1]/div/div"
@@ -158,7 +156,6 @@ def codal_search(name):
 
 
 def codal_eps(name, n=5):
-    """create eps"""
     try:
         # click 'davat majamea'
         call = "//*[@id='reportType']/option[7]"
@@ -354,8 +351,6 @@ def codal_statement(name):
 
 
 def bourseview_login():
-    """login into bourseview panel"""
-
     try:
         # get page
         driver.get("https://www.bourseview.com/home/#/account/login")
@@ -399,8 +394,6 @@ def bourseview_login():
 
 
 def bourseview_search(name):
-    """search stock in bourseview"""
-
     try:
         # search stock name
         search = "//*[@id='input-0']"
@@ -482,7 +475,7 @@ def bourseview_income_statement(
     currency_types=["rial", "dollar"],
     report_types=["_cumulative", ""],
 ):
-    """download 4 files : yearly,quarterly,rial,dollar"""
+    """download 6 files : (yearly,quarterly,rial,dollar),(_cumulative)"""
 
     def dl_excels(report_type=""):
         # select 'nooe'
@@ -695,9 +688,7 @@ def bourseview_product_revenue(
 
 
 def bourseview_cost(name, y=5, q=10, time_types=["yearly", "quarterly"]):
-    """create 2 excel : yearly,quarterly
-    <y = year : 5,10,20,50>
-    <q = quarterly : 5,10,20,50>"""
+    """download 2 excel : yearly,quarterly"""
 
     try:
         # select 'bahaye tamam shode'
@@ -764,9 +755,7 @@ def bourseview_cost(name, y=5, q=10, time_types=["yearly", "quarterly"]):
 
 
 def bourseview_official(name, y=5, q=10, time_types=["yearly", "quarterly"]):
-    """create 2 excel : yearly,quarterly
-    <y = year : 5,10,20,50>
-    <q = quarterly : 5,10,20,50>"""
+    """download 2 excel : yearly,quarterly"""
 
     try:
         # select 'hazine haye omomi edari'
@@ -821,9 +810,6 @@ def bourseview_official(name, y=5, q=10, time_types=["yearly", "quarterly"]):
 
 
 def bourseview_price_history(name, start=year_ago, end=today_10char):
-    """download pe
-    <start : 1390/01/01>
-    <end : 1400/01/01>"""
     try:
         # select 'tarikhche gheimat'
         price = "//*[@id='stocks-sub-menu']/ul/li[21]/a[2]"
@@ -878,9 +864,6 @@ def bourseview_price_history(name, start=year_ago, end=today_10char):
 
 
 def bourseview_macro(start=year_ago, end=today_10char):
-    """download macro
-    <start : 1390/01/01>
-    <end : 1400/01/01>"""
     try:
         # select 'dadehaye kalan'
         macro = "//*[@id='step3']/li[9]"
@@ -999,6 +982,7 @@ def bourseview_macro(start=year_ago, end=today_10char):
 
 def integrate_database(stocks=wl_prod_keys, y=5, q=10, m=50):
     """download deficiencies of stock files"""
+
     create_database_structure()
 
     bourseview_login()
@@ -1041,8 +1025,8 @@ def update_database(
     yearly=False,
     quarterly=False,
     monthly=False,
-    dl_pe=True,
-    dl_eps=True,
+    dl_pe=False,
+    dl_eps=False,
     y=5,
     q=10,
     m=50,

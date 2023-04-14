@@ -185,7 +185,20 @@ month_ago = f"{today.year:02d}/{today.month-1:02d}/{today.day:02d}"
 regex_per_timeid_y = "[۰۱۲۳۴۵۶۷۸۹]{4}/[۰۱۲۳۴۵۶۷۸۹]{2}/[۰۱۲۳۴۵۶۷۸۹]{2}"
 regex_en_timeid_q = "[0123456789]{4}/[0123456789]{2}"
 
-ROOT_PATH = os.path.abspath(os.curdir).replace("\\", "/")
+
+def find_project_root(project_name):
+    current_path = os.path.abspath(".")
+    while True:
+        project_path = os.path.join(current_path, project_name)
+        if os.path.isdir(project_path):
+            return project_path
+        parent_path = os.path.dirname(current_path)
+        if parent_path == current_path:
+            return None
+        current_path = parent_path
+
+
+ROOT_PATH = find_project_root("Trade").replace("\\", "/")
 DB = f"{ROOT_PATH}/database"
 WINDOWS_FIREFOX_DRIVER_PATH = f"{ROOT_PATH}/statics/geckodriver.exe"
 LINUX_FIREFOX_DRIVER_PATH = f"{ROOT_PATH}/statics/geckodriver"
