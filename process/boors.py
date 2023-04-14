@@ -66,6 +66,12 @@ class IncomeDataFrame(pd.DataFrame):
         self.loc[:, "Net_Income_Common"] = self["Pretax_Income"] + self["Tax_Provision"]
         self.loc[:, "Net_Profit"] = self.loc[:, "Net_Income_Common"]
         self.loc[:, "EPS"] = self.loc[:, "Net_Profit"] * 1000 / self["Capital"]
+        try:
+            self.loc[:, "EPS_Capital"] = (
+                self.loc[:, "Net_Profit"] * 1000 / self["Capital"].iloc[-1]
+            )
+        except:
+            pass
 
 
 class CostDataFrame(pd.DataFrame):
@@ -2904,6 +2910,11 @@ class Stock:
             self.create_end_data()
         except Exception as err:
             error.append(f" cant create_end_data {err}")
+        ############ Create eps data ##########
+        try:
+            self.create_eps_data()
+        except Exception as err:
+            error.append(f" cant create_eps_data {err}")
         ############ add valueation of stock ###########
         try:
             self.predict_value()
@@ -3270,7 +3281,6 @@ class Stock:
         pred_income.loc[future_year + 1, "Capital"] = self.income_rial_quarterly[
             "Capital"
         ].iloc[-1]
-        # add eps to data frame
         pred_income.update_dependent_columns()
         self.pred_income = pred_income
         ############## Create Hypothesis dictionary #############
@@ -3286,18 +3296,18 @@ class Stock:
             "Net_Profit": pred_income.loc[future_year]["Net_Profit"],
         }
         parameters = {
-            "alpha_prod_update": alpha_prod,
-            "alpha_prod_next": alpha_prod_next,
-            "alpha_rate_update": alpha_rate,
-            "alpha_rate_next": alpha_rate_next,
-            "material_g_update": material_g,
-            "material_g_next": material_g_next,
-            "salary_g_update": salary_g,
-            "salary_g_next": salary_g_next,
-            "other_g_update": other_g,
-            "other_g_next": other_g_next,
-            "transport_g_update": transport_g_next,
-            "transport_g_next": transport_g_next,
+            "alpha_prod_update": self.alpha_prod,
+            "alpha_prod_next": self.alpha_prod_next,
+            "alpha_rate_update": self.alpha_rate,
+            "alpha_rate_next": self.alpha_rate_next,
+            "material_g_update": self.material_g,
+            "material_g_next": self.material_g_next,
+            "salary_g_update": self.salary_g,
+            "salary_g_next": self.salary_g_next,
+            "other_g_update": self.other_g,
+            "other_g_next": self.other_g_next,
+            "transport_g_update": self.transport_g,
+            "transport_g_next": self.transport_g_next,
         }
         ######### send data to self ##############3
         self.parameters = parameters
