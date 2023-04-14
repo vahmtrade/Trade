@@ -37,19 +37,10 @@ def all_dict_values(data: dict):
 
 
 def only_zero_inequality(n):
-    """just show nums != 0"""
-    try:
-        n = float(n)
-
-    except:
-        if type(n) != float:
-            return None
-
-    if n == 0:
-        return None
-
-    else:
+    if isinstance(n, (int, float)) and n != 0:
         return n
+    else:
+        return None
 
 
 def clarify_number(a, seprator=",", n=2):
@@ -103,47 +94,26 @@ def clarify_number(a, seprator=",", n=2):
 
 def to_digits(a):
     """
-    (۲۵۴,۱۵۹) : -254159
-    ۴۳۹,۶۲۸ : 439628
+    (۲۵۴,۱۵۹) => -254159
+
+    ۴۳۹,۶۲۸ => 439628
     """
 
-    if isinstance(a, float) or isinstance(a, int):
+    if isinstance(a, (float, int)):
         return a
-
-    if isinstance(a, str):
-        en_digits = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-        fa_digits = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"]
-
-        b = ""
-        for s in a:
-            if s in "".join(en_digits) + "".join(fa_digits):
-                for i in range(0, 10):
-                    if s == fa_digits[i]:
-                        s = en_digits[i]
-                b = b + s
-
-        is_negative = False
-        if "(" in a and ")" in a:
-            is_negative = True
-
-        if b == "":
-            return False
-
-        elif not is_negative:
-            b = int(b)
-
-        elif is_negative:
-            b = int(b)
-
-        return b
-
-    else:
-        return False
+    en_digits = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+    fa_digits = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"]
+    b = "".join(
+        [
+            en_digits[fa_digits.index(d)] if d in fa_digits else d
+            for d in str(a)
+            if d.isdigit()
+        ]
+    )
+    return int(b) * (-1 if "(" in str(a) and ")" in str(a) else 1) if b else False
 
 
 def best_table_id(data_tables):
-    """get a data tables and return useful data table id"""
-
     tester = 0
     for i in range(0, len(data_tables)):
         if len(data_tables[i]) > tester:
@@ -186,7 +156,7 @@ def save_as_file(file_path, ext):
     folder, filename = os.path.split(file_path)
 
     if platform.system() == "Windows":
-        exts = {"xls": 56, "html": 44}
+        exts = {"xlsx": 51, "xls": 56, "html": 44}
         new_name = os.path.splitext(file_path)[0] + "." + ext
         excel = load_windows_app("Excel.Application")
         workbook = excel.Workbooks.Open(file_path)
@@ -202,8 +172,6 @@ def save_as_file(file_path, ext):
 
 
 def move_last_file(new_path):
-    """move last database file to new_path"""
-    # find latest downloaded file
     filename = max(
         [f for f in os.listdir(DB)],
         key=lambda x: os.path.getctime(os.path.join(DB, x)),
@@ -214,7 +182,6 @@ def move_last_file(new_path):
 
 
 def list_stock_files(stock_name):
-    """return all folders and files of stock in database"""
     stock_dirs = []
     stock_files = []
     for path, subdirs, files in os.walk(
@@ -242,7 +209,6 @@ def get_excel_nums(file_path):
 
 
 def create_database_structure():
-    """create database folders based on wl_prod"""
     for stock, info in wl_prod.items():
         for file in all_dict_values(structure):
             s = "/".join(file.split("/")[:-1])
@@ -353,8 +319,8 @@ def check_stock_files(
             try:
                 stock_type, per_stock_type, stock_time = filepath_info(file)
 
-            except:
-                pass
+            except Exception as err:
+                print(file, err)
 
             try:
                 excel_timeids = re.findall(regex_en_timeid_q, str(df.loc[6]))
@@ -369,19 +335,19 @@ def check_stock_files(
                     failed.append(file)
 
                 if stock_time == "monthly" and user_month > excel_months[-1]:
-                    print("old data :", file, file_ctime)
+                    print("old data :", file, excel_months[-1])
                     failed.append(file)
 
                 if stock_time == "quarterly" and user_quarter > excel_months[-1]:
-                    print("old data :", file, file_ctime)
+                    print("old data :", file, excel_months[-1])
                     failed.append(file)
 
                 if stock_time == "yearly" and user_year > excel_years[-1]:
-                    print("old data :", file, file_ctime)
+                    print("old data :", file, excel_years[-1])
                     failed.append(file)
 
-            except:
-                pass
+            except Exception as err:
+                print(file, err)
 
             try:
                 excel_author = df["Unnamed: 1"][0]
@@ -400,8 +366,8 @@ def check_stock_files(
                     print("unmatch name :", file)
                     failed.append(file)
 
-            except:
-                pass
+            except Exception as err:
+                print(file, err)
 
     failed = list(set(failed))
     if action:
