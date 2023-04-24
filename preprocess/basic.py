@@ -44,13 +44,7 @@ def only_zero_inequality(n):
 
 
 def clarify_number(a, seprator=",", n=2):
-    """
-    12345678 => 12,345,678
-
-    -12345678 => (12,345,678)
-
-    12345678.1234 => 12,345,678.12
-    """
+    """-1234.56789 => (1,234.56)"""
 
     is_float = False
     is_negative = False
@@ -171,14 +165,14 @@ def save_as_file(file_path, ext):
         shutil.move(f"./{new_name}", f"{folder}/{new_name}")
 
 
-def move_last_file(new_path):
+def move_last_file(new_path, base_path=DB):
     filename = max(
         [f for f in os.listdir(DB)],
         key=lambda x: os.path.getctime(os.path.join(DB, x)),
     )
-    data = f"{DB}/{filename}"
-    if os.path.isfile(data):
-        os.replace(data, new_path)
+    old_path = f"{base_path}/{filename}"
+    if os.path.isfile(old_path):
+        os.replace(old_path, new_path)
 
 
 def list_stock_files(stock_name):

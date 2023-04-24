@@ -87,19 +87,19 @@ def ime_physical(start=month_ago, end=today_10char):
     driver.find_element(By.XPATH, export).click()
     sleep(break_time)
 
-    # click CSV
-    csv = "//*[@id='AmareMoamelatGrid']/div[1]/div[1]/div[1]/div[2]/ul/li[3]"
+    # click MS-EXCEL
+    csv = "//*[@id='AmareMoamelatGrid']/div[1]/div[1]/div[1]/div[2]/ul/li[6]"
     webwait.until(clickable((By.XPATH, csv)))
     driver.find_element(By.XPATH, csv).click()
     sleep(2 * break_time)
 
     # replace last file
-    new_path = f"{MACROPATH}/physical.csv"
+    new_path = f"{MACROPATH}/physical.xls"
     move_last_file(new_path)
     sleep(2 * break_time)
 
     # save as excel file
-    save_as_file(new_path, "xls")
+    save_as_file(new_path, "xlsx")
     sleep(2 * break_time)
 
 
