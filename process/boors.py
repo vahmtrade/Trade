@@ -65,7 +65,10 @@ class IncomeDataFrame(pd.DataFrame):
         )
         self.loc[:, "Net_Income_Common"] = self["Pretax_Income"] + self["Tax_Provision"]
         self.loc[:, "Net_Profit"] = self.loc[:, "Net_Income_Common"]
-        self.loc[:, "EPS"] = self.loc[:, "Net_Profit"] * 1000 / self["Capital"]
+        try:
+            self.loc[:, "EPS"] = self.loc[:, "Net_Profit"] * 1000 / self["Capital"]
+        except:
+            pass
         try:
             self.loc[:, "EPS_Capital"] = (
                 self.loc[:, "Net_Profit"] * 1000 / self["Capital"].iloc[-1]
@@ -2188,11 +2191,20 @@ class Macro:
         pred = model.predict(self.summary[["IR"]])
         self.summary["Pred"] = pred
         # create monetary data
-        self.get_historical_data()
+        try:
+            self.get_historical_data()
+        except:
+            pass
         # create commo data
-        self.get_como()
+        try:
+            self.get_como()
+        except:
+            pass
         # Create kala data
-        self.get_kala()
+        try:
+            self.get_kala()
+        except:
+            pass
 
     def plot_dollar(self):
         plt.figure(figsize=[20, 12])
@@ -2594,10 +2606,12 @@ class Macro:
                 "Crude oil, WTI",
                 "Iron ore, cfr spot",
                 "Natural gas, US",
-                "Natural gas, Europe **",
-                "Coal, Australian **",
+                "Natural gas, Europe",
+                "Coal, Australian",
                 "Copper",
                 "Aluminum",
+                "Zinc",
+                "Potassium chloride **",
             ]
         ]
 
@@ -2613,6 +2627,8 @@ class Macro:
             "coal",
             "cooper",
             "aluminum",
+            "zink",
+            "kcl",
         ]
         # change column name
         for i in range(len(my_col)):
@@ -2627,7 +2643,7 @@ class Macro:
         self.como_uni = como_uni
 
     def get_kala(self):
-        kala = pd.read_excel(f"{MACROPATH}/physical.xls")
+        kala = pd.read_excel(f"{MACROPATH}/physical.xlsx")
         self.kala = kala
 
 
@@ -2651,7 +2667,6 @@ class Stock:
         self.ful_name = wl_prod[Name]["name"]
         self.industry = wl_prod[Name]["indus"]
         self.farsi = wl_prod[Name]["token"]
-
         self.start_date = pd.to_datetime(JalaliDate(year_s, month_s, 1).to_gregorian())
 
         self.end_date = pd.to_datetime(
@@ -2889,6 +2904,10 @@ class Stock:
             self.create_interest_data()
         except Exception as err:
             error.append(f"cant create_interest_data {err}")
+        try:
+            self.predict_parameter()
+        except Exception as err:
+            error.append(f"cant predict_parameters {err}")
         try:
             self.predict_income()
         except Exception as err:
@@ -3163,66 +3182,10 @@ class Stock:
         return df
 
     def predict_income(
-        self,
-        alpha_rate=1,
-        alpha_prod=1,
-        alpha_prod_next=1,
-        alpha_rate_next=1,
-        salary_g=1,
-        salary_g_next=1,
-        material_g=1,
-        material_g_next=1,
-        energy_g=1,
-        energy_g_next=1,
-        dep_g=1,
-        dep_g_next=1,
-        transport_g=1,
-        transport_g_next=1,
-        other_g=1,
-        other_g_next=1,
+        self
+
     ):
-        future_year = self.income_rial_yearly.index[-1] + 1
-        self.future_year = future_year
-        q = []
-        for i in self.count_revenue_quarterly.index:
-            if int(i[:4]) == self.future_year:
-                q.append(int(i[-1]))
-        if len(q) != 0:
-            last_q = max(q)
-        else:
-            last_q = 0
-        self.last_q = last_q
-
-        last_m = int(self.count_revenue_monthly.iloc[[-1]].index[0].split("/")[1])
-        self.last_m = last_m
-        """
-        alpha rate: predict last rate
-        alpha_prod :predict product
-        """
-        ################ predict Parameters ###################
-
-        ###### gather parameters ######
-        self.material_g = material_g
-        self.material_g_next = material_g_next
-        self.salary_g = salary_g
-        self.salary_g_next = salary_g_next
-        self.energy_g = energy_g
-        self.energy_g_next = energy_g_next
-        self.other_g = other_g
-        self.other_g_next = other_g_next
-        self.transport_g = transport_g
-        self.transport_g_next = transport_g_next
-        self.dep_g = dep_g
-        self.dep_g_next = dep_g_next
-        self.alpha_prod_next = alpha_prod_next
-        self.alpha_rate = alpha_rate
-        self.alpha_rate_next = alpha_rate_next
-        self.alpha_prod = alpha_prod
-
-        self.predict_parameter()
-        self.predict_revenue(
-            self.alpha_rate, self.alpha_rate_next, self.alpha_prod, self.alpha_prod_next
-        )
+        self.predict_revenue()
         self.predict_cost(
             self.material_g,
             self.material_g_next,
@@ -3275,10 +3238,10 @@ class Stock:
         self.predict_interest()
         self.predict_tax()
         # add capital to data frame
-        pred_income.loc[future_year, "Capital"] = self.income_rial_quarterly[
+        pred_income.loc[self.future_year, "Capital"] = self.income_rial_quarterly[
             "Capital"
         ].iloc[-1]
-        pred_income.loc[future_year + 1, "Capital"] = self.income_rial_quarterly[
+        pred_income.loc[self.future_year + 1, "Capital"] = self.income_rial_quarterly[
             "Capital"
         ].iloc[-1]
         pred_income.update_dependent_columns()
@@ -3293,7 +3256,7 @@ class Stock:
             / self.pred_income.loc[self.future_year]["Total_Revenue"],
             "ratio_exp": -self.pred_income.loc[self.future_year]["Operating_Expense"]
             / self.pred_income.loc[self.future_year]["Total_Revenue"],
-            "Net_Profit": pred_income.loc[future_year]["Net_Profit"],
+            "Net_Profit": pred_income.loc[self.future_year]["Net_Profit"],
         }
         parameters = {
             "alpha_prod_update": self.alpha_prod,
@@ -3308,12 +3271,14 @@ class Stock:
             "other_g_next": self.other_g_next,
             "transport_g_update": self.transport_g,
             "transport_g_next": self.transport_g_next,
+            "Energy_g": self.energy_g,
+            "Energy_g_next": self.energy_g_next,
         }
         ######### send data to self ##############3
         self.parameters = parameters
         self.pred_income = pred_income
         self.hypothesis = hypothesis
-        self.pred_rate_cum = pd.concat([self.rate_yearly, self.predict_rate])
+        self.pred_rate_cum = pd.concat([self.rate_yearly, self.pred_rate])
         self.pred_count_cum = pd.concat(
             [self.count_revenue_yearly, self.pred_count_revenue]
         )
@@ -3322,7 +3287,10 @@ class Stock:
             pred_com.loc[i] = pred_income.loc[i] / pred_income.loc[i]["Total_Revenue"]
         self.pred_com = pred_com
         df = pd.concat(
-            [pred_income.loc[[future_year - 1]], pred_income.loc[[future_year]]]
+            [
+                pred_income.loc[[self.future_year - 1]],
+                pred_income.loc[[self.future_year]],
+            ]
         )
         for i in df.index:
             for j in df.columns:
@@ -3342,14 +3310,31 @@ class Stock:
         plt.title(f"{self.Name}")
         plt.figure(figsize=[20, 15])
         plt.subplot(3, 1, 1)
-        plt.plot(self.rate_monthly["total"].iloc[-20:], marker="o")
-        plt.title(f"rate {self.Name}")
+        if self.industry != "palayesh":
+            plt.plot(self.rate_monthly[self.major_good].iloc[-20:], marker="o")
+        else:
+            plt.plot(self.rate_quarterly[self.major_good].iloc[-20:], marker="o")
+        plt.axhline(
+            self.pred_rate[self.major_good].loc[self.future_year], linestyle="dashed"
+        )
+        plt.title(f"rate {self.Name} _ {self.major_good}")
         plt.subplot(3, 1, 2)
-        plt.plot(self.count_revenue_monthly["total"].iloc[-20:], marker="o")
-        plt.title(f"count revenue {self.Name}")
+        if self.industry != "palayesh":
+            plt.plot(self.count_revenue_monthly[self.major_good].iloc[-20:], marker="o")
+        else:
+            plt.plot(
+                self.count_revenue_quarterly[self.major_good].iloc[-20:], marker="o"
+            )
+        plt.title(f"count revenue {self.Name} _ {self.major_good}")
         plt.subplot(3, 1, 3)
-        plt.plot(self.price_revenue_monthly["total"].iloc[-20:], marker="o")
-        plt.title(f"price revenue {self.Name}")
+        if self.industry != "palayesh":
+            plt.plot(self.rate_dollar_nima_monthly[self.major_good].iloc[-12:])
+        else:
+            plt.plot(self.rate_dollar_nima_quarterly[self.major_good].iloc[-12:])
+        plt.axhline(
+            self.pred_dollar_rate[self.major_good].loc[self.future_year],
+            linestyle="dashed",
+        )
 
     def create_eps_data(self):
         adress = f"{INDUSPATH}/{self.industry}/{self.Name}/{structure['eps']}"
@@ -4046,11 +4031,12 @@ class Stock:
         price_consump = price_consump.T
         count_buy = count_buy.T
         price_buy = price_buy.T
-        # remove_zero_from_data
-        remove_zero(count_consump)
-        remove_zero(price_consump)
-        remove_zero(count_buy)
-        remove_zero(price_buy)
+
+        ### delet_empt#####
+        delete_empty(count_consump)
+        delete_empty(price_consump)
+        delete_empty(count_buy)
+        delete_empty(price_buy)
         # merge_Same_columns
         merge_same_columns(count_consump)
         merge_same_columns(price_consump)
@@ -4061,6 +4047,11 @@ class Stock:
         price_consump = merge_similar_columns(price_consump)
         count_consump = merge_similar_columns(count_buy)
         price_consump = merge_similar_columns(price_buy)
+        # remove_zero_from_data
+        remove_zero(count_consump)
+        remove_zero(price_consump)
+        remove_zero(count_buy)
+        remove_zero(price_buy)
         rate_consump = price_consump / count_consump
         rate_buy = price_buy / count_buy
         for i in rate_consump.index:
@@ -4120,6 +4111,15 @@ class Stock:
             + my_cost["transport"]
             + my_cost["other"]
         )
+        converte_numeric(cost)
+        converte_numeric(overhead)
+        converte_numeric(official)
+        converte_numeric(count_consump)
+        converte_numeric(price_consump)
+        converte_numeric(rate_consump)
+        converte_numeric(count_buy)
+        converte_numeric(price_buy)
+        converte_numeric(rate_buy)
         # send data to self
         if period == "yearly":
             self.cost_yearly = cost
@@ -4207,7 +4207,7 @@ class Stock:
         self.sensitivity = df
 
     def plot_cost(self):
-        np.abs(self.pred_categ_cost.iloc[[0]])[
+        np.abs(self.my_cost_quarterly.iloc[[-1]])[
             ["salary", "material", "transport", "depreciation", "energy", "other"]
         ].T.plot(kind="pie", subplots=True, figsize=[15, 5], autopct="%.2f")
         plt.title(f"Cost of {self.Name}")
@@ -4693,7 +4693,7 @@ class Stock:
         dep_g_next_update=1,
         transport_g_next_update=1,
         other_g_next_update=1,
-        rf=0.35,
+        rf=0.30,
         erp=0.15,
         n_g=0,
         g=1,
@@ -4728,6 +4728,7 @@ class Stock:
 
         try:
             self.create_interest_data()
+            self.predict_parameter()
             self.predict_income(
                 alpha_rate_update,
                 alpha_prod_update,
@@ -4748,7 +4749,7 @@ class Stock:
             )
             self.create_end_data()
             self.create_fcfe()
-            self.predict_value(n_g, rf, erp, g, pe_terminal)
+            self.predict_value(n_g, rf, erp, g, pe_terminal, k)
         except Exception as err:
             self.error.append(f"cant update predict {self.Name} : {err}")
 
@@ -4923,7 +4924,7 @@ class Stock:
         )
         plt.legend()
 
-    def predict_value(self, n_g=0, rf=0.35, erp=0.15, g=1, pe_terminal=1, k=1):
+    def predict_value(self, n_g=0, rf=0.30, erp=0.15, g=1, pe_terminal=1, k=1):
         eps1 = self.pred_income.loc[self.future_year, "EPS_Capital"]
         eps2 = self.pred_income.loc[self.future_year + 1, "EPS_Capital"]
         dps_ratio = self.eps_data["ratio"].iloc[-1]
@@ -4932,11 +4933,14 @@ class Stock:
         self.dps_ratio = dps_ratio
         self.dps1 = dps1
         self.dps2 = dps2
+        self.eps1 = eps1
+        self.eps2 = eps2
         ## number of mounth to majma
         n = self.discounted_n
         ## calculate historical expected_return
         delta = self.Price["Close"].index[-1] - self.Price["Close"].index[0]
         years = delta.days / 365
+        self.years = years
         re_historical = (
             self.Price["Close"].iloc[-1] / self.Price["Close"].iloc[0]
         ) ** (1 / years)
@@ -5253,15 +5257,18 @@ class Stock:
             self.Price["Close"].iloc[-1]
             / self.pred_income.loc[self.future_year + 1, "EPS_Capital"]
         )
-        pe_fw_historical = self.pe_fw_historical
+        pe_1 = (
+            self.Price["Close"].iloc[-1]
+            / self.pred_income.loc[self.future_year, "EPS_Capital"]
+        )
         plt.figure(figsize=[20, 14])
         plt.subplot(2, 1, 1)
         plt.plot(self.Price["Close"])
         plt.axhline(self.value, linestyle="dashed", color="red")
         plt.title(self.Name)
         plt.subplot(2, 1, 2)
-        plt.hist(pe_fw_historical["pe"], edgecolor="black", bins=50)
-        plt.axvline(pe_fw_historical["pe"].iloc[-1], linestyle="dashed", color="red")
+        plt.hist(self.pe_forward_adjust, edgecolor="black", bins=50)
+        plt.axvline(pe_1, linestyle="dashed", color="red")
         plt.axvline(pe_2, linestyle="dashed", color="red", alpha=0.5)
         plt.title(self.Name)
 
@@ -5649,7 +5656,7 @@ class Stock:
         dep_g_next=1,
     ):
 
-        self.predict_material(material_g, material_g_next)
+        self.predict_material()
         self.predict_overhead(
             energy_g,
             energy_g_next,
@@ -5681,14 +5688,8 @@ class Stock:
         pred_cost.update_dependent_columns()
         self.pred_cost = pred_cost
 
-    def predict_revenue(
-        self, alpha_rate=1, alpha_rate_next=1, alpha_prod=1, alpha_prod_next=1
-    ):
+    def predict_revenue(self):
         ########################################### calculate Revenue #########################################
-
-        self.alpha_rate = alpha_rate
-        self.alpha_rate_next = alpha_rate_next
-        self.alpha_prod = alpha_prod
 
         ### find majority goods
         df = self.price_revenue_yearly.iloc[[-1]].copy()
@@ -5724,36 +5725,19 @@ class Stock:
         pred_growth = df_cum_count.pct_change()
         pred_growth.dropna(axis=0, how="all", inplace=True)
         pred_growth.fillna(0, inplace=True)
-        # create last_rate df
-        d_r = {}
-        for i in self.count_revenue_yearly.columns:
-            if self.industry != "palayesh":
-                d_r[i] = find_rate(self.rate_monthly, i)
-            if self.industry == "palayesh":
-                d_r[i] = find_rate(self.rate_quarterly, i)
-        predict_rate = pd.DataFrame(d_r, index=[self.future_year])
-        predict_rate.loc[self.future_year] = (
-            alpha_rate * predict_rate.loc[self.future_year]
-        )
-        predict_rate.loc[self.future_year + 1] = (
-            alpha_rate_next * predict_rate.loc[self.future_year]
-        )
-        predict_rate.drop(["جمع", "total"], axis=1, inplace=True)
-        predict_rate.fillna(0, inplace=True)
-        self.predict_rate = predict_rate
 
         pred_growth.drop(["جمع", "total"], axis=1, inplace=True)
         pred_growth = 1 + pred_growth
 
-        if alpha_prod == 1:
-            pred_growth.loc[self.future_year + 1] = alpha_prod_next * np.ones(
+        if self.alpha_prod == 1:
+            pred_growth.loc[self.future_year + 1] = self.alpha_prod_next * np.ones(
                 len(pred_growth.loc[self.future_year])
             )
-        if alpha_prod != 1:
-            pred_growth.loc[self.future_year] = alpha_prod * np.ones(
+        if self.alpha_prod != 1:
+            pred_growth.loc[self.future_year] = self.alpha_prod * np.ones(
                 len(pred_growth.loc[self.future_year])
             )
-            pred_growth.loc[self.future_year + 1] = alpha_prod_next * np.ones(
+            pred_growth.loc[self.future_year + 1] = self.alpha_prod_next * np.ones(
                 len(pred_growth.loc[self.future_year])
             )
 
@@ -5767,6 +5751,7 @@ class Stock:
             len(count_revenue_done.loc[self.future_year])
         )
         count_revenue_done.drop(["جمع", "total"], axis=1, inplace=True)
+        drop_non_same_columns(self.pred_rate, count_revenue_done)
         self.count_revenue_done = count_revenue_done
         price_revenue_done = self.create_cumulative_data(
             type_user="price", year=self.future_year, q=last_q, m2=last_m
@@ -5776,6 +5761,7 @@ class Stock:
         )
         price_revenue_done.drop(["جمع", "total"], axis=1, inplace=True)
         price_revenue_done["total"] = price_revenue_done.sum(axis=1)
+        drop_non_same_columns(self.pred_rate, price_revenue_done)
         try:
             rate_done = price_revenue_done / count_revenue_done
         except:
@@ -5811,6 +5797,8 @@ class Stock:
             pred_count_revenue.loc[self.future_year + 1] = pred_count_revenue.loc[
                 self.future_year
             ]
+        drop_non_same_columns(self.pred_rate, pred_count_revenue)
+        price_revenue_done["total"] = price_revenue_done.sum(axis=1)
         self.pred_count_revenue = pred_count_revenue
         count_revenue_residual = pred_count_revenue - count_revenue_done
         count_revenue_residual = count_revenue_residual.applymap(
@@ -5823,10 +5811,10 @@ class Stock:
 
         price_revenue_residual.loc[self.future_year] = count_revenue_residual.loc[
             self.future_year
-        ].dot(predict_rate.loc[self.future_year].T)
+        ].dot(self.pred_rate.loc[self.future_year].T)
         price_revenue_residual.loc[self.future_year + 1] = count_revenue_residual.loc[
             self.future_year + 1
-        ].dot(predict_rate.loc[self.future_year + 1].T)
+        ].dot(self.pred_rate.loc[self.future_year + 1].T)
         self.price_revenue_residual = price_revenue_residual
         pred_revenue = pd.DataFrame(
             index=[self.future_year, self.future_year + 1], columns=["revenue"]
@@ -5838,9 +5826,14 @@ class Stock:
         self.price_revenue_residual = price_revenue_residual
         self.pred_revenue = pred_revenue
 
-    def predict_material(self, material_g=1, material_g_next=1):
-        self.material_g = material_g
-        self.material_g_next = material_g_next
+    def predict_material(self):
+        df = pd.DataFrame(columns=[self.major_good, self.major_consump])
+        df[self.major_good] = self.rate_dollar_nima_quarterly[self.major_good]
+        df[self.major_consump] = self.rate_consump_dollar_nima_quarterly[
+            self.major_consump
+        ]
+        df["ratio"] = df[self.major_consump] / df[self.major_good]
+        self.rate_rev_consump = df
         convert_revenue_yearly = (
             self.count_consump_yearly["جمع"] / self.count_revenue_yearly["جمع"]
         )
@@ -5939,11 +5932,8 @@ class Stock:
         )
         material_residual = material_residual * np.array(
             [
-                [self.material_g / self.alpha_rate],
-                [
-                    (self.material_g * self.material_g_next)
-                    / (self.alpha_rate * self.alpha_rate_next)
-                ],
+                [self.alpha],
+                [self.beta],
             ]
         )
         pred_material = pd.DataFrame(
@@ -5975,7 +5965,7 @@ class Stock:
         y_q = self.model_material_quarterly.predict(x)
         y_y = self.model_material_yearly.predict(x)
         plt.scatter(
-            self.rev_mat_quarterly["revenue"], self.rev_mat_quarterly["material"]
+            self.rev_mat_quarterly["revenue"], self.rev_mat_quarterly["material_adj"]
         )
         plt.scatter(
             self.rev_mat_quarterly["revenue"].iloc[-1],
@@ -6041,14 +6031,81 @@ class Stock:
         pred_overhead.update_dependent_columns()
         self.pred_overhead = pred_overhead
 
-    def predict_parameter(self):
+    def predict_parameter(self,alpha_rate=1,
+        alpha_prod=1,
+        alpha_prod_next=1,
+        alpha_rate_next=1,
+        salary_g=1,
+        salary_g_next=1,
+        material_g=1,
+        material_g_next=1,
+        energy_g=1,
+        energy_g_next=1,
+        dep_g=1,
+        dep_g_next=1,
+        transport_g=1,
+        transport_g_next=1,
+        other_g=1,
+        other_g_next=1,
+        alpha=1,
+        beta=1,
+        scenario="dollar",
+        dollar_fu=350000,
+        dollar_fup=400000,):
+        ###### gather parameters ######
+        self.material_g = material_g
+        self.material_g_next = material_g_next
+        self.salary_g = salary_g
+        self.salary_g_next = salary_g_next
+        self.energy_g = energy_g
+        self.energy_g_next = energy_g_next
+        self.other_g = other_g
+        self.other_g_next = other_g_next
+        self.transport_g = transport_g
+        self.transport_g_next = transport_g_next
+        self.dep_g = dep_g
+        self.dep_g_next = dep_g_next
+        self.alpha_prod_next = alpha_prod_next
+        self.alpha_rate = alpha_rate
+        self.alpha_rate_next = alpha_rate_next
+        self.alpha_prod = alpha_prod
+        self.alpha = alpha
+        self.beta = beta
+        self.scenario = scenario
+        self.dollar_fu = dollar_fu
+        self.dollar_fup = dollar_fup
+        future_year = self.income_rial_yearly.index[-1] + 1
+        self.future_year = future_year
+        q = []
+        for i in self.count_revenue_quarterly.index:
+            if int(i[:4]) == self.future_year:
+                q.append(int(i[-1]))
+        if len(q) != 0:
+            last_q = max(q)
+        else:
+            last_q = 0
+        self.last_q = last_q
 
+        last_m = int(self.count_revenue_monthly.iloc[[-1]].index[0].split("/")[1])
+        self.last_m = last_m
+        ### find majority goods
+        df = self.price_revenue_yearly.iloc[[-1]].copy()
+        df.drop(["total", "جمع"], axis=1, inplace=True)
+        major_good = df.idxmax(axis=1).values[0]
+        self.major_good = major_good
+        df2 = self.price_consump_yearly.iloc[[-1]].copy()
+        df2.drop(["جمع"], axis=1, inplace=True)
+        major_consump = df2.idxmax(axis=1).values[0]
+        self.major_consump = major_consump
+        self.future_year = future_year
         overhead_done = self.create_cumulative_data(
             "overhead", year=self.future_year, q=self.last_q
         )
         overhead_last = self.create_cumulative_data(
             "overhead", year=self.future_year - 1, q=self.last_q
         )
+        self.overhead_done = overhead_done
+        self.overhead_last = overhead_last
         if isinstance(overhead_done, pd.DataFrame):
             overhead_cum = pd.concat([overhead_last, overhead_done])
         else:
@@ -6082,42 +6139,30 @@ class Stock:
                 salary_g = 1 + cost_cum_ch["direct_salary"].iloc[-1]
                 if self.salary_g == 1:
                     self.salary_g = salary_g
+                if self.salary_g_next == 1:
+                    self.salary_g_next = salary_g
         if isinstance(overhead_cum_ch, pd.DataFrame):
             if math.isnan(overhead_cum_ch["energy"].iloc[-1]) == False:
                 energy_g = 1 + overhead_cum_ch["energy"].iloc[-1]
                 if self.energy_g == 1:
                     self.energy_g = energy_g
+                if self.energy_g_next == 1:
+                    self.energy_g_next = energy_g
+
             if math.isnan(overhead_cum_ch["other"].iloc[-1]) == False:
                 other_g = 1 + overhead_cum_ch["other"].iloc[-1]
                 if self.other_g == 1:
                     self.other_g = other_g
+                if self.other_g_next == 1:
+                    self.other_g_next = other_g
 
         ##### predict alpha and material parameters #######
         #### predict_alpha_rate ######
-        if self.alpha_rate == 1:
-            if (
-                (self.industry == "folad")
-                or (self.industry == "felezat")
-                or (self.industry == "urea")
-                or (self.industry == "methanol")
-                or (self.industry == "palayesh")
-                or (self.industry == "dode")
-            ):
-                self.alpha_rate = self.change_dollar_nima_monthly
-        #######predict_material_g #######
-        if self.material_g == 1:
-            if (
-                (self.industry == "lastic")
-                or (self.industry == "shoyande")
-                or (self.industry == "darou")
-                or (self.industry == "palayesh")
-                or (self.industry == "felezat")
-                or (self.industry == "folad")
-                or (self.industry == "dode")
-            ):
-                self.material_g = np.average(
-                    [self.change_dollar_nima_quarterly, self.change_dollar_nima_monthly]
-                )
+        self.predict_rate()
+
+        alpha_q = find_rate(self.rate_monthly, self.major_good) / find_rate(
+            self.rate_quarterly, self.major_good
+        )
 
     def predict_opex(self):
         rev_op_quarterly = pd.DataFrame(columns=["rev", "opex"])
@@ -6320,6 +6365,64 @@ class Stock:
         self.create_end_data()
         self.create_fcfe()
         self.predict_value()
+
+    def predict_rate(self):
+        # create last_rate df
+        d_r = {}
+        for i in self.count_revenue_yearly.columns:
+            if self.industry != "palayesh":
+                d_r[i] = find_rate(self.rate_monthly, i)
+            if self.industry == "palayesh":
+                d_r[i] = find_rate(self.rate_quarterly, i)
+        last_rate = pd.DataFrame(d_r, index=[self.future_year])
+        last_rate.loc[self.future_year] = last_rate.loc[self.future_year]
+        last_rate.loc[self.future_year + 1] = last_rate.loc[self.future_year]
+        last_rate.drop(["جمع", "total"], axis=1, inplace=True)
+        last_rate.fillna(0, inplace=True)
+        self.last_rate = last_rate
+        if self.industry != "palayesh":
+            df = (
+                self.rate_dollar_nima_monthly.iloc[-10:].median()
+                * self.dollar_fu
+                / 1000000
+            )
+        else:
+            df = (
+                self.rate_dollar_nima_quarterly.iloc[-10:].median()
+                * self.dollar_fu
+                / 1000000
+            )
+
+        df = df.to_frame()
+        df = df.T
+        df.rename(index={0: self.future_year}, inplace=True)
+        if self.industry != "palayesh":
+            df.loc[self.future_year + 1] = (
+                self.rate_dollar_nima_monthly.iloc[-10:].median()
+                * self.dollar_fup
+                / 1000000
+            )
+        else:
+            df.loc[self.future_year + 1] = (
+                self.rate_dollar_nima_quarterly.iloc[-10:].median()
+                * self.dollar_fup
+                / 1000000
+            )
+        df.fillna(0, inplace=True)
+        df.drop(["جمع", "total"], axis=1, inplace=True)
+        drop_non_same_columns(df, self.last_rate)
+        self.pred_dollar_rial_rate = df
+        self.pred_dollar_rate = df * np.array(
+            [[1000000 / self.dollar_fu], [1000000 / self.dollar_fup]]
+        )
+
+        ######## pred_rate ########
+        if self.scenario == "dollar":
+            self.pred_rate = self.pred_dollar_rial_rate
+        if self.scenario == "last":
+            self.pred_rate = self.last_rate * np.array(
+                [[self.alpha_rate], [self.alpha_rate_next]]
+            )
 
 
 class OptPort:

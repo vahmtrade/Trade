@@ -108,6 +108,8 @@ wl_prod = {
     "kave": {"indus": "folad", "token": "کاوه", "name": "فولاد کاوه جنوب کیش"},
     "hormoz": {"indus": "folad", "token": "هرمز", "name": "فولاد هرمزگان جنوب"},
     "ghebshahr": {"indus": "ghaza", "token": "غبشهر", "name": "صنعتی بهشهر"},
+    "sharum": {"indus": "chemical", "token": "شاروم", "name": "پتروشیمی ارومیه"},
+    "jam": {"indus": "chemical", "token": "جم", "name": "پترو شیمی جم"},
 }
 wl_nprod = {
     "kian": {"indus": "fixed_income", "token": "کیان", "name": "کیان"},
