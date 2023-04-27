@@ -2394,6 +2394,7 @@ class Macro:
             "dollar_land",
             "stock",
             "stock_rate",
+            "us_inflation",
         ]
         yearly_col = [
             "month",
@@ -2458,6 +2459,7 @@ class Macro:
         data_1401["ratio_deposits"] = data_1401["current_deposits"] / data_1401["cash"]
         data_1400["cash/base"] = data_1400["cash"] / data_1400["base_money"]
         data_1400["ratio_deposits"] = data_1400["current_deposits"] / data_1400["cash"]
+        data_1401.fillna(method="ffill", inplace=True)
         # add future data
         # create interest_ yearly data
         yearly_interest = []
@@ -2517,6 +2519,7 @@ class Macro:
                 "cash",
                 "IR",
                 "pe",
+                "us_inflation",
             ]
         ]
 
@@ -2531,15 +2534,26 @@ class Macro:
         for i in data_1401.columns:
             data_1401_ret[i] = data_1401[i].pct_change()
         # add value to exchange
-        exchange["dollar_value_80"] = (
-            exchange["cpi"] / exchange["cpi"].loc[1381]
-        ) * exchange["dollar"].loc[1381]
-        exchange["dollar_value_90"] = (
-            exchange["cpi"] / exchange["cpi"].loc[1390]
-        ) * exchange["dollar"].loc[1390]
-        exchange["dollar_value_95"] = (
-            exchange["cpi"] / exchange["cpi"].loc[1395]
-        ) * exchange["dollar"].loc[1395]
+        d = []
+        lst_gdp = []
+        lst_cash = []
+        exchange.fillna(method="ffill", inplace=True)
+        for i in range(len(exchange.index) - 1):
+            cash_diff = (exchange.iloc[i + 1]["cash"] / exchange.iloc[i]["cash"]) - 1
+            cpi_diff = (exchange.iloc[i + 1]["cpi"] / exchange.iloc[i]["cpi"]) - 1
+            gdp_diff = (
+                exchange.iloc[i + 1]["constant_gdp"] / exchange.iloc[i]["constant_gdp"]
+            ) - 1
+            lst_gdp.append(gdp_diff)
+            lst_cash.append(cash_diff)
+            factor = (
+                (max(cash_diff, cpi_diff) - gdp_diff)
+                + 1
+                - (exchange.iloc[i + 1]["us_inflation"])
+            )
+            d.append(factor * exchange.iloc[i]["dollar"])
+        d.insert(0, 8019)
+        exchange["pred"] = d
         exchange_ret = pd.DataFrame(columns=["dollar", "cpi"])
         exchange_ret["dollar"] = exchange["dollar"].pct_change()
         exchange_ret["gdp"] = exchange["constant_gdp"].pct_change()
@@ -2655,10 +2669,10 @@ class Stock:
         month_s=1,
         year_end=1403,
         month_end=12,
-        year_tester_s=1400,
-        year_tester_end=1403,
-        month_tester_s=1,
-        month_tester_end=12,
+        start_tester="2020",
+        end_tester="2023",
+        start_train="2021",
+        end_train="2022",
         discounted_n=0.7,
     ):
 
@@ -2668,17 +2682,14 @@ class Stock:
         self.industry = wl_prod[Name]["indus"]
         self.farsi = wl_prod[Name]["token"]
         self.start_date = pd.to_datetime(JalaliDate(year_s, month_s, 1).to_gregorian())
-
+        self.start_tester = start_tester
+        self.end_tester = end_tester
+        self.start_train = start_train
+        self.end_train = end_train
         self.end_date = pd.to_datetime(
             JalaliDate(year_end, month_end, 1).to_gregorian()
         )
 
-        self.tester_start = pd.to_datetime(
-            JalaliDate(year_tester_s, month_tester_s, 1).to_gregorian()
-        )
-        self.tester_end = pd.to_datetime(
-            JalaliDate(year_tester_end, month_tester_end, 1).to_gregorian()
-        )
         self.tc = 0.012
         error = []
         self.error = error
@@ -2818,14 +2829,9 @@ class Stock:
             error.append(f"cant find {self.Name} voloume profile {err}")
         ############ create tester module #############
         try:
-            self.sma_tester = SmaTester(
-                self.Price, self.tester_start, self.tester_end, self.tc
-            )
+
             self.my_tester = TesterOneSide(
-                self.Price, self.tester_start, self.tester_end, self.tc, self.Name
-            )
-            self.tester_price = TesterOneSidePrice(
-                self.Price, self.tester_start, self.tester_end, self.tc
+                self.Price, self.tc, self.Name, self.start_train, self.end_train
             )
         except Exception as err:
             error.append(f"cant create tester {err}")
@@ -2871,6 +2877,8 @@ class Stock:
                 opt["SMA_l"].iloc[0],
                 opt["VMA_S"].iloc[0],
                 opt["VMA_l"].iloc[0],
+                self.start_tester,
+                self.end_tester
             )
             self.opt = opt
 
@@ -2892,6 +2900,8 @@ class Stock:
                     opt["SMA_l"].iloc[0],
                     opt["VMA_S"].iloc[0],
                     opt["VMA_l"].iloc[0],
+                    self.start_tester,
+                    self.end_tester,
                 )
                 self.opt = opt
         ######## Create macro data(dollar rate) #########
@@ -3181,10 +3191,7 @@ class Stock:
         self.eps_data = df
         return df
 
-    def predict_income(
-        self
-
-    ):
+    def predict_income(self):
         self.predict_revenue()
         self.predict_cost(
             self.material_g,
@@ -4037,21 +4044,25 @@ class Stock:
         delete_empty(price_consump)
         delete_empty(count_buy)
         delete_empty(price_buy)
-        # merge_Same_columns
-        merge_same_columns(count_consump)
-        merge_same_columns(price_consump)
-        merge_same_columns(count_buy)
-        merge_same_columns(price_buy)
-        # merge_similar_columns
-        count_consump = merge_similar_columns(count_consump)
-        price_consump = merge_similar_columns(price_consump)
-        count_consump = merge_similar_columns(count_buy)
-        price_consump = merge_similar_columns(price_buy)
         # remove_zero_from_data
         remove_zero(count_consump)
         remove_zero(price_consump)
         remove_zero(count_buy)
         remove_zero(price_buy)
+        # merge_Same_columns
+        merge_same_columns(count_consump)
+        merge_same_columns(price_consump)
+        merge_same_columns(count_buy)
+        merge_same_columns(price_buy)
+        # delete non same columns
+        drop_non_same_columns(price_consump, count_consump)
+        # merge_similar_columns
+        count_consump = merge_similar_columns(count_consump)
+        price_consump = merge_similar_columns(price_consump)
+        count_consump = merge_similar_columns(count_buy)
+        price_consump = merge_similar_columns(price_buy)
+        drop_non_same_columns(price_consump, count_consump)
+        drop_non_same_columns(price_buy, count_buy)
         rate_consump = price_consump / count_consump
         rate_buy = price_buy / count_buy
         for i in rate_consump.index:
@@ -4062,21 +4073,6 @@ class Stock:
             for j in rate_buy.columns:
                 if (count_buy.loc[i, j] == 0.01) or (count_buy.loc[i, j] <= 0):
                     rate_buy.loc[i, j] = 0
-        count_consump_com = pd.DataFrame(
-            index=count_consump.index, columns=count_consump.columns
-        )
-        for i in count_consump_com.index:
-            count_consump_com.loc[i] = (
-                count_consump.loc[i] / count_consump.loc[i]["جمع"]
-            )
-        price_consump_com = pd.DataFrame(
-            index=price_consump.index, columns=price_consump.columns
-        )
-        for i in count_consump_com.index:
-            price_consump_com.loc[i] = (
-                price_consump.loc[i] / price_consump.loc[i]["جمع"]
-            )
-        # add total to personel
 
         personnel["total"] = personnel["prod"] + personnel["non_prod"]
         # define new definition of cost extract units of cost
@@ -4130,8 +4126,6 @@ class Stock:
             self.count_consump_yearly = count_consump
             self.price_consump_yearly = price_consump
             self.rate_consump_yearly = rate_consump
-            self.count_consump_com_yearly = count_consump_com
-            self.price_consump_com_yearly = price_consump_com
             self.count_buy_yearly = count_buy
             self.price_buy_yearly = price_buy
             self.rate_buy_yearly = rate_buy
@@ -4159,8 +4153,6 @@ class Stock:
             self.count_consump_quarterly = count_consump
             self.price_consump_quarterly = price_consump
             self.rate_consump_quarterly = rate_consump
-            self.count_consump_com_quarterly = count_consump_com
-            self.price_consump_com_quarterly = price_consump_com
             self.count_buy_quarterly = count_buy
             self.price_buy_quarterly = price_buy
             self.rate_buy_quarterly = rate_buy
@@ -5281,6 +5273,10 @@ class Stock:
         max_price = []
         price_ret = []
         pe_fw_yearly = []
+        eps_yearly = []
+        days = []
+        lst_adjust_eps = []
+
         end_data["EPS_Capital"] = end_data["EPS_Capital"].apply(
             lambda x: 0.1 if x == 0 else x
         )
@@ -5291,11 +5287,15 @@ class Stock:
             for j in pd.date_range(date_1, date_2):
                 dt = date_2 - j
                 dt = dt.days
+
                 try:
                     adjust_eps = end_data.loc[i]["EPS_Capital"] / (
                         (1 + self.k) ** (dt / 365)
                     )
                     pe_forward_adjust[j] = self.Price.loc[j]["Close"] / adjust_eps
+                    days.append(dt)
+                    eps_yearly.append(end_data.loc[i]["EPS_Capital"])
+                    lst_adjust_eps.append(adjust_eps)
                 except:
                     pass
 
@@ -5315,7 +5315,16 @@ class Stock:
             except:
                 price_last.append(np.nan)
         pe_forward_adjust = pd.DataFrame([pe_forward_adjust]).T
-        pe_forward_adjust.rename(columns={0: "pe"}, inplace=True)
+        pe_forward_adjust.rename(columns={0: "pe_adjust"}, inplace=True)
+        pe_forward_adjust["eps"] = eps_yearly
+        pe_forward_adjust["days"] = days
+        pe_forward_adjust["eps_adjust"] = lst_adjust_eps
+        pe_forward_adjust["price"] = self.Price["Close"]
+        pe_forward_adjust["pe"] = pe_forward_adjust["price"] / pe_forward_adjust["eps"]
+        pe_forward_adjust["ret"] = pe_forward_adjust["price"].pct_change()
+        pe_forward_adjust["value"] = (
+            pe_forward_adjust["eps"] * pe_forward_adjust["pe_adjust"].median()
+        )
         self.pe_forward_adjust = pe_forward_adjust
         end_data["price"] = price
         end_data["max_price"] = max_price
@@ -5346,6 +5355,7 @@ class Stock:
         )
         self.end_data = end_data
         self.pe_fw_yearly = pe_fw_yearly
+        self.eps_yearly = eps_yearly
         pe_fw_historical = []
         for i in self.pe_fw_yearly:
             pe_fw_historical.extend(i.tolist())
@@ -5357,6 +5367,11 @@ class Stock:
             self.pe_fw_historical["price"] / self.pe_fw_historical["price"].iloc[0]
         )
         self.pe_fw_historical.rename(columns={0: "pe"}, inplace=True)
+        self.pe_fw_historical["eps"] = (
+            self.pe_fw_historical["price"] / self.pe_fw_historical["pe"]
+        )
+        self.days = days
+        self.lst_adjust_eps = lst_adjust_eps
 
     def save_manual(self):
         changeable = self.pred_income[
@@ -6009,12 +6024,6 @@ class Stock:
         pred_overhead.loc[self.future_year + 1, "salary"] = (
             salary_g_next * pred_overhead.loc[self.future_year, "salary"]
         )
-        pred_overhead.loc[self.future_year, "other"] = (
-            other_g * pred_overhead.loc[self.future_year - 1, "other"]
-        )
-        pred_overhead.loc[self.future_year + 1, "other"] = (
-            other_g_next * pred_overhead.loc[self.future_year, "other"]
-        )
         pred_overhead.loc[self.future_year, "transport"] = (
             transport_g * pred_overhead.loc[self.future_year - 1, "transport"]
         )
@@ -6027,11 +6036,49 @@ class Stock:
         pred_overhead.loc[self.future_year + 1, "depreciation"] = (
             dep_g_next * pred_overhead.loc[self.future_year, "depreciation"]
         )
-
+        #### predict_other_cost_overhead #######
+        other_over_yearly = pd.DataFrame(columns=["rev", "other"])
+        other_over_yearly["rev"] = self.income_rial_yearly["Total_Revenue"]
+        other_over_yearly["other"] = self.overhead_yearly["other"]
+        other_over_yearly["ratio"] = (
+            other_over_yearly["other"] / other_over_yearly["rev"]
+        )
+        other_over_quarterly = pd.DataFrame(columns=["rev", "other"])
+        other_over_quarterly["rev"] = self.income_rial_quarterly["Total_Revenue"]
+        other_over_quarterly["other"] = self.overhead_quarterly["other"]
+        other_over_quarterly["ratio"] = (
+            other_over_quarterly["other"] / other_over_quarterly["rev"]
+        )
+        model = linear.LinearRegression()
+        model.fit(other_over_yearly[["rev"]], other_over_yearly["other"])
+        other_over_yearly["pred"] = model.predict(other_over_yearly[["rev"]])
+        other_over_quarterly["pred"] = model.predict(other_over_quarterly[["rev"]])
+        other_over_yearly["error"] = (
+            other_over_yearly["other"] - other_over_yearly["pred"]
+        )
+        other_over_quarterly["error"] = (
+            other_over_quarterly["other"] - other_over_quarterly["pred"]
+        )
+        self.other_over_yearly = other_over_yearly
+        self.other_over_quarterly = other_over_quarterly
+        self.model_other_over_yearly = model
+        pred_other_over = pd.DataFrame(
+            index=[self.future_year, self.future_year + 1], columns=["other"]
+        )
+        pred_other_over["other"] = model.predict(self.pred_revenue[["revenue"]])
+        pred_overhead.loc[self.future_year, "other"] = pred_other_over.loc[
+            self.future_year
+        ]["other"]
+        pred_overhead.loc[self.future_year + 1, "other"] = pred_other_over.loc[
+            self.future_year + 1
+        ]["other"]
+        self.pred_other_over = pred_other_over
         pred_overhead.update_dependent_columns()
         self.pred_overhead = pred_overhead
 
-    def predict_parameter(self,alpha_rate=1,
+    def predict_parameter(
+        self,
+        alpha_rate=1,
         alpha_prod=1,
         alpha_prod_next=1,
         alpha_rate_next=1,
@@ -6051,7 +6098,8 @@ class Stock:
         beta=1,
         scenario="dollar",
         dollar_fu=350000,
-        dollar_fup=400000,):
+        dollar_fup=400000,
+    ):
         ###### gather parameters ######
         self.material_g = material_g
         self.material_g_next = material_g_next
@@ -6423,6 +6471,38 @@ class Stock:
             self.pred_rate = self.last_rate * np.array(
                 [[self.alpha_rate], [self.alpha_rate_next]]
             )
+
+    def plot_other_over(self):
+        x_min = self.other_over_quarterly["rev"].min()
+        x_max = self.other_over_quarterly["rev"].max()
+        x = np.linspace(x_min, x_max, 1000)
+        x = x.reshape(-1, 1)
+        y = self.model_other_over_yearly.predict(x)
+        plt.scatter(
+            self.other_over_quarterly["rev"], self.other_over_quarterly["other"]
+        )
+        plt.scatter(
+            self.other_over_quarterly["rev"].iloc[-1],
+            self.other_over_quarterly["other"].iloc[-1],
+            color="red",
+        )
+        plt.plot(x, y)
+        plt.title("other_overhead_rev_quarterly")
+        plt.xlabel("Rev")
+        plt.ylabel("Other_over")
+        x_min = self.other_over_yearly["rev"].min()
+        x_max = self.other_over_yearly["rev"].max()
+        x = np.linspace(x_min, x_max, 1000)
+        x = x.reshape(-1, 1)
+        y = self.model_other_over_yearly.predict(x)
+        plt.figure()
+        plt.scatter(self.other_over_yearly["rev"], self.other_over_yearly["other"])
+        plt.scatter(
+            self.other_over_yearly["rev"].iloc[-1],
+            self.other_over_yearly["other"].iloc[-1],
+            color="red",
+        )
+        plt.plot(x, y)
 
 
 class OptPort:

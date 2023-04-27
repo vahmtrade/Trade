@@ -10,23 +10,23 @@ plt.style.use("seaborn")
 
 
 class TesterOneSide:
-    def __init__(self, data, start, end, tc, name):
+    def __init__(self, data, tc, name, start_train, end_train):
         self.data = data
-        self.start = start
-        self.end = end
         self.tc = tc
         self.name = name
+        self.start_train = start_train
+        self.end_train = end_train
 
-    def test_strategy(self, sma_s, sma_l, vma_s, vma_l):
+    def test_strategy(self, sma_s, sma_l, vma_s, vma_l, start, end):
         df = self.data["Close"].copy().to_frame()
-        df["Value"] = self.data["Value"][self.start : self.end]
+        df["Value"] = self.data["Value"][start:end]
         df["SMA_s"] = df["Close"].rolling(sma_s).mean()
         df["SMA_l"] = df["Close"].rolling(sma_l).mean()
         df["VMA_s"] = df["Value"].rolling(vma_s).mean()
         df["VMA_l"] = df["Value"].rolling(vma_l).mean()
         df["Position"] = np.zeros(len(df.index))
         df.dropna(inplace=True)
-        df = df[self.start : self.end]
+        df = df[start:end]
         df["Ret"] = np.log(df["Close"] / df["Close"].shift(1))
         df["Cret"] = df["Ret"].cumsum().apply(np.exp)
         df["Cummax"] = df["Cret"].cummax()
@@ -82,7 +82,11 @@ class TesterOneSide:
         combination = list(product(range_s, range_l, range_vs, range_vl))
         resault = []
         for c in combination:
-            resault.append(self.test_strategy(c[0], c[1], c[2], c[3])[0])
+            resault.append(
+                self.test_strategy(
+                    c[0], c[1], c[2], c[3], self.start_train, self.end_train
+                )[0]
+            )
         df = pd.DataFrame(
             columns=["SMA_s", "SMA_l", "VMA_S", "VMA_l"], data=combination
         )
@@ -337,3 +341,26 @@ class TesterOneSidePrice:
         plt.plot(self.df["Cret"])
         plt.plot(self.Close_trade["Cret_net"], marker="o")
         plt.plot(self.Close_trade["Cret"], marker="o")
+
+
+class ValueStrategy:
+    def __init__(self, data, tc, start_train, end_train, name):
+        self.data = data
+        self.tc = tc
+        self.name = name
+        self.start_train = start_train
+        self.end_train = end_train
+
+    def test_strategy(self, sma_s, sma_l, start, end):
+        df = self.data[["value", "price"]]
+        df["sma_s"] = df["price"].rolling(sma_s).mean()
+        df["sma_l"] = df["price"].rolling(sma_l).mean()
+        df.dropna(inplace=True)
+        df = df[start:end]
+        df["ret"] = np.log(df["price"] / df["price"].shift(1))
+        df.dropna(inplace=True)
+        df["cret"] = df["ret"].cumsum().apply(np.exp)
+        df["cummax"] = df["cret"].cummax()
+        df["drow_down"] = df["cummax"] - df["cret"]
+        df["position"] = 0
+        self.df = df
