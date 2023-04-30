@@ -111,6 +111,7 @@ wl_prod = {
     "sharum": {"indus": "chemical", "token": "شاروم", "name": "پتروشیمی ارومیه"},
     "jam": {"indus": "chemical", "token": "جم", "name": "پترو شیمی جم"},
     "derazak": {"indus": "darou", "token": "درازک", "name": "لابراتوارهای رازک"},
+    "kavir": {"indus": "folad", "token": "کویر", "name": "تولیدی فولاد سپید فراب کویر"},
 }
 wl_nprod = {
     "kian": {"indus": "fixed_income", "token": "کیان", "name": "کیان"},
