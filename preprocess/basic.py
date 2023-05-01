@@ -282,7 +282,7 @@ def find_deficiencies(stock_name):
 
 
 def check_stock_files(
-    stock_name, user_year=0, user_month=0, user_quarter=0, action=False
+    stock_name, user_year=False, user_month=False, user_quarter=False, action=False
 ):
     base_files = [
         f"{INDUSPATH}/{wl_prod[stock_name]['indus']}/{stock_name}/{s}"
@@ -314,7 +314,7 @@ def check_stock_files(
                 stock_type, per_stock_type, stock_time = filepath_info(file)
 
             except Exception as err:
-                print(file, err)
+                print("cant get filepath info :", file, err)
 
             try:
                 excel_timeids = re.findall(regex_en_timeid_q, str(df.loc[6]))
@@ -328,20 +328,25 @@ def check_stock_files(
                     print("unmatch time :", file)
                     failed.append(file)
 
-                if stock_time == "monthly" and user_month > excel_months[-1]:
-                    print("old data :", file, excel_months[-1])
-                    failed.append(file)
+                if stock_time == "monthly" and user_month != False:
+                    if str(user_month) != str(excel_months[-1]):
+                        print("old data monthly :", file, excel_months[-1])
+                        failed.append(file)
 
-                if stock_time == "quarterly" and user_quarter > excel_months[-1]:
-                    print("old data :", file, excel_months[-1])
-                    failed.append(file)
+                if stock_time == "quarterly" and user_quarter != False:
+                    if str(user_quarter) != str(excel_months[-1]):
+                        print("old data quarterly :", file, excel_months[-1])
+                        failed.append(file)
 
-                if stock_time == "yearly" and user_year > excel_years[-1]:
-                    print("old data :", file, excel_years[-1])
-                    failed.append(file)
+                if stock_time == "yearly" and user_year != False:
+                    if str(user_year) != str(excel_years[-1]):
+                        print("old data yearly :", file, excel_years[-1])
+                        failed.append(file)
 
             except Exception as err:
-                print(file, err)
+                # TODO : remove pe,opt,eps from this exception
+                # print("cant get excel timeids :", file, err)
+                pass
 
             try:
                 excel_author = df["Unnamed: 1"][0]
@@ -361,7 +366,9 @@ def check_stock_files(
                     failed.append(file)
 
             except Exception as err:
-                print(file, err)
+                # TODO : remove pe,opt,eps from this exception
+                # print("cant get excel author :", file, err)
+                pass
 
     failed = list(set(failed))
     if action:
