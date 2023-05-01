@@ -7,6 +7,7 @@ from itertools import product
 from statics.setting import *
 
 plt.style.use("seaborn")
+import math
 
 
 class TesterOneSide:
@@ -363,4 +364,105 @@ class ValueStrategy:
         df["cummax"] = df["cret"].cummax()
         df["drow_down"] = df["cummax"] - df["cret"]
         df["position"] = 0
+
+        flag = -1
+        over_value = 0
+        under_value = 0
+        sig_price_buy = []
+        sig_price_sell = []
+        for i in range(len(df.index)):
+            if df.iloc[i]["price"] > df.iloc[i]["value"]:
+                over_value = 1
+                under_value = 0
+            else:
+                under_value = 1
+                over_value = 0
+            ###### Strategy for under value market : just buy #######
+            if under_value == 1:
+                if flag != 1:
+                    sig_price_buy.append(df.iloc[i]["price"])
+                    sig_price_sell.append(np.nan)
+                    df["position"].iloc[i] = 1
+                    flag = 1
+                else:
+                    sig_price_buy.append(np.nan)
+                    sig_price_sell.append(np.nan)
+            ###### Strategy for over value market : trending strategy #######
+            if over_value == 1:
+                ###### Buy in over value market based on sma strategy #######
+                if df["sma_s"].iloc[i] > df["sma_l"].iloc[i]:
+                    if flag != 1:
+                        sig_price_buy.append(df.iloc[i]["price"])
+                        sig_price_sell.append(np.nan)
+                        df["position"].iloc[i] = 1
+                        flag = 1
+                    else:
+                        sig_price_buy.append(np.nan)
+                        sig_price_sell.append(np.nan)
+                elif df["sma_s"].iloc[i] < df["sma_l"].iloc[i]:
+                    if flag != 0:
+                        sig_price_sell.append(df.iloc[i]["price"])
+                        sig_price_buy.append(np.nan)
+                        df["position"].iloc[i] = 1
+                        flag = 0
+                    else:
+                        sig_price_buy.append(np.nan)
+                        sig_price_sell.append(np.nan)
+                else:
+                    sig_price_buy.append(np.nan)
+                    sig_price_sell.append(np.nan)
+                    df["position"].iloc[i] = 0
+        df["sig_price_buy"] = sig_price_buy
+        df["sig_price_sell"] = sig_price_sell
+        trade = df[df["position"] == 1]
+        ###### close last trade without signal ########
+        if math.isnan(trade.iloc[-1]["sig_price_sell"]):
+            trade = trade.append(df.iloc[-1])
+            trade.iloc[-1, -1] = trade.iloc[-1]["price"]
+        close_trade = np.log(trade["sig_price_sell"] / trade["sig_price_buy"].shift(1))
+        close_trade = close_trade.to_frame()
+        close_trade.rename(columns={0: "ret"}, inplace=True)
+        close_trade.dropna(inplace=True)
+        close_trade["ret_net"] = close_trade["ret"] - self.tc
+        close_trade["cret"] = close_trade["ret"].cumsum().apply(np.exp)
+        close_trade["cret_net"] = close_trade["ret_net"].cumsum().apply(np.exp)
+        close_trade["cummax"] = close_trade["cret_net"].cummax()
+        close_trade["drow_down"] = close_trade["cummax"] - close_trade["cret_net"]
         self.df = df
+        self.trade = trade
+        self.close_trade = close_trade
+
+    def optimize_strategy(self, range_s, range_l):
+        combination = list(product(range_s, range_l))
+        cret_net = []
+        drow_down = []
+        for c in combination:
+            self.test_strategy(c[0], c[1], self.start_train, self.end_train)
+            cret_net.append(self.close_trade["cret_net"].iloc[-1])
+            drow_down.append(self.close_trade["drow_down"].iloc[-1])
+        performance = pd.DataFrame(columns=["sma_s", "sma_l"], data=combination)
+        performance["cret_net"] = cret_net
+        performance["drow_down"] = drow_down
+        performance = performance.sort_values("cret_net", ascending=False)
+        industry = wl_prod[self.name]["indus"]
+        performance.to_excel(
+            f"{INDUSPATH}/{industry}/{self.name}/{structure['value_opt']}"
+        )
+        self.performance = performance
+
+    def plot_position(self):
+        plt.figure(figsize=[20, 8])
+        plt.plot(self.df["price"], alpha=0.25)
+        plt.plot(self.df["value"], alpha=0.5, color="black")
+        plt.plot(self.df["sma_s"], alpha=0.5)
+        plt.plot(self.df["sma_l"], alpha=0.5)
+        plt.title(f"position of {self.name}")
+        plt.scatter(self.df.index, self.df["sig_price_buy"], marker="^", color="green")
+        plt.scatter(self.df.index, self.df["sig_price_sell"], marker="v", color="red")
+
+    def plot_resault(self):
+        plt.figure(figsize=[20, 8])
+        plt.plot(self.df["cret"])
+        plt.plot(self.close_trade["cret_net"], marker="o")
+        plt.plot(self.close_trade["cret"], marker="o")
+        plt.title(f"resault of {self.name}")

@@ -23,7 +23,7 @@ from bidi.algorithm import get_display
 
 from statics.setting import *
 from preprocess.basic import *
-from process.strategy import SmaTester, TesterOneSide, TesterOneSidePrice
+from process.strategy import *
 
 plt.style.use("seaborn")
 
@@ -2671,8 +2671,8 @@ class Stock:
         month_end=12,
         start_tester="2020",
         end_tester="2023",
-        start_train="2021",
-        end_train="2022",
+        start_train="2020",
+        end_train="2023",
         discounted_n=0.7,
     ):
 
@@ -2878,7 +2878,7 @@ class Stock:
                 opt["VMA_S"].iloc[0],
                 opt["VMA_l"].iloc[0],
                 self.start_tester,
-                self.end_tester
+                self.end_tester,
             )
             self.opt = opt
 
@@ -2953,6 +2953,42 @@ class Stock:
             self.create_end_data()
         except Exception as err:
             error.append(f" cant create_end_data {err}")
+
+        ########## Create_value_stategy_tester ##########
+        try:
+            self.value_tester = ValueStrategy(
+                self.pe_forward_adjust,
+                self.tc,
+                self.start_train,
+                self.end_train,
+                self.Name,
+            )
+        except Exception as err:
+            error.append(f"cant create value_tester {err}")
+
+        ######## Load and optimize Value strategy_file #######
+        try:
+            value_opt = pd.read_excel(
+                f"{INDUSPATH}/{self.industry}/{self.Name}/{structure['value_opt']}"
+            )
+            self.value_tester.test_strategy(
+                value_opt["sma_s"].iloc[0],
+                value_opt["sma_l"].iloc[0],
+                self.start_tester,
+                self.end_tester,
+            )
+        except:
+            self.value_tester.optimize_strategy(range(3, 30, 3), range(31, 60, 3))
+            value_opt = pd.read_excel(
+                f"{INDUSPATH}/{self.industry}/{self.Name}/{structure['value_opt']}"
+            )
+            self.value_tester.test_strategy(
+                value_opt["sma_s"].iloc[0],
+                value_opt["sma_l"].iloc[0],
+                self.start_tester,
+                self.end_tester,
+            )
+
         self.error = error
 
     def plot_income_yearly(self):
@@ -3085,56 +3121,21 @@ class Stock:
         ax2.plot(self.Price["2020":]["Close"], linewidth=3)
         ax2.grid(color="white")
 
-    def plot_pe(self):
-
-        try:
-            pe = self.pe_fw
-        except:
-            pe = self.pe["P/E-ttm"].iloc[0]
-            print("No forward data available ")
-        # float pe data
-        data = []
-        pe_data = self.pe["P/E-ttm"].values
-        pe_2 = self.Price["Close"].iloc[-1] / self.pred_income.loc[1402, "EPS_Capital"]
-        for i in pe_data:
-            data.append(float(i))
-        # fit f distribution to data
-        f_param = stats.f.fit(data)
-        f = stats.f(dfn=f_param[0], dfd=f_param[1], loc=f_param[2], scale=f_param[3])
-        self.f = f
-        x = np.linspace(f.ppf(0.01), f.ppf(0.99), 1000)
-        ########   Histogeram Plot ##########
-        plt.figure(figsize=[15, 10])
+    def plot_pe(self, y_s=1396, m_s=1, y_e=1402, m_e=12):
+        date1 = pd.to_datetime(JalaliDate(y_s, m_s, 1).to_gregorian())
+        date2 = pd.to_datetime(JalaliDate(y_e, m_e, 1).to_gregorian())
+        df = self.pe_forward_adjust.loc[date1:date2]
+        plt.figure(figsize=[15, 12])
         plt.subplot(3, 1, 1)
-        sns.distplot(self.pe["P/E-ttm"], kde="True")
-        plt.plot(x, f.pdf(x))
-        plt.axvline(self.pe["P/E-ttm"].median(), color="black", linestyle="dashed")
-        plt.axvline(self.pe["P/E-ttm"].iloc[0], color="red")
-        plt.axvline(pe, color="red", linestyle="dashed")
-        plt.axvline(pe_2, color="red", linestyle="dashed", alpha=0.5)
-        plt.title("all_pe_data")
+        plt.plot(df["eps"])
+        plt.title("EPS")
         plt.subplot(3, 1, 2)
-        plt.hist(self.pe_n["P/E-ttm"], edgecolor="black", bins=100)
-        plt.axvline(self.pe_n["P/E-ttm"].median(), color="black", linestyle="dashed")
-        plt.axvline(self.pe_n["P/E-ttm"].iloc[0], color="red")
-        plt.axvline(pe, color="red", linestyle="dashed")
-        plt.axvline(pe_2, color="red", linestyle="dashed", alpha=0.5)
-        plt.title("Normall_pe_data")
+        plt.hist(df["pe_adjust"], edgecolor="black", bins=50)
+        plt.axvline(df["pe_adjust"].iloc[-1], color="red")
+        plt.axvline(df["pe_adjust"].median(), color="red", linestyle="dashed")
         plt.subplot(3, 1, 3)
-        plt.hist(self.pe_u["P/E-ttm"], edgecolor="black", bins=100)
-        plt.axvline(self.pe_u["P/E-ttm"].median(), color="black", linestyle="dashed")
-        plt.figure(figsize=[20, 10])
-        ###########  Line_Plot  ############
-        fig, ax = plt.subplots()
-        ax2 = ax.twinx()
-        ax.plot(self.pe["P/E-ttm"]["2015":], alpha=0.5, label="P/E")
-        ax.legend()
-        ax2.plot(self.Price["Close"]["2015":], color="black", label="Price")
-        ax2.legend()
-        ax.axhline(5, alpha=0.3)
-        ax.axhline(self.pe_fw, linestyle="dashed", color="red")
-
-        return pe
+        plt.plot(df["price"])
+        plt.plot(df["value"])
 
     def plot_resault(self):
         plt.figure(figsize=[20, 8])
@@ -3194,12 +3195,8 @@ class Stock:
     def predict_income(self):
         self.predict_revenue()
         self.predict_cost(
-            self.material_g,
-            self.material_g_next,
             self.salary_g,
             self.salary_g_next,
-            self.other_g,
-            self.other_g_next,
             self.energy_g,
             self.energy_g_next,
             self.transport_g,
@@ -3266,20 +3263,21 @@ class Stock:
             "Net_Profit": pred_income.loc[self.future_year]["Net_Profit"],
         }
         parameters = {
+            "dollar_fu": self.dollar_fu,
+            "dollar_fup": self.dollar_fup,
             "alpha_prod_update": self.alpha_prod,
             "alpha_prod_next": self.alpha_prod_next,
             "alpha_rate_update": self.alpha_rate,
             "alpha_rate_next": self.alpha_rate_next,
-            "material_g_update": self.material_g,
-            "material_g_next": self.material_g_next,
             "salary_g_update": self.salary_g,
             "salary_g_next": self.salary_g_next,
             "other_g_update": self.other_g,
-            "other_g_next": self.other_g_next,
             "transport_g_update": self.transport_g,
             "transport_g_next": self.transport_g_next,
             "Energy_g": self.energy_g,
             "Energy_g_next": self.energy_g_next,
+            "alpha": self.alpha,
+            "beta": self.beta,
         }
         ######### send data to self ##############3
         self.parameters = parameters
@@ -4674,71 +4672,79 @@ class Stock:
         alpha_prod_next_update=1,
         alpha_rate_next_update=1,
         salary_g_update=1,
-        material_g_update=1,
         energy_g_update=1,
         dep_g_update=1,
         transport_g_update=1,
-        other_g_update=1,
         salary_g_next_update=1,
-        material_g_next_update=1,
         energy_g_next_update=1,
         dep_g_next_update=1,
         transport_g_next_update=1,
-        other_g_next_update=1,
         rf=0.30,
         erp=0.15,
         n_g=0,
         g=1,
         pe_terminal=1,
         k=1,
+        dollar_fu=350000,
+        dollar_fup=400000,
+        scenario="dollar",
+        alpha=1,
+        beta=1,
     ):
         try:
+            scenario = input("enter expected scenario: dollar or last")
+            dollar_fu = float(input("enter expected dollar future year:"))
+            dollar_fup = float(input("enter expected dollar next future year:"))
             alpha_prod_update = float(input("enter alpha_prod_update:"))
             alpha_prod_next_update = float(input("enter alpha_prod_next_update:"))
             alpha_rate_update = float(input("enter alpha_rate_update:"))
             alpha_rate_next_update = float(input("enter alpha_rate_next_update:"))
             salary_g_update = float(input("enter salary_g_update:"))
             salary_g_next_update = float(input("enter salary_g_next_update:"))
-            material_g_update = float(input("enter material_g_update:"))
-            material_g_next_update = float(input("enter material_g_next_update:"))
             energy_g_update = float(input("enter energy_g_update:"))
             energy_g_next_update = float(input("enter energy_g_next_update:"))
             transport_g_update = float(input("enter transport_g_update:"))
             transport_g_next_update = float(input("enter transport_g_next_update:"))
-            other_g_update = float(input("enter other_g_update:"))
-            other_g_next_update = float(input("enter other_g_next_update:"))
             dep_g_update = float(input("enter dep_g_update:"))
             dep_g_next_update = float(input("enter dep_g_next_update:"))
+            alpha = float(
+                input("enter expected extreem growth material from revenue future_year")
+            )
+            beta = float(
+                input(
+                    "enter expected extreem growth material from revenue next future_year"
+                )
+            )
             rf = float(input("enter Rf:"))
             erp = float(input("enter ERP:"))
             n_g = int(input("enter number of growth year:"))
             pe_terminal = float(input("enter pe_terminal:"))
             k = float(input("enter expected return:"))
-
         except:
             pass
 
         try:
             self.create_interest_data()
-            self.predict_parameter()
-            self.predict_income(
+            self.predict_parameter(
                 alpha_rate_update,
                 alpha_prod_update,
                 alpha_prod_next_update,
                 alpha_rate_next_update,
                 salary_g_update,
                 salary_g_next_update,
-                material_g_update,
-                material_g_next_update,
                 energy_g_update,
                 energy_g_next_update,
                 dep_g_update,
                 dep_g_next_update,
                 transport_g_update,
                 transport_g_next_update,
-                other_g_update,
-                other_g_next_update,
+                alpha,
+                beta,
+                scenario,
+                dollar_fu,
+                dollar_fup,
             )
+            self.predict_income()
             self.create_end_data()
             self.create_fcfe()
             self.predict_value(n_g, rf, erp, g, pe_terminal, k)
@@ -4953,9 +4959,10 @@ class Stock:
         k_historical = re_historical - 1
         if k == 1:
             k = np.average([k_capm, k_historical], weights=[1, min(years / 10, 1)])
+        k = k_capm
         self.k_historical = k_historical
         self.k_capm = k_capm
-        self.k = k
+        self.k = k_capm
 
         value_d = eps1 / (1 + k) ** n + eps2 / (1 + k) ** (1 + n)
         value_d_dps = (dps1) / (1 + k) ** n + (dps2) / (1 + k) ** (1 + n)
@@ -5323,7 +5330,7 @@ class Stock:
         pe_forward_adjust["pe"] = pe_forward_adjust["price"] / pe_forward_adjust["eps"]
         pe_forward_adjust["ret"] = pe_forward_adjust["price"].pct_change()
         pe_forward_adjust["value"] = (
-            pe_forward_adjust["eps"] * pe_forward_adjust["pe_adjust"].median()
+            pe_forward_adjust["eps_adjust"] * pe_forward_adjust["pe_adjust"].median()
         )
         self.pe_forward_adjust = pe_forward_adjust
         end_data["price"] = price
@@ -5657,12 +5664,8 @@ class Stock:
 
     def predict_cost(
         self,
-        material_g=1,
-        material_g_next=1,
         salary_g=1,
         salary_g_next=1,
-        other_g=1,
-        other_g_next=1,
         energy_g=1,
         energy_g_next=1,
         transport_g=1,
@@ -5677,8 +5680,6 @@ class Stock:
             energy_g_next,
             salary_g,
             salary_g_next,
-            other_g,
-            other_g_next,
             transport_g,
             transport_g_next,
             dep_g,
@@ -6002,8 +6003,6 @@ class Stock:
         energy_g_next,
         salary_g,
         salary_g_next,
-        other_g,
-        other_g_next,
         transport_g,
         transport_g_next,
         dep_g,
@@ -6084,16 +6083,12 @@ class Stock:
         alpha_rate_next=1,
         salary_g=1,
         salary_g_next=1,
-        material_g=1,
-        material_g_next=1,
         energy_g=1,
         energy_g_next=1,
         dep_g=1,
         dep_g_next=1,
         transport_g=1,
         transport_g_next=1,
-        other_g=1,
-        other_g_next=1,
         alpha=1,
         beta=1,
         scenario="dollar",
@@ -6101,14 +6096,10 @@ class Stock:
         dollar_fup=400000,
     ):
         ###### gather parameters ######
-        self.material_g = material_g
-        self.material_g_next = material_g_next
         self.salary_g = salary_g
         self.salary_g_next = salary_g_next
         self.energy_g = energy_g
         self.energy_g_next = energy_g_next
-        self.other_g = other_g
-        self.other_g_next = other_g_next
         self.transport_g = transport_g
         self.transport_g_next = transport_g_next
         self.dep_g = dep_g
@@ -6122,6 +6113,7 @@ class Stock:
         self.scenario = scenario
         self.dollar_fu = dollar_fu
         self.dollar_fup = dollar_fup
+        ####### create required data #######
         future_year = self.income_rial_yearly.index[-1] + 1
         self.future_year = future_year
         q = []
@@ -6199,10 +6191,7 @@ class Stock:
 
             if math.isnan(overhead_cum_ch["other"].iloc[-1]) == False:
                 other_g = 1 + overhead_cum_ch["other"].iloc[-1]
-                if self.other_g == 1:
-                    self.other_g = other_g
-                if self.other_g_next == 1:
-                    self.other_g_next = other_g
+                self.other_g = other_g
 
         ##### predict alpha and material parameters #######
         #### predict_alpha_rate ######
