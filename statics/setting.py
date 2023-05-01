@@ -175,6 +175,7 @@ structure = {
     "pe": "pe/pe.xlsx",
     "eps": "eps.xlsx",
     "opt": "opt.xlsx",
+    "value_opt": "value_opt.xlsx",
 }
 
 wl_prod_df = pd.DataFrame(wl_prod).T
