@@ -2919,6 +2919,10 @@ class Stock:
         except Exception as err:
             error.append(f"cant predict_parameters {err}")
         try:
+            self.predict_revenue()
+        except Exception as err:
+            error.append(f"cant predict_revenue {err}")
+        try:
             self.predict_income()
         except Exception as err:
             error.append(f"cant predict_income {err}")
@@ -2978,16 +2982,20 @@ class Stock:
                 self.end_tester,
             )
         except:
-            self.value_tester.optimize_strategy(range(3, 30, 3), range(31, 60, 3))
-            value_opt = pd.read_excel(
-                f"{INDUSPATH}/{self.industry}/{self.Name}/{structure['value_opt']}"
-            )
-            self.value_tester.test_strategy(
-                value_opt["sma_s"].iloc[0],
-                value_opt["sma_l"].iloc[0],
-                self.start_tester,
-                self.end_tester,
-            )
+            try:
+                self.value_tester.optimize_strategy(range(3, 30, 3), range(31, 60, 3))
+                value_opt = pd.read_excel(
+                    f"{INDUSPATH}/{self.industry}/{self.Name}/{structure['value_opt']}"
+                )
+                self.value_tester.test_strategy(
+                    value_opt["sma_s"].iloc[0],
+                    value_opt["sma_l"].iloc[0],
+                    self.start_tester,
+                    self.end_tester,
+                )
+                self.value_opt = value_opt
+            except Exception as err:
+                error.append(f"cant optimize value_tester {err}")
 
         self.error = error
 
@@ -3128,7 +3136,7 @@ class Stock:
         plt.figure(figsize=[15, 12])
         plt.subplot(3, 1, 1)
         plt.plot(df["eps"])
-        plt.title("EPS")
+        plt.title(f"EPS_{self.Name}")
         plt.subplot(3, 1, 2)
         plt.hist(df["pe_adjust"], edgecolor="black", bins=50)
         plt.axvline(df["pe_adjust"].iloc[-1], color="red")
@@ -3193,7 +3201,6 @@ class Stock:
         return df
 
     def predict_income(self):
-        self.predict_revenue()
         self.predict_cost(
             self.salary_g,
             self.salary_g_next,
@@ -3277,7 +3284,7 @@ class Stock:
             "Energy_g": self.energy_g,
             "Energy_g_next": self.energy_g_next,
             "alpha": self.alpha,
-            "beta": self.beta,
+            "teta": self.teta,
         }
         ######### send data to self ##############3
         self.parameters = parameters
@@ -3322,7 +3329,9 @@ class Stock:
         plt.axhline(
             self.pred_rate[self.major_good].loc[self.future_year], linestyle="dashed"
         )
-        plt.title(f"rate {self.Name} _ {self.major_good}")
+        reshaped_text = arabic_reshaper.reshape(self.major_good)
+        persian_text = get_display(reshaped_text)
+        plt.title(f"rate {self.Name} _ {persian_text}")
         plt.subplot(3, 1, 2)
         if self.industry != "palayesh":
             plt.plot(self.count_revenue_monthly[self.major_good].iloc[-20:], marker="o")
@@ -3330,7 +3339,7 @@ class Stock:
             plt.plot(
                 self.count_revenue_quarterly[self.major_good].iloc[-20:], marker="o"
             )
-        plt.title(f"count revenue {self.Name} _ {self.major_good}")
+        plt.title(f"count revenue {self.Name} _ {persian_text}")
         plt.subplot(3, 1, 3)
         if self.industry != "palayesh":
             plt.plot(self.rate_dollar_nima_monthly[self.major_good].iloc[-12:])
@@ -4689,7 +4698,7 @@ class Stock:
         dollar_fup=400000,
         scenario="dollar",
         alpha=1,
-        beta=1,
+        teta=1,
     ):
         try:
             scenario = input("enter expected scenario: dollar or last")
@@ -4710,7 +4719,7 @@ class Stock:
             alpha = float(
                 input("enter expected extreem growth material from revenue future_year")
             )
-            beta = float(
+            teta = float(
                 input(
                     "enter expected extreem growth material from revenue next future_year"
                 )
@@ -4739,7 +4748,7 @@ class Stock:
                 transport_g_update,
                 transport_g_next_update,
                 alpha,
-                beta,
+                teta,
                 scenario,
                 dollar_fu,
                 dollar_fup,
@@ -5718,22 +5727,11 @@ class Stock:
         last_count_revenue = self.count_revenue_yearly.iloc[[-1]].copy()
         last_count_revenue.drop(["جمع", "total"], axis=1, inplace=True)
         self.last_count_revenue = last_count_revenue
-        q = []
-        for i in self.count_revenue_quarterly.index:
-            if int(i[:4]) == self.future_year:
-                q.append(int(i[-1]))
-        if len(q) != 0:
-            last_q = max(q)
-        else:
-            last_q = 0
-        self.last_q = last_q
-        last_m = int(self.count_revenue_monthly.iloc[[-1]].index[0].split("/")[1])
-        self.last_m = last_m
         df_cum_last_year = self.create_cumulative_data(
-            type_user="count", year=self.future_year - 1, q=last_q, m2=last_m
+            type_user="count", year=self.future_year - 1, q=self.last_q, m2=self.last_m
         )
         df_cum_future_year = self.create_cumulative_data(
-            type_user="count", year=self.future_year, q=last_q, m2=last_m
+            type_user="count", year=self.future_year, q=self.last_q, m2=self.last_m
         )
         df_cum_count = pd.concat([df_cum_last_year, df_cum_future_year])
         self.df_cum_count = df_cum_count
@@ -5760,7 +5758,7 @@ class Stock:
         # calculate count rev done
 
         count_revenue_done = self.create_cumulative_data(
-            type_user="count", year=self.future_year, q=last_q, m2=last_m
+            type_user="count", year=self.future_year, q=self.last_q, m2=self.last_m
         )
 
         count_revenue_done.loc[self.future_year + 1] = np.zeros(
@@ -5770,7 +5768,7 @@ class Stock:
         drop_non_same_columns(self.pred_rate, count_revenue_done)
         self.count_revenue_done = count_revenue_done
         price_revenue_done = self.create_cumulative_data(
-            type_user="price", year=self.future_year, q=last_q, m2=last_m
+            type_user="price", year=self.future_year, q=self.last_q, m2=self.last_m
         )
         price_revenue_done.loc[self.future_year + 1] = np.zeros(
             len(price_revenue_done.loc[self.future_year])
@@ -5848,6 +5846,13 @@ class Stock:
         df[self.major_consump] = self.rate_consump_dollar_nima_quarterly[
             self.major_consump
         ]
+        df.loc[self.future_year + 1] = 0
+        df.loc[self.future_year + 1, self.major_good] = self.rate_dollar_nima_monthly[
+            self.major_good
+        ].iloc[-1]
+        df.loc[
+            self.future_year + 1, self.major_consump
+        ] = self.rate_consump_dollar_nima_quarterly[self.major_consump].iloc[-1]
         df["ratio"] = df[self.major_consump] / df[self.major_good]
         self.rate_rev_consump = df
         convert_revenue_yearly = (
@@ -5949,7 +5954,7 @@ class Stock:
         material_residual = material_residual * np.array(
             [
                 [self.alpha],
-                [self.beta],
+                [self.teta],
             ]
         )
         pred_material = pd.DataFrame(
@@ -5995,7 +6000,7 @@ class Stock:
         plt.title(f"Rev_Mat quarterly {self.Name}")
         plt.figure(figsize=[20, 8])
         plt.bar(x=self.rev_mat_quarterly.index, height=self.rev_mat_quarterly["ratio"])
-        plt.title(f"rev_op_ratio {self.Name}")
+        plt.title(f"rev_mat_ratio {self.Name}")
 
     def predict_overhead(
         self,
@@ -6090,7 +6095,7 @@ class Stock:
         transport_g=1,
         transport_g_next=1,
         alpha=1,
-        beta=1,
+        teta=1,
         scenario="dollar",
         dollar_fu=350000,
         dollar_fup=400000,
@@ -6109,7 +6114,7 @@ class Stock:
         self.alpha_rate_next = alpha_rate_next
         self.alpha_prod = alpha_prod
         self.alpha = alpha
-        self.beta = beta
+        self.teta = teta
         self.scenario = scenario
         self.dollar_fu = dollar_fu
         self.dollar_fup = dollar_fup
@@ -6125,8 +6130,11 @@ class Stock:
         else:
             last_q = 0
         self.last_q = last_q
-
         last_m = int(self.count_revenue_monthly.iloc[[-1]].index[0].split("/")[1])
+        year_m = int(self.count_revenue_monthly.iloc[[-1]].index[0].split("/")[0])
+        self.year_m = year_m
+        if year_m > future_year:
+            last_m = 12
         self.last_m = last_m
         ### find majority goods
         df = self.price_revenue_yearly.iloc[[-1]].copy()
@@ -6476,7 +6484,7 @@ class Stock:
             color="red",
         )
         plt.plot(x, y)
-        plt.title("other_overhead_rev_quarterly")
+        plt.title(f"other_overhead_rev_quarterly {self.Name}")
         plt.xlabel("Rev")
         plt.ylabel("Other_over")
         x_min = self.other_over_yearly["rev"].min()
@@ -6492,6 +6500,31 @@ class Stock:
             color="red",
         )
         plt.plot(x, y)
+
+    def plot_rate(self):
+        for i in self.rate_monthly.columns:
+            try:
+                plt.figure()
+                self.rate_monthly[i].iloc[-15:].plot(kind="bar")
+                reshaped_text = arabic_reshaper.reshape(i)
+                persian_text = get_display(reshaped_text)
+                plt.title(persian_text)
+                plt.axhline(self.pred_rate[i].iloc[0], linestyle="dashed")
+                plt.axhline(self.pred_rate[i].iloc[1], linestyle="dashed")
+            except:
+                pass
+
+    def plot_count_revenue(self, user_kind):
+        for i in self.count_revenue_yearly.columns:
+            try:
+                plt.figure()
+                self.count_revenue_yearly[i].iloc[-15:].plot(kind=user_kind)
+                reshaped_text = arabic_reshaper.reshape(i)
+                persian_text = get_display(reshaped_text)
+                plt.title(persian_text)
+                plt.axhline(self.pred_count_revenue[i].iloc[-1], linestyle="dashed")
+            except:
+                pass
 
 
 class OptPort:
