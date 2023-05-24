@@ -10,7 +10,6 @@ import pytse_client as tse
 import sklearn.linear_model as linear
 import sklearn.metrics as met
 import seaborn as sns
-import pyswarm as ps
 import arabic_reshaper
 import tse_index
 
@@ -24,6 +23,7 @@ from bidi.algorithm import get_display
 from statics.setting import *
 from preprocess.basic import *
 from process.strategy import *
+import finpy_tse as fpy
 
 plt.style.use("seaborn")
 
@@ -181,7 +181,6 @@ def analyse_watchlist(date):
     errs = {}
     for stock in data.values():
         try:
-
             df = stock.price_revenue_com_yearly.copy()
             df.drop(["total", "جمع"], axis=1, inplace=True)
             converte_numeric(df)
@@ -435,7 +434,6 @@ def random_plot():
 
 
 def voloume_profile(stock, date_start, bins):
-
     my_window = stock[date_start:].copy()
     dis = my_window["Close"].max() - my_window["Close"].min()
     step = dis / bins
@@ -491,7 +489,7 @@ def read_pe(sma, dev, start, end):
         columns={"تاریخ میلادی": "Date", "تاریخ شمسی": "Jalali", "مقدار": "Close"},
         inplace=True,
     )
-    pe.set_index("Date", inplace=True)
+    pe.set_index("Jalali", inplace=True)
     pe = pe[start:end]
     pe["Rate"] = 1 / pe["Close"]
     pe_mean = pe["Close"][start:end].mean()
@@ -554,8 +552,8 @@ def read_dollar(start, end):
         columns={"تاریخ میلادی": "Date", "تاریخ شمسی": "Jalali", "مقدار": "Close"},
         inplace=True,
     )
-    dollar_azad.set_index("Date", inplace=True)
-    dollar_nima.set_index("Date", inplace=True)
+    dollar_azad.set_index("Jalali", inplace=True)
+    dollar_nima.set_index("Jalali", inplace=True)
     dollar_azad = dollar_azad[start:end]
     dollar_nima = dollar_nima[start:end]
     dollar_azad["Change"] = dollar_azad["Close"].pct_change()
@@ -581,7 +579,7 @@ def read_ir():
         columns={"تاریخ میلادی": "Date", "تاریخ شمسی": "Jalali", "مقدار": "Close"},
         inplace=True,
     )
-    IR.set_index("Date", inplace=True)
+    IR.set_index("Jalali", inplace=True)
     IR.dropna(inplace=True)
     # IR_mean = IR["Close"].mean()
     # IR_std = IR["Close"].std()
@@ -627,7 +625,7 @@ def read_direct(start, end, sma_s, sma_l):
         },
         inplace=True,
     )
-    direct.set_index("Date", inplace=True)
+    direct.set_index("Jalali", inplace=True)
     direct["Buy"] = direct["Buy"] / 10**10
     direct["Sell"] = direct["Sell"] / 10**10
     direct["Pure"] = direct["Pure"] / 10**10
@@ -650,7 +648,7 @@ def read_value(start, end, sma_s, sma_l):
         columns={"تاریخ میلادی": "Date", "تاریخ شمسی": "Jalali", "مقدار": "Value"},
         inplace=True,
     )
-    value.set_index("Date", inplace=True)
+    value.set_index("Jalali", inplace=True)
     value.dropna(inplace=True)
     value = value[start:end]
     value["sma_s"] = value["Value"].rolling(sma_s).mean()
@@ -702,20 +700,36 @@ def read_stock(name, start_date, end_date):
     """
     name:farsi symbol,start_date,end_date:miladi return stock and stock_dollar_price
     """
-    stock = tse.download(name, adjust=True)[name]
-    stock.drop("yesterday", inplace=True, axis=1)
-    stock.set_index("date", inplace=True)
+    stock = fpy.Get_Price_History(
+        stock=name, start_date=start_date, end_date=end_date, adjust_price=True
+    )
+    stock = stock[
+        [
+            "Adj Open",
+            "Adj High",
+            "Adj Low",
+            "Adj Close",
+            "Adj Final",
+            "No",
+            "Value",
+            "Name",
+            "Market",
+        ]
+    ]
     stock.rename(
         columns={
-            "open": "Open",
-            "high": "High",
-            "value": "Value",
-            "close": "Close",
-            "low": "Low",
+            "Adj Open": "open",
+            "Adj High": "high",
+            "Adj Low": "low",
+            "Adj Close": "Close",
+            "Adj Final": "final",
+            "No": "number",
+            "Value": "Value",
+            "Market": "market",
+            "Name": "name",
         },
         inplace=True,
     )
-    stock = stock[start_date:end_date]
     stock["Change"] = stock["Close"].pct_change()
     stock.dropna(inplace=True)
     stock["Ret"] = np.log(stock["Close"] / stock["Close"].shift(1))
@@ -723,20 +737,10 @@ def read_stock(name, start_date, end_date):
     stock["Cummax"] = stock["Cret"].cummax()
     stock["Drow_Down"] = stock["Cummax"] - stock["Cret"]
     stock.dropna(inplace=True)
-    Ticker = tse.Ticker(name)
-    try:
-        shares = Ticker.total_shares
-        stock["Marcket_Cap"] = (shares * stock["Close"]) / 10**6
-    except:
-        pass
     dollar_azad, dollar_nima = read_dollar(start_date, end_date)
     stock_dollar = stock["Close"].copy()
     stock_dollar = stock_dollar.to_frame()
     stock_dollar["Close"] = stock_dollar["Close"] / dollar_azad["Close"]
-    try:
-        stock_dollar["Marcket_Cap"] = shares * stock_dollar["Close"]
-    except:
-        pass
     stock_dollar["Change"] = stock_dollar["Close"].pct_change()
     stock_dollar["Ret"] = np.log(stock_dollar["Close"] / stock_dollar["Close"].shift(1))
     stock_dollar["Cret"] = stock_dollar["Ret"].cumsum().apply(np.exp)
@@ -1411,7 +1415,6 @@ def mix_portfolio(names, prices, start, end):
 
 
 def get_pe_data(name):
-
     adress = f"{INDUSPATH}/{wl_prod[name]['indus']}/{name}/{structure['pe']}"
     pe = pd.read_excel(
         adress,
@@ -1715,7 +1718,6 @@ def create_month_id(month, year):
 
 
 def replace_negative_data(df):
-
     # iterate over each column of the DataFrame
     for col in df.columns:
         # check if any value in the column is negative
@@ -1724,6 +1726,16 @@ def replace_negative_data(df):
             median = df[col].median()
             # replace negative values with the median
             df.loc[df[col] < 0, col] = median
+
+
+def convert_to_miladi(str):
+    str_spl = str.split("-")
+    dates = [int(x) for x in str_spl]
+    return pd.to_datetime(JalaliDate(dates[0], dates[1], dates[2]).to_gregorian())
+
+
+def convert_to_jalali(date):
+    return f"{JalaliDate.to_jalali(date).year}-{JalaliDate.to_jalali(date).month:02}-{JalaliDate.to_jalali(date).day:02}"
 
 
 class DesiredPortfolio:
@@ -2146,33 +2158,19 @@ class Market:
 class Macro:
     def __init__(
         self,
-        year_s=1391,
-        month_s=1,
-        year_end=1402,
-        month_end=12,
+        start="1391-01-01",
+        end="1403-01-01",
         pe_f=6.5,
         sma_s=20,
         sma_l=100,
     ):
-        self.start = pd.to_datetime(JalaliDate(year_s, month_s, 1).to_gregorian())
-        self.end = pd.to_datetime(JalaliDate(year_end, month_end, 1).to_gregorian())
+        self.start = start
+        self.end = end
         self.sma_s = sma_s
         self.sma_l = sma_l
         self.dollar_azad, self.dollar_nima = read_dollar(self.start, self.end)
-        self.dollar_m = self.dollar_azad.resample("M").last()
-        self.dollar_m["Ret"] = self.dollar_azad.resample("M").sum()["Ret"]
-        self.dollar_m["Cret"] = self.dollar_m["Ret"].cumsum().apply(np.exp)
-        self.dollar_m["Change"] = (
-            self.dollar_m["Cret"] / self.dollar_m["Cret"].shift(1)
-        ) - 1
-        self.dollar_y = self.dollar_azad.resample("Y").last()
-        self.dollar_y["Ret"] = self.dollar_azad.resample("Y").sum()["Ret"]
-        self.dollar_y["Cret"] = self.dollar_y["Ret"].cumsum().apply(np.exp)
-        self.dollar_y["Change"] = (
-            self.dollar_y["Cret"] / self.dollar_y["Cret"].shift(1)
-        ) - 1
-        self.shakhes_kol = read_index("شاخص کل6", "d", self.start, self.end)
-        self.sahkhes_ham = read_index("شاخص کل (هم وزن)6", "d", self.start, self.end)
+        self.shakhes_kol = fpy.Get_CWI_History(start_date=self.start, end_date=self.end)
+        self.sahkhes_ham = fpy.Get_EWI_History(start_date=self.start, end_date=self.end)
         self.sma = 100
         self.dev = 3
         self.pe, self.probably = read_pe(self.sma, self.dev, self.start, self.end)
@@ -2665,30 +2663,25 @@ class Stock:
     def __init__(
         self,
         Name,
-        year_s=1396,
-        month_s=1,
-        year_end=1403,
-        month_end=12,
-        start_tester="2020",
-        end_tester="2023",
-        start_train="2020",
-        end_train="2023",
+        start_date="1396-01-01",
+        end_date="1403-01-01",
+        start_tester="1396-01-01",
+        end_tester="1403-01-01",
+        start_train="1396-01-01",
+        end_train="1403-01-01",
         discounted_n=0.7,
     ):
-
         self.discounted_n = discounted_n
         self.Name = Name
         self.ful_name = wl_prod[Name]["name"]
         self.industry = wl_prod[Name]["indus"]
         self.farsi = wl_prod[Name]["token"]
-        self.start_date = pd.to_datetime(JalaliDate(year_s, month_s, 1).to_gregorian())
+        self.start_date = start_date
         self.start_tester = start_tester
         self.end_tester = end_tester
         self.start_train = start_train
         self.end_train = end_train
-        self.end_date = pd.to_datetime(
-            JalaliDate(year_end, month_end, 1).to_gregorian()
-        )
+        self.end_date = end_date
 
         self.tc = 0.012
         error = []
@@ -2720,6 +2713,7 @@ class Stock:
                 self.last_year,
                 self.income_cagr_rial_yearly,
             ) = get_income_yearly(self.Name, "rial")
+
         except Exception as err:
             error.append(f"cant find {self.Name}income_yearly {err}")
         try:
@@ -2829,7 +2823,6 @@ class Stock:
             error.append(f"cant find {self.Name} voloume profile {err}")
         ############ create tester module #############
         try:
-
             self.my_tester = TesterOneSide(
                 self.Price, self.tc, self.Name, self.start_train, self.end_train
             )
@@ -3129,9 +3122,7 @@ class Stock:
         ax2.plot(self.Price["2020":]["Close"], linewidth=3)
         ax2.grid(color="white")
 
-    def plot_pe(self, y_s=1396, m_s=1, y_e=1402, m_e=12):
-        date1 = pd.to_datetime(JalaliDate(y_s, m_s, 1).to_gregorian())
-        date2 = pd.to_datetime(JalaliDate(y_e, m_e, 1).to_gregorian())
+    def plot_pe(self, date1="1396-01-01", date2="1403-01-01"):
         df = self.pe_forward_adjust.loc[date1:date2]
         plt.figure(figsize=[15, 12])
         plt.subplot(3, 1, 1)
@@ -3283,8 +3274,11 @@ class Stock:
             "transport_g_next": self.transport_g_next,
             "Energy_g": self.energy_g,
             "Energy_g_next": self.energy_g_next,
+            "Energy_g_done": self.energy_g_done,
             "alpha": self.alpha,
             "teta": self.teta,
+            "Scenario": self.scenario,
+            "Scenario_margin": self.scenario_margin,
         }
         ######### send data to self ##############3
         self.parameters = parameters
@@ -3592,10 +3586,8 @@ class Stock:
             self.inv_balance_com_quarterly = inv_balance_com
 
     def get_cash_flow(self, preiode):
-
         adress = f"{INDUSPATH}/{self.industry}/{self.Name}/{structure['cash'][preiode]}"
         if preiode == "yearly":
-
             my_col = list(self.income_rial_yearly.index)
             my_col.insert(0, "Data")
         elif preiode == "quarterly":
@@ -4781,15 +4773,11 @@ class Stock:
         )
         for i in dollar_yearly.index:
             if self.fiscal_year == 12:
-                date_1 = pd.to_datetime(JalaliDate(i, 1, 1).to_gregorian())
-                date_2 = pd.to_datetime(JalaliDate(i, 12, 29).to_gregorian())
+                date_1 = f"{i}-01-01"
+                date_2 = f"{i}-12-29"
             else:
-                date_1 = pd.to_datetime(
-                    JalaliDate(i - 1, self.fiscal_year, 1).to_gregorian()
-                )
-                date_2 = pd.to_datetime(
-                    JalaliDate(i, self.fiscal_year, 29).to_gregorian()
-                )
+                date_1 = f"{i-1}-{self.fiscal_year:02}-01"
+                date_2 = f"{i}-{self.fiscal_year:02}-29"
             dollar_yearly.loc[i, "azad"] = macro.dollar_azad.loc[date_1:date_2][
                 "Close"
             ].mean()
@@ -4810,8 +4798,12 @@ class Stock:
                 year = year - 1
             m1 = month - 2
             m2 = month
-            date_1 = pd.to_datetime(JalaliDate(year, m1, 1).to_gregorian())
-            date_2 = pd.to_datetime(JalaliDate(year, m2, 29).to_gregorian())
+            if m1 != 0:
+                date_1 = f"{year}-{m1:02}-01"
+                date_2 = f"{year}-{m2:02}-29"
+            else:
+                date_1 = f"{year-1}-12-01"
+                date_1 = f"{year}-{m2:02}-29"
             dollar_quarterly.loc[i, "azad"] = macro.dollar_azad.loc[date_1:date_2][
                 "Close"
             ].mean()
@@ -4828,8 +4820,9 @@ class Stock:
             index = self.transformer_index[i]
             year = int(index[:4])
             month = int(index[-2:])
-            date_1 = pd.to_datetime(JalaliDate(year, month, 1).to_gregorian())
-            date_2 = pd.to_datetime(JalaliDate(year, month, 29).to_gregorian())
+
+            date_1 = f"{year}-{month:02}-01"
+            date_2 = f"{year}-{month:02}-29"
             dollar_monthly.loc[i, "azad"] = macro.dollar_azad.loc[date_1:date_2][
                 "Close"
             ].mean()
@@ -4932,7 +4925,7 @@ class Stock:
         )
         plt.legend()
 
-    def predict_value(self, n_g=0, rf=0.30, erp=0.15, g=1, pe_terminal=1, k=1):
+    def predict_value(self, pe_terminal=1):
         eps1 = self.pred_income.loc[self.future_year, "EPS_Capital"]
         eps2 = self.pred_income.loc[self.future_year + 1, "EPS_Capital"]
         dps_ratio = self.eps_data["ratio"].iloc[-1]
@@ -4945,99 +4938,31 @@ class Stock:
         self.eps2 = eps2
         ## number of mounth to majma
         n = self.discounted_n
-        ## calculate historical expected_return
-        delta = self.Price["Close"].index[-1] - self.Price["Close"].index[0]
-        years = delta.days / 365
-        self.years = years
-        re_historical = (
-            self.Price["Close"].iloc[-1] / self.Price["Close"].iloc[0]
-        ) ** (1 / years)
-        self.re_historical = re_historical
-        ### calculate Beta ####
-        data_shakhes = pd.concat([self.Price["Close"], self.shakhes["Close"]], axis=1)
-        data_shakhes.columns = ["stock", "shakhes"]
-        data_shakhes.dropna(inplace=True)
-        data_shakhes = np.log(data_shakhes / data_shakhes.shift(1))
-        data_shakhes.dropna(inplace=True)
-        cov = data_shakhes.cov().iloc[0, 1]
-        var = data_shakhes["shakhes"].var()
-        beta = cov / var
-        self.beta = beta
-        self.data_shakhes = data_shakhes
-        ##### calculate expected_return #####
-        k_capm = rf + beta * erp
-        k_historical = re_historical - 1
-        if k == 1:
-            k = np.average([k_capm, k_historical], weights=[1, min(years / 10, 1)])
-        k = k_capm
-        self.k_historical = k_historical
-        self.k_capm = k_capm
-        self.k = k_capm
-
-        value_d = eps1 / (1 + k) ** n + eps2 / (1 + k) ** (1 + n)
-        value_d_dps = (dps1) / (1 + k) ** n + (dps2) / (1 + k) ** (1 + n)
+        value_d = eps1 / (1 + self.k) ** n + eps2 / (1 + self.k) ** (1 + n)
+        value_d_dps = (dps1) / (1 + self.k) ** n + (dps2) / (1 + self.k) ** (1 + n)
         ### find majority goods
         df = self.price_revenue_yearly.iloc[[-1]].copy()
         df.drop(["total", "جمع"], axis=1, inplace=True)
         major_good = df.idxmax(axis=1).values[0]
         self.major_good = major_good
-        ### calculate aggregate growth #######
 
-        rate_aggr = (
-            self.rate_yearly[major_good][-5:] / self.rate_yearly[major_good].iloc[-5]
-        )
-        cagr_rate = math.pow(
-            (
-                self.rate_yearly[major_good][-5:]
-                / self.rate_yearly[major_good].iloc[-5]
-            ).iloc[-1],
-            1 / (5 - 1),
-        )
-        self.rate_aggr = rate_aggr
-        self.cagr_rate = cagr_rate
-        count_aggr = (
-            self.count_revenue_yearly[major_good][-5:]
-            / self.count_revenue_yearly[major_good].iloc[-5]
-        )
-        cagr_count = math.pow(count_aggr.iloc[-1], 1 / (len(count_aggr) - 1))
-        self.count_aggr = count_aggr
-        self.cagr_count = cagr_count
-        profit_aggr = (
-            self.income_rial_yearly["Net_Profit"][-5:]
-            / self.income_rial_yearly["Net_Profit"].iloc[-5]
-        )
-        self.profit_aggr = profit_aggr
-        try:
-            cagr_profit = math.pow(profit_aggr.iloc[-1], 1 / (len(profit_aggr) - 1))
-            self.cagr_profit = cagr_profit
-        except Exception as err:
-            self.error.append(f"cant calculate cagr profit : {err}")
-
-        ###### Calculate G #######
-        if g == 1:
-            g_economy = 0.02 + rf
-            g_stock = (cagr_count) * (cagr_rate)
-            self.g_economy = g_economy
-            self.g_stock = g_stock
-            g = min(g_stock, g_economy)
-        self.g = g
         ##### estimate eps of ngrowth year ######
         i = 3
-        while i < 3 + n_g:
-            vars()[f"eps{i}"] = (g_stock) * vars()[f"eps{i-1}"]
-            vars()[f"dps{i}"] = (g_stock) * vars()[f"dps{i-1}"]
+        while i < 3 + self.n_g:
+            vars()[f"eps{i}"] = (self.g_stock) * vars()[f"eps{i-1}"]
+            vars()[f"dps{i}"] = (self.g_stock) * vars()[f"dps{i-1}"]
             # setattr(self,f"eps{i}",)
             self.__dict__[f"eps{i}"] = vars()[f"eps{i}"]
             self.__dict__[f"dps{i}"] = vars()[f"dps{i}"]
-            value_d += vars()[f"eps{i}"] / (1 + k) ** (i - 1 + n)
-            value_d_dps += vars()[f"dps{i}"] / (1 + k) ** (i - 1 + n)
+            value_d += vars()[f"eps{i}"] / (1 + self.k) ** (i - 1 + n)
+            value_d_dps += vars()[f"dps{i}"] / (1 + self.k) ** (i - 1 + n)
             i += 1
         ##### Calculate terminal p/e ##########
         if pe_terminal == 1:
             pe_terminal_historical = self.pe_fw_historical[["pe"]].median()
             pe_terminal_historical = pe_terminal_historical.values[0]
             self.pe_terminal_historical = pe_terminal_historical
-            pe_terminal_capm = (1 + g) / (k - g)
+            pe_terminal_capm = (1 + self.g) / (self.k - self.g)
             self.pe_terminal_capm = pe_terminal_capm
             pe_terminal = np.average(
                 [pe_terminal_historical, pe_terminal_capm], weights=[2, 1]
@@ -5046,7 +4971,9 @@ class Stock:
                 pe_terminal = 9
         self.pe_terminal = pe_terminal
         ###### Calculate terminal value #######
-        terminal_value = (vars()[f"eps{i-1}"] * pe_terminal) / ((1 + k) ** (i - 2 + n))
+        terminal_value = (vars()[f"eps{i-1}"] * pe_terminal) / (
+            (1 + self.k) ** (i - 2 + n)
+        )
         self.terminal_value = terminal_value
         value = value_d + terminal_value
         value_dps = value_d_dps + terminal_value
@@ -5056,7 +4983,7 @@ class Stock:
         self.value = value
         self.potential_value_g = (value / self.Price["Close"].iloc[-1]) - 1
         # create eps estimate dataframe
-        lst = list(range(self.future_year, self.future_year + n_g + 2))
+        lst = list(range(self.future_year, self.future_year + self.n_g + 2))
         df = pd.DataFrame(index=lst, columns=["EPS", "DPS"])
 
         df["EPS"].loc[self.future_year] = self.pred_income["EPS_Capital"].loc[
@@ -5067,22 +4994,10 @@ class Stock:
         ]
         df["DPS"].loc[self.future_year] = dps1
         df["DPS"].loc[self.future_year + 1] = dps2
-        for j in range(3, n_g + 2 + 1):
+        for j in range(3, self.n_g + 2 + 1):
             df["EPS"].loc[self.future_year + j - 1] = vars()[f"eps{j}"]
             df["DPS"].loc[self.future_year + j - 1] = vars()[f"dps{j}"]
         self.eps_estimate = df
-        value_parameter = {
-            "expected_return": k,
-            "pe_terminal": pe_terminal,
-            "number_of_year_estimate": n_g,
-            "g_stock": g_stock,
-            "cagr_rate": cagr_rate,
-            "cagr_count": cagr_count,
-            "value": value_dps,
-            "pe_forward": self.pe_fw,
-            "Price": self.Price["Close"].iloc[-1],
-        }
-        self.value_parameter = value_parameter
 
     # save your analyse
     def save_analyse(self, name):
@@ -5299,17 +5214,21 @@ class Stock:
         )
         pe_forward_adjust = {}
         for i in end_data.index:
-            date_1 = pd.to_datetime(JalaliDate(i, 1, 1).to_gregorian())
-            date_2 = pd.to_datetime(JalaliDate(i, 12, 29).to_gregorian())
-            for j in pd.date_range(date_1, date_2):
-                dt = date_2 - j
+            date_1 = f"{i}-01-01"
+            date_2 = f"{i}-12-29"
+            date_m1 = convert_to_miladi(date_1)
+            date_m2 = convert_to_miladi(date_2)
+            for j in pd.date_range(date_m1, date_m2):
+                dt = date_m2 - j
                 dt = dt.days
 
                 try:
                     adjust_eps = end_data.loc[i]["EPS_Capital"] / (
                         (1 + self.k) ** (dt / 365)
                     )
-                    pe_forward_adjust[j] = self.Price.loc[j]["Close"] / adjust_eps
+                    pe_forward_adjust[convert_to_jalali(j)] = (
+                        self.Price.loc[convert_to_jalali(j)]["Close"] / adjust_eps
+                    )
                     days.append(dt)
                     eps_yearly.append(end_data.loc[i]["EPS_Capital"])
                     lst_adjust_eps.append(adjust_eps)
@@ -5378,7 +5297,7 @@ class Stock:
         for i in self.pe_fw_yearly:
             pe_fw_historical.extend(i.tolist())
         self.pe_fw_historical = pd.DataFrame(np.array(pe_fw_historical))
-        date_1 = pd.to_datetime(JalaliDate(end_data.index[0], 1, 1).to_gregorian())
+        date_1 = f"{end_data.index[0]}-01-01"
         self.pe_fw_historical.set_index(self.Price[date_1:].index, inplace=True)
         self.pe_fw_historical["price"] = self.Price["Close"]
         self.pe_fw_historical["cret"] = (
@@ -5572,7 +5491,7 @@ class Stock:
                 m1 = m1 % 12
             id_m1 = f"{year}/{m1}"
             id_m2 = f"{year}/{m2}"
-            if m2 > m1:
+            if m2 >= m1:
                 df_cum_m = data_m.loc[id_m1:id_m2].cumsum().iloc[[-1]]
                 if len(lst) != 0:
                     df_cum_m.rename(
@@ -5624,7 +5543,6 @@ class Stock:
             else:
                 df = 0
             if (type_user == "income") and (isinstance(df, pd.DataFrame)):
-
                 df.drop("Realese_date", axis=1, inplace=True)
         if isinstance(df, pd.DataFrame):
             df.rename(index={df.index[0]: year}, inplace=True)
@@ -5641,13 +5559,13 @@ class Stock:
             y = int(i[:4])
             m = int(i[-2:])
             if m > self.fiscal_year:
-                new_m = m % self.fiscal_year
                 new_y = y + 1
+                res = m % self.fiscal_year
+                mul = np.floor(m / self.fiscal_year)
+                new_m = int((mul - 1) * self.fiscal_year + res)
             if m <= self.fiscal_year:
                 new_m = (12 - self.fiscal_year) + m
                 new_y = y
-            if new_m == 0:
-                new_m = self.fiscal_year
             id = f"{new_y}/{new_m}"
             new_id.append(id)
         df["new_id"] = new_id
@@ -5684,7 +5602,6 @@ class Stock:
         dep_g=1,
         dep_g_next=1,
     ):
-
         self.predict_material()
         self.predict_overhead(
             energy_g,
@@ -5745,7 +5662,6 @@ class Stock:
         self.pred_revenue = pred_revenue
 
     def predict_material(self):
-
         convert_revenue_yearly = (
             self.count_consump_yearly["جمع"] / self.count_revenue_yearly["جمع"]
         )
@@ -6012,8 +5928,8 @@ class Stock:
         alpha_rate_next=1,
         salary_g=1,
         salary_g_next=1,
-        energy_g=1,
-        energy_g_next=1,
+        energy_g="default",
+        energy_g_next="default",
         other_g=1,
         other_g_next=1,
         dep_g=1,
@@ -6022,10 +5938,15 @@ class Stock:
         transport_g_next=1,
         alpha=1,
         teta=1,
-        scenario="dollar",
-        scenario_margin="constant",
-        dollar_fu=350000,
-        dollar_fup=470000,
+        scenario="default",
+        scenario_margin="default",
+        dollar_fu="default",
+        dollar_fup="default",
+        k="default",
+        rf="default",
+        erp="default",
+        n_g="default",
+        g="default",
     ):
         ###### gather parameters ######
         self.salary_g = salary_g
@@ -6042,23 +5963,61 @@ class Stock:
         self.alpha_prod = alpha_prod
         self.alpha = alpha
         self.teta = teta
-        self.scenario = scenario
-        self.scenario_margin = scenario_margin
-        self.dollar_fu = dollar_fu
-        self.dollar_fup = dollar_fup
-        self.other_g = other_g
-        self.other_g_next = other_g_next
-        ####### create required data #######
         future_year = self.income_rial_yearly.index[-1] + 1
         self.future_year = future_year
+        if scenario == "default":
+            self.scenario = indusries[self.industry]["scenario"]
+        else:
+            self.scenario = scenario
+        if scenario_margin == "default":
+            self.scenario_margin = indusries[self.industry]["scenario_margin"]
+        else:
+            self.scenario_margin = scenario_margin
+        if energy_g == "default":
+            self.energy_g = indusries[self.industry]["energy_g"]
+        else:
+            self.energy_g = energy_g
+        if energy_g_next == "default":
+            self.energy_g_next = indusries[self.industry]["energy_g_next"]
+        else:
+            self.energy_g_next = energy_g_next
+        if dollar_fu == "default":
+            self.dollar_fu = pred_dollar[self.future_year]
+        else:
+            self.dollar_fu = dollar_fu
+        if dollar_fup == "default":
+            self.dollar_fup = pred_dollar[self.future_year + 1]
+        else:
+            self.dollar_fup = dollar_fup
+        self.other_g = other_g
+        self.other_g_next = other_g_next
+        ####### value_parameter
+        if rf == "default":
+            self.rf = 0.3
+        else:
+            self.rf = rf
+        if erp == "default":
+            self.erp = 0.15
+        else:
+            self.erp = erp
+        if n_g == "defalut":
+            self.n_g = 0
+        else:
+            self.n_g = n_g
+
+        ####### create required data #######
+
         q = []
         for i in self.count_revenue_quarterly.index:
             if int(i[:4]) == self.future_year:
                 q.append(int(i[-1]))
+            if int(i[-1]) == 4:
+                last_q = 4
         if len(q) != 0:
             last_q = max(q)
         else:
             last_q = 0
+        # last_q = int(self.count_revenue_quarterly.index[-1][-1])
         self.last_q = last_q
         last_m = int(self.count_revenue_monthly.iloc[[-1]].index[0].split("/")[1])
         year_m = int(self.count_revenue_monthly.iloc[[-1]].index[0].split("/")[0])
@@ -6182,27 +6141,19 @@ class Stock:
                 self.rate_rev_consump["ratio"].iloc[-3]
                 / self.rate_rev_consump["ratio"].iloc[-2]
             )
+        #### Update Energy_g and salary_g ####
         if isinstance(cost_cum_ch, pd.DataFrame):
             if math.isnan(cost_cum_ch["direct_salary"].iloc[-1]) == False:
                 salary_g = 1 + cost_cum_ch["direct_salary"].iloc[-1]
-                if self.salary_g == 1:
-                    self.salary_g = salary_g
-                if self.salary_g_next == 1:
-                    self.salary_g_next = salary_g
+                self.salary_g_done = salary_g
         if isinstance(overhead_cum_ch, pd.DataFrame):
             if math.isnan(overhead_cum_ch["energy"].iloc[-1]) == False:
                 energy_g = 1 + overhead_cum_ch["energy"].iloc[-1]
-                if self.energy_g == 1:
-                    self.energy_g = energy_g
-                if self.energy_g_next == 1:
-                    self.energy_g_next = energy_g
+                self.energy_g_done = energy_g
 
             if math.isnan(overhead_cum_ch["other"].iloc[-1]) == False:
                 other_g = 1 + overhead_cum_ch["other"].iloc[-1]
-                self.other_g = other_g
-            else:
-                other_g = 1
-                self.other_g = other_g
+                self.other_g_done = other_g
 
         ##### predict alpha and material parameters #######
         #### predict_alpha_rate ######
@@ -6307,6 +6258,81 @@ class Stock:
         alpha_q = find_rate(self.rate_monthly, self.major_good) / find_rate(
             self.rate_quarterly, self.major_good
         )
+        #################### Predict_value_parameters ############3######
+        ## calculate historical expected_return
+        delta = convert_to_miladi(self.Price["Close"].index[-1]) - convert_to_miladi(
+            self.Price["Close"].index[0]
+        )
+        years = delta.days / 365
+        self.years = years
+        re_historical = (
+            self.Price["Close"].iloc[-1] / self.Price["Close"].iloc[0]
+        ) ** (1 / years)
+        self.re_historical = re_historical
+        ### calculate Beta ####
+        data_shakhes = pd.concat([self.Price["Close"], self.shakhes["Close"]], axis=1)
+        data_shakhes.columns = ["stock", "shakhes"]
+        data_shakhes.dropna(inplace=True)
+        data_shakhes = np.log(data_shakhes / data_shakhes.shift(1))
+        data_shakhes.dropna(inplace=True)
+        cov = data_shakhes.cov().iloc[0, 1]
+        var = data_shakhes["shakhes"].var()
+        beta = cov / var
+        self.beta = beta
+        self.data_shakhes = data_shakhes
+        ##### calculate expected_return #####
+        k_capm = self.rf + self.beta * self.erp
+        k_historical = self.re_historical - 1
+        if k == "default":
+            k = np.average([k_capm, k_historical], weights=[1, min(years / 10, 1)])
+        self.k_historical = k_historical
+        self.k_capm = k_capm
+        self.k = k
+        ### calculate aggregate growth #######
+        rate_aggr = (
+            self.rate_yearly[major_good][-5:] / self.rate_yearly[major_good].iloc[-5]
+        )
+        cagr_rate = math.pow(
+            (
+                self.rate_yearly[major_good][-5:]
+                / self.rate_yearly[major_good].iloc[-5]
+            ).iloc[-1],
+            1 / (5 - 1),
+        )
+        self.rate_aggr = rate_aggr
+        self.cagr_rate = cagr_rate
+        count_aggr = (
+            self.count_revenue_yearly[major_good][-5:]
+            / self.count_revenue_yearly[major_good].iloc[-5]
+        )
+        cagr_count = math.pow(count_aggr.iloc[-1], 1 / (len(count_aggr) - 1))
+        self.count_aggr = count_aggr
+        self.cagr_count = cagr_count
+        profit_aggr = (
+            self.income_rial_yearly["Net_Profit"][-5:]
+            / self.income_rial_yearly["Net_Profit"].iloc[-5]
+        )
+        self.profit_aggr = profit_aggr
+        try:
+            cagr_profit = math.pow(profit_aggr.iloc[-1], 1 / (len(profit_aggr) - 1))
+            self.cagr_profit = cagr_profit
+        except Exception as err:
+            self.error.append(f"cant calculate cagr profit : {err}")
+
+        ###### Calculate G #######
+        self.g_economy = 0.02 + self.rf
+        self.g_stock = (cagr_count) * (cagr_rate)
+        if g == "default":
+            g = min(self.g_stock, self.g_economy)
+        self.g = g
+        value_parameter = {
+            "expected_return": self.k,
+            "number_of_year_estimate": self.n_g,
+            "g_stock": self.g_stock,
+            "cagr_rate": self.cagr_rate,
+            "cagr_count": self.cagr_count,
+        }
+        self.value_parameter = value_parameter
 
     def predict_opex(self):
         rev_op_quarterly = pd.DataFrame(columns=["rev", "opex"])
@@ -6729,8 +6755,8 @@ class OptPort:
     def optimize_weight(self, M0):
         LB = np.zeros(len(self.names))
         UB = np.ones(len(self.names))
-        w, best_loss = ps.pso(self.cost_function, LB, UB, swarmsize=40, maxiter=60)
-        return w, best_loss
+        # w, best_loss = ps.pso(self.cost_function, LB, UB, swarmsize=40, maxiter=60)
+        # return w, best_loss
 
 
 class IndustryPe:
