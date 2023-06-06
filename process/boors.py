@@ -1447,11 +1447,13 @@ def select_df(df, str1, str2):
     ########search for str1 str2##########
     for i in df.index:
         for j in df.columns:
-            if df.loc[i, j] == str1:
-                first.append(i)
+            if isinstance(df.loc[i, j], str):
+                if str1 in df.loc[i, j]:
+                    first.append(i)
 
-            if df.loc[i, j] == str2:
-                end.append(i)
+            if isinstance(df.loc[i, j], str):
+                if df.loc[i, j] == str2:
+                    end.append(i)
     a = []
     #########search for str2 subsequent str1##########
     for i in end:
@@ -5654,10 +5656,15 @@ class Stock:
         pred_revenue = pd.DataFrame(
             index=[self.future_year, self.future_year + 1], columns=["revenue"]
         )
-        pred_revenue["revenue"] = np.squeeze(
-            price_revenue_residual["revenue"].values
-            + self.price_revenue_done["total"].values
-        )
+        if isinstance(self.price_revenue_done, pd.DataFrame):
+            pred_revenue["revenue"] = np.squeeze(
+                price_revenue_residual["revenue"].values
+                + self.price_revenue_done["total"].values
+            )
+        else:
+            pred_revenue["revenue"] = np.squeeze(
+                price_revenue_residual["revenue"].values + 0
+            )
         self.price_revenue_residual = price_revenue_residual
         self.pred_revenue = pred_revenue
 
@@ -5922,12 +5929,12 @@ class Stock:
 
     def predict_parameter(
         self,
-        alpha_rate=1,
+        alpha_rate="default",
         alpha_prod=1,
         alpha_prod_next=1,
-        alpha_rate_next=1,
-        salary_g=1,
-        salary_g_next=1,
+        alpha_rate_next="default",
+        salary_g=1.27,
+        salary_g_next=1.27,
         energy_g="default",
         energy_g_next="default",
         other_g=1,
@@ -5942,7 +5949,7 @@ class Stock:
         scenario_margin="default",
         dollar_fu="default",
         dollar_fup="default",
-        k="default",
+        k="capm",
         rf="default",
         erp="default",
         n_g="default",
@@ -5958,11 +5965,11 @@ class Stock:
         self.dep_g = dep_g
         self.dep_g_next = dep_g_next
         self.alpha_prod_next = alpha_prod_next
-        self.alpha_rate = alpha_rate
-        self.alpha_rate_next = alpha_rate_next
         self.alpha_prod = alpha_prod
         self.alpha = alpha
         self.teta = teta
+        self.energy_g_done = 1
+        self.other_g_done = 1
         future_year = self.income_rial_yearly.index[-1] + 1
         self.future_year = future_year
         if scenario == "default":
@@ -5989,6 +5996,21 @@ class Stock:
             self.dollar_fup = pred_dollar[self.future_year + 1]
         else:
             self.dollar_fup = dollar_fup
+        if alpha_rate == "default":
+            if indusries[self.industry]["scenario"] == "last":
+                self.alpha_rate = indusries[self.industry]["alpha_rate"]
+            else:
+                self.alpha_rate = 1
+        else:
+            self.alpha_rate = alpha_rate
+        if alpha_rate_next == "default":
+            if indusries[self.industry]["scenario"] == "last":
+                self.alpha_rate_next = indusries[self.industry]["alpha_rate_next"]
+            else:
+                self.alpha_rate_next = 1
+        else:
+            self.alpha_rate_next = alpha_rate_next
+
         self.other_g = other_g
         self.other_g_next = other_g_next
         ####### value_parameter
@@ -6069,8 +6091,10 @@ class Stock:
         else:
             cost_cum_ch = 0
         self.cost_cum_ch = cost_cum_ch
+        ###### predict rate #######
+        self.predict_rate()
         ##### create_parameters ########
-        #### predict teta ####
+        #### predict teta and alpha ####
         df = pd.DataFrame(columns=[self.major_good, self.major_consump])
         df[self.major_good] = self.rate_dollar_nima_quarterly[self.major_good]
         df[self.major_consump] = self.rate_consump_dollar_nima_quarterly[
@@ -6097,12 +6121,12 @@ class Stock:
             m_fup = m_fu
         df.loc[self.future_year] = 0
         df.loc[self.future_year + 1] = 0
-        df.loc[self.future_year, self.major_good] = self.rate_dollar_nima_monthly[
+        df.loc[self.future_year, self.major_good] = self.pred_dollar_rate[
             self.major_good
-        ].loc[m_fu[-1]]
-        df.loc[self.future_year + 1, self.major_good] = self.rate_dollar_nima_monthly[
+        ].loc[self.future_year]
+        df.loc[self.future_year + 1, self.major_good] = self.pred_dollar_rate[
             self.major_good
-        ].loc[m_fup[-1]]
+        ].loc[self.future_year + 1]
 
         q_fu = []
         q_fup = []
@@ -6136,7 +6160,7 @@ class Stock:
                 self.rate_rev_consump["ratio"].iloc[-3]
                 / self.rate_rev_consump["ratio"].iloc[-1]
             )
-        if self.alpha and (self.scenario_margin != "constant") == 1:
+        if (self.alpha == 1) and (self.scenario_margin != "constant"):
             self.alpha = 1 / (
                 self.rate_rev_consump["ratio"].iloc[-3]
                 / self.rate_rev_consump["ratio"].iloc[-2]
@@ -6150,7 +6174,6 @@ class Stock:
             if math.isnan(overhead_cum_ch["energy"].iloc[-1]) == False:
                 energy_g = 1 + overhead_cum_ch["energy"].iloc[-1]
                 self.energy_g_done = energy_g
-
             if math.isnan(overhead_cum_ch["other"].iloc[-1]) == False:
                 other_g = 1 + overhead_cum_ch["other"].iloc[-1]
                 self.other_g_done = other_g
@@ -6174,87 +6197,100 @@ class Stock:
         df_cum_future_year = self.create_cumulative_data(
             type_user="count", year=self.future_year, q=self.last_q, m2=self.last_m
         )
-        df_cum_count = pd.concat([df_cum_last_year, df_cum_future_year])
-        self.df_cum_count = df_cum_count
-        ######## create predict growth of count W#####
-        self.predict_rate()
-        pred_growth = df_cum_count.pct_change()
-        pred_growth.dropna(axis=0, how="all", inplace=True)
-        pred_growth.fillna(0, inplace=True)
-        pred_growth.drop(["جمع", "total"], axis=1, inplace=True)
-        pred_growth = 1 + pred_growth
-        if self.alpha_prod == 1:
-            pred_growth.loc[self.future_year + 1] = self.alpha_prod_next * np.ones(
-                len(pred_growth.loc[self.future_year])
-            )
-        if self.alpha_prod != 1:
-            pred_growth.loc[self.future_year] = self.alpha_prod * np.ones(
-                len(pred_growth.loc[self.future_year])
-            )
-            pred_growth.loc[self.future_year + 1] = self.alpha_prod_next * np.ones(
-                len(pred_growth.loc[self.future_year])
+
+        if isinstance(df_cum_future_year, pd.DataFrame):
+            # calculate count rev done
+
+            count_revenue_done = self.create_cumulative_data(
+                type_user="count", year=self.future_year, q=self.last_q, m2=self.last_m
             )
 
-        # calculate count rev done
+            count_revenue_done.loc[self.future_year + 1] = np.zeros(
+                len(count_revenue_done.loc[self.future_year])
+            )
+            count_revenue_done.drop(["جمع", "total"], axis=1, inplace=True)
+            drop_non_same_columns(self.pred_rate, count_revenue_done)
+            self.count_revenue_done = count_revenue_done
+            price_revenue_done = self.create_cumulative_data(
+                type_user="price", year=self.future_year, q=self.last_q, m2=self.last_m
+            )
+            price_revenue_done.loc[self.future_year + 1] = np.zeros(
+                len(price_revenue_done.loc[self.future_year])
+            )
+            price_revenue_done.drop(["جمع", "total"], axis=1, inplace=True)
+            price_revenue_done["total"] = price_revenue_done.sum(axis=1)
+            drop_non_same_columns(self.pred_rate, price_revenue_done)
+            try:
+                rate_done = price_revenue_done / count_revenue_done
+            except:
+                rate_done = 0
+            self.rate_done = rate_done
+            price_revenue_done["total"] = price_revenue_done.sum(axis=1)
+            self.price_revenue_done = price_revenue_done
+            df_cum_count = pd.concat([df_cum_last_year, df_cum_future_year])
+            self.df_cum_count = df_cum_count
+            ######## create predict growth of count W#####
 
-        count_revenue_done = self.create_cumulative_data(
-            type_user="count", year=self.future_year, q=self.last_q, m2=self.last_m
-        )
-
-        count_revenue_done.loc[self.future_year + 1] = np.zeros(
-            len(count_revenue_done.loc[self.future_year])
-        )
-        count_revenue_done.drop(["جمع", "total"], axis=1, inplace=True)
-        drop_non_same_columns(self.pred_rate, count_revenue_done)
-        self.count_revenue_done = count_revenue_done
-        price_revenue_done = self.create_cumulative_data(
-            type_user="price", year=self.future_year, q=self.last_q, m2=self.last_m
-        )
-        price_revenue_done.loc[self.future_year + 1] = np.zeros(
-            len(price_revenue_done.loc[self.future_year])
-        )
-        price_revenue_done.drop(["جمع", "total"], axis=1, inplace=True)
-        price_revenue_done["total"] = price_revenue_done.sum(axis=1)
-        drop_non_same_columns(self.pred_rate, price_revenue_done)
-        try:
-            rate_done = price_revenue_done / count_revenue_done
-        except:
-            rate_done = 0
-        self.rate_done = rate_done
-        self.price_revenue_done = price_revenue_done
-
-        # detect noise of pred growth
-        flag_unusual_g = 0
-        for i in pred_growth.index:
-            for j in pred_growth.columns:
-                if (pred_growth.loc[i, j] > 3) | (pred_growth.loc[i, j] < 0.2):
-                    flag_unusual_g = 1
-        self.pred_growth = pred_growth
-        # create pred count revenue
-        pred_count_revenue = pd.DataFrame(columns=last_count_revenue.columns)
-        pred_count_revenue.loc[self.future_year] = 0
-        pred_count_revenue.loc[self.future_year + 1] = 0
-
-        # calculate pred count revenue
-        if flag_unusual_g != 1:
-            for i in pred_count_revenue.columns:
-                pred_count_revenue.loc[self.future_year, i] = (
-                    pred_growth.loc[self.future_year, i]
-                    * last_count_revenue.loc[self.future_year - 1, i]
+            pred_growth = df_cum_count.pct_change()
+            pred_growth.dropna(axis=0, how="all", inplace=True)
+            pred_growth.fillna(0, inplace=True)
+            pred_growth.drop(["جمع", "total"], axis=1, inplace=True)
+            pred_growth = 1 + pred_growth
+            if self.alpha_prod == 1:
+                pred_growth.loc[self.future_year + 1] = self.alpha_prod_next * np.ones(
+                    len(pred_growth.loc[self.future_year])
                 )
-                pred_count_revenue.loc[self.future_year + 1, i] = (
-                    pred_growth.loc[self.future_year + 1, i]
-                    * pred_count_revenue.loc[self.future_year, i]
+            if self.alpha_prod != 1:
+                pred_growth.loc[self.future_year] = self.alpha_prod * np.ones(
+                    len(pred_growth.loc[self.future_year])
                 )
-        if flag_unusual_g == 1:
-            pred_count_revenue = 12 / (self.last_m) * count_revenue_done
-            pred_count_revenue.loc[self.future_year + 1] = pred_count_revenue.loc[
-                self.future_year
-            ]
-        drop_non_same_columns(self.pred_rate, pred_count_revenue)
-        price_revenue_done["total"] = price_revenue_done.sum(axis=1)
-        self.pred_count_revenue = pred_count_revenue
+                pred_growth.loc[self.future_year + 1] = self.alpha_prod_next * np.ones(
+                    len(pred_growth.loc[self.future_year])
+                )
 
+            # detect noise of pred growth
+            flag_unusual_g = 0
+            for i in pred_growth.index:
+                for j in pred_growth.columns:
+                    if (pred_growth.loc[i, j] > 4) | (pred_growth.loc[i, j] < 0.2):
+                        flag_unusual_g = 1
+            self.pred_growth = pred_growth
+            # create pred count revenue
+            pred_count_revenue = pd.DataFrame(columns=last_count_revenue.columns)
+            pred_count_revenue.loc[self.future_year] = 0
+            pred_count_revenue.loc[self.future_year + 1] = 0
+
+            # calculate pred count revenue
+            if flag_unusual_g != 1:
+                for i in pred_count_revenue.columns:
+                    pred_count_revenue.loc[self.future_year, i] = (
+                        pred_growth.loc[self.future_year, i]
+                        * last_count_revenue.loc[self.future_year - 1, i]
+                    )
+                    pred_count_revenue.loc[self.future_year + 1, i] = (
+                        pred_growth.loc[self.future_year + 1, i]
+                        * pred_count_revenue.loc[self.future_year, i]
+                    )
+            if flag_unusual_g == 1:
+                pred_count_revenue = 12 / (self.last_m) * count_revenue_done
+                pred_count_revenue.loc[self.future_year + 1] = pred_count_revenue.loc[
+                    self.future_year
+                ]
+
+            drop_non_same_columns(self.pred_rate, pred_count_revenue)
+
+            self.pred_count_revenue = pred_count_revenue
+        else:
+            self.pred_count_revenue = last_count_revenue
+            self.count_revenue_done = 0
+            self.price_revenue_done = 0
+            self.pred_count_revenue.rename(
+                index={self.future_year - 1: self.future_year}, inplace=True
+            )
+            self.pred_count_revenue.loc[
+                self.future_year + 1
+            ] = self.pred_count_revenue.loc[self.future_year]
+            drop_non_same_columns(self.pred_rate, self.pred_count_revenue)
         alpha_q = find_rate(self.rate_monthly, self.major_good) / find_rate(
             self.rate_quarterly, self.major_good
         )
@@ -6285,6 +6321,8 @@ class Stock:
         k_historical = self.re_historical - 1
         if k == "default":
             k = np.average([k_capm, k_historical], weights=[1, min(years / 10, 1)])
+        if k == "capm":
+            k = k_capm
         self.k_historical = k_historical
         self.k_capm = k_capm
         self.k = k
@@ -6601,6 +6639,11 @@ class Stock:
         if self.scenario == "last":
             self.pred_rate = self.last_rate * np.array(
                 [[self.alpha_rate], [self.alpha_rate_next]]
+            )
+            self.pred_dollar_rate = (
+                self.pred_rate
+                * 1000000
+                / np.array([[self.dollar_fu], [self.dollar_fup]])
             )
 
     def plot_other_over(self):
