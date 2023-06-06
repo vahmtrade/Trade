@@ -9,7 +9,7 @@ import pandas as pd
 from datetime import datetime
 from pathlib import Path
 from collections import defaultdict
-from itertools import tee
+from itertools import pairwise, tee
 
 from statics.setting import *
 
@@ -20,12 +20,6 @@ if platform.system() == "Windows":
 def benfords_law(nums):
     ones = list(filter(lambda x: True if str(x)[0] == "1" else False, nums))
     return len(ones) / len(nums)
-
-
-def pairwise(iterable):
-    a, b = tee(iterable)
-    next(b, None)
-    return zip(a, b)
 
 
 def all_dict_values(data: dict):

@@ -1,6 +1,7 @@
 arabic-reshaper==2.1.4
 black==22.6.0
 Django==4.1
+finpy-tse==1.2.4
 fredapi==0.5.0
 html5lib==1.1
 ipykernel==6.15.1

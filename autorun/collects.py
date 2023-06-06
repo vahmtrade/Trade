@@ -110,7 +110,7 @@ def codal_login():
         sleep(break_time)
 
         # select 'jostojoye etelaye'
-        search = '//*[@id="aSearch"]'
+        search = "//*[@id='aSearch']"
         webwait.until(clickable((By.XPATH, search)))
         driver.find_element(By.XPATH, search).click()
         sleep(break_time)
@@ -128,7 +128,7 @@ def codal_search(name):
         sleep(break_time)
 
         # send stock name
-        send = '//*[@id="txtSymbol"]'
+        send = "//*[@id='txtSymbol']"
         webwait.until(presence((By.XPATH, send)))
         driver.find_element(By.XPATH, send).clear()
         driver.find_element(By.XPATH, send).send_keys(wl_prod[name]["name"])
@@ -211,9 +211,9 @@ def codal_eps(name, n=5):
             driver.get(link)
 
             date_xpath = "//*[@id='tblAssembly']/tbody/tr[2]/td/bdo[2]"
-            eps_xpath = '//*[@id="ucAssemblyPRetainedEarning_grdAssemblyProportionedRetainedEarning_ctl17_Span1"]'
-            dps_xpath = '//*[@id="ucAssemblyPRetainedEarning_grdAssemblyProportionedRetainedEarning_ctl18_Span1"]'
-            capital_xpath = '//*[@id="ucAssemblyPRetainedEarning_grdAssemblyProportionedRetainedEarning_ctl19_Span1"]'
+            eps_xpath = "//*[@id='ucAssemblyPRetainedEarning_grdAssemblyProportionedRetainedEarning_ctl17_Span1']"
+            dps_xpath = "//*[@id='ucAssemblyPRetainedEarning_grdAssemblyProportionedRetainedEarning_ctl18_Span1']"
+            capital_xpath = "//*[@id='ucAssemblyPRetainedEarning_grdAssemblyProportionedRetainedEarning_ctl19_Span1']"
 
             try:
                 dates.append(driver.find_element(By.XPATH, date_xpath).text)
