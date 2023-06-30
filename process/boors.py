@@ -24,7 +24,9 @@ from statics.setting import *
 from preprocess.basic import *
 from process.strategy import *
 import finpy_tse as fpy
+import warnings
 
+warnings.filterwarnings("ignore")
 plt.style.use("seaborn")
 
 
@@ -1702,12 +1704,12 @@ def monte_carlo_simulate(data, num_simulations=100, num_days=365):
         simulation_df[i] = price_series
 
     # Plot simulations
-    fig = plt.figure(figsize=(16, 8))
-    plt.plot(simulation_df)
-    plt.xlabel("Day")
-    plt.ylabel("Price")
-    plt.title("Monte Carlo Simulation for Stock Prices")
-    plt.show()
+    # fig = plt.figure(figsize=(16, 8))
+    # plt.plot(simulation_df)
+    # plt.xlabel("Day")
+    # plt.ylabel("Price")
+    # plt.title("Monte Carlo Simulation for Stock Prices")
+    # plt.show()
     return simulation_df
 
 
@@ -2424,37 +2426,45 @@ class Macro:
         data_1400.set_index("month", inplace=True)
         data_1401.set_index("month", inplace=True)
         # create data_1400_dollar
-        dollar_azad_1400 = []
-        dollar_nima_1400 = []
         ir_1400 = []
         pe_1400 = []
+        dollar_azad_1400 = []
+        dollar_nima_1400 = []
         for i in data_1400.index:
-            date_1 = pd.to_datetime(JalaliDate(1400, i, 1).to_gregorian())
-            date_2 = pd.to_datetime(JalaliDate(1400, i, 29).to_gregorian())
-            dollar_azad_1400.append(self.dollar_azad.loc[date_1:date_2]["Close"].mean())
-            dollar_nima_1400.append(self.dollar_nima.loc[date_1:date_2]["Close"].mean())
-            ir_1400.append(self.IR.loc[date_1:date_2]["Close"].mean())
-            pe_1400.append(self.pe.loc[date_1:date_2]["Close"].mean())
+            if i < 12:
+                date1 = f"1400-{i:02}"
+                date2 = f"1400-{i+1:02}"
+            else:
+                date1 = f"1400-{i:02}"
+                date2 = "1401-01"
+            dollar_azad_1400.append(self.dollar_azad.loc[date1:date2]["Close"].mean())
+            dollar_nima_1400.append(self.dollar_nima.loc[date1:date2]["Close"].mean())
+            ir_1400.append(self.IR.loc[date1:date2]["Close"].mean())
+            pe_1400.append(self.pe.loc[date1:date2]["Close"].mean())
         data_1400["dollar_azad"] = dollar_azad_1400
         data_1400["dollar_nima"] = dollar_nima_1400
-        data_1400["IR"] = ir_1400
         data_1400["pe"] = pe_1400
+        data_1400["ir"] = ir_1400
         # create data_1401_dollar
-        dollar_azad_1401 = []
-        dollar_nima_1401 = []
         ir_1401 = []
         pe_1401 = []
+        dollar_azad_1401 = []
+        dollar_nima_1401 = []
         for i in data_1401.index:
-            date_1 = pd.to_datetime(JalaliDate(1401, i, 1).to_gregorian())
-            date_2 = pd.to_datetime(JalaliDate(1401, i, 29).to_gregorian())
-            dollar_azad_1401.append(self.dollar_azad.loc[date_1:date_2]["Close"].mean())
-            dollar_nima_1401.append(self.dollar_nima.loc[date_1:date_2]["Close"].mean())
-            ir_1401.append(self.IR.loc[date_1:date_2]["Close"].mean())
-            pe_1401.append(self.pe.loc[date_1:date_2]["Close"].mean())
+            if i < 12:
+                date1 = f"1401-{i:02}"
+                date2 = f"1401-{i+1:02}"
+            else:
+                date1 = f"1401-{i:02}"
+                date2 = "1402-01"
+            dollar_azad_1401.append(self.dollar_azad.loc[date1:date2]["Close"].mean())
+            dollar_nima_1401.append(self.dollar_nima.loc[date1:date2]["Close"].mean())
+            ir_1401.append(self.IR.loc[date1:date2]["Close"].mean())
+            pe_1401.append(self.pe.loc[date1:date2]["Close"].mean())
         data_1401["dollar_azad"] = dollar_azad_1401
         data_1401["dollar_nima"] = dollar_nima_1401
-        data_1401["IR"] = ir_1401
         data_1401["pe"] = pe_1401
+        data_1401["ir"] = ir_1401
         data_1401["cash/base"] = data_1401["cash"] / data_1401["base_money"]
         data_1401["ratio_deposits"] = data_1401["current_deposits"] / data_1401["cash"]
         data_1400["cash/base"] = data_1400["cash"] / data_1400["base_money"]
@@ -3362,32 +3372,6 @@ class Stock:
         df["EPS"] = df["EPS"] * df["capital"] / df["capital_now"]
         df["DPS"] = df["DPS"] * df["capital"] / df["capital_now"]
         df["ratio"] = df["DPS"] / df["EPS"]
-        # add miladi
-        lst = []
-        for i in df["date"]:
-            for j in i.split("/"):
-                lst.append(int(j))
-        l = int(len(lst) / 3)
-        y = []
-        m = []
-        d = []
-        miladi_lst = []
-        for i in range(l):
-            y = lst[3 * i]
-            m = lst[3 * i + 1]
-            d = lst[3 * i + 2]
-            miladi = pd.to_datetime(JalaliDate(y, m, d).to_gregorian())
-            miladi_lst.append(miladi)
-        miladi_lst
-        df["miladi"] = miladi_lst
-        # add price_data
-        price = []
-        for i in df["miladi"]:
-            price.append(self.Price.loc[i:].iloc[0]["Close"])
-        df["price"] = price
-        # add p/e and p/d
-        df["pe"] = df["price"] / df["EPS"]
-        df["pd"] = df["price"] / df["DPS"]
 
         ratio_mean = df["ratio"].median()
         # add future_year
@@ -3405,13 +3389,6 @@ class Stock:
             df.loc[future_year]["DPS"] / df.loc[future_year]["EPS"]
         )
 
-        df.loc[future_year, "price"] = self.Price.iloc[-1]["Close"]
-        df.loc[future_year, "pe"] = (
-            df.loc[future_year]["price"] / df.loc[future_year]["EPS"]
-        )
-        df.loc[future_year, "pd"] = (
-            df.loc[future_year]["price"] / df.loc[future_year]["DPS"]
-        )
         # add future year + 1
         df.loc[future_year + 1] = np.zeros(len(df.iloc[0]))
         df.loc[future_year + 1, "EPS"] = self.pred_income.loc[future_year + 1]["EPS"]
@@ -3428,23 +3405,11 @@ class Stock:
             df.loc[future_year + 1]["DPS"] / df.loc[future_year + 1]["EPS"]
         )
 
-        df.loc[future_year + 1, "price"] = self.Price.iloc[-1]["Close"]
-        df.loc[future_year + 1, "pe"] = (
-            df.loc[future_year + 1]["price"] / df.loc[future_year + 1]["EPS"]
-        )
-        df.loc[future_year + 1, "pd"] = (
-            df.loc[future_year + 1]["price"] / df.loc[future_year + 1]["DPS"]
-        )
         # add ret and cret
         df["EPS_ret"] = df["EPS"].pct_change()
         df["EPS_cret"] = df["EPS"] / df["EPS"].iloc[0]
-        df["price_ret"] = df["price"].pct_change()
-        df["price_cret"] = df["price"] / df["price"].iloc[0]
         self.eps_data = df
         self.grow_eps = self.eps_data["EPS_ret"].iloc[-1]
-        self.pe_fw = df["pe"].loc[future_year]
-        self.pe_med = self.pe_n["P/E-ttm"].median()
-        self.potential_price_g = (self.pe_med - self.pe_fw) / self.pe_med
 
     def get_balance_sheet(self, periode):
         # create adress and coloumns proper tp peride
@@ -5765,20 +5730,30 @@ class Stock:
             columns=["material"], index=[self.future_year, self.future_year + 1]
         )
 
-        if self.rev_mat_quarterly.corr().loc["revenue", "material"] > 0.5:
-            material_residual["material"] = self.model_material_quarterly.predict(
-                self.income_residual
+        if self.ratio_fu == "default":
+            if self.material_algorithm == "quarterly":
+                material_residual["material"] = self.model_material_quarterly.predict(
+                    self.income_residual
+                )
+            if self.material_algorithm == "yearly":
+                material_residual["material"] = self.model_material_yearly.predict(
+                    self.income_residual
+                )
+            material_residual = material_residual * np.array(
+                [
+                    [self.alpha],
+                    [self.teta],
+                ]
             )
         else:
-            material_residual["material"] = self.model_material_yearly.predict(
-                self.income_residual
+            material_residual.loc[self.future_year, "material"] = (
+                self.ratio_fu * self.income_residual.loc[self.future_year].values[0]
             )
-        material_residual = material_residual * np.array(
-            [
-                [self.alpha],
-                [self.teta],
-            ]
-        )
+            material_residual.loc[self.future_year + 1, "material"] = (
+                self.ratio_fup
+                * self.income_residual.loc[self.future_year + 1].values[0]
+            )
+
         pred_material = pd.DataFrame(
             columns=["material"], index=[self.future_year, self.future_year + 1]
         )
@@ -5803,16 +5778,21 @@ class Stock:
     def plot_rev_mat(self):
         x_min = self.rev_mat_quarterly["revenue"].min()
         x_max = self.rev_mat_quarterly["revenue"].max()
+        x_y_min = self.rev_mat_yearly["revenue"].min()
+        x_y_max = self.rev_mat_yearly["revenue"].max()
         x = np.linspace(x_min, x_max, 1000)
+        x_y = np.linspace(x_y_min, x_y_max, 1000)
         x = x.reshape(-1, 1)
+        x_y = x_y.reshape(-1, 1)
         y_q = self.model_material_quarterly.predict(x)
         y_y = self.model_material_yearly.predict(x)
+        y_yearly = self.model_material_yearly.predict(x_y)
         plt.scatter(
             self.rev_mat_quarterly["revenue"], self.rev_mat_quarterly["material_adj"]
         )
         plt.scatter(
             self.rev_mat_quarterly["revenue"].iloc[-1],
-            self.rev_mat_quarterly["material"].iloc[-1],
+            self.rev_mat_quarterly["material_adj"].iloc[-1],
             color="red",
         )
         plt.plot(x, y_q, label="quarterly")
@@ -5823,6 +5803,18 @@ class Stock:
         plt.figure(figsize=[20, 8])
         plt.bar(x=self.rev_mat_quarterly.index, height=self.rev_mat_quarterly["ratio"])
         plt.title(f"rev_mat_ratio {self.Name}")
+        plt.figure()
+        plt.scatter(self.rev_mat_yearly["revenue"], self.rev_mat_yearly["material_adj"])
+        plt.scatter(
+            self.rev_mat_yearly["revenue"].iloc[-1],
+            self.rev_mat_yearly["material_adj"].iloc[-1],
+            color="red",
+        )
+        plt.plot(x_y, y_yearly, linestyle="dashed")
+        plt.title(f"rev_mat_yearly {self.Name}")
+        plt.figure(figsize=[20, 8])
+        plt.bar(x=self.rev_mat_yearly.index, height=self.rev_mat_yearly["ratio"])
+        plt.title(f"rev_mat_yearly_ratio {self.Name}")
 
     def predict_overhead(
         self,
@@ -5949,11 +5941,14 @@ class Stock:
         scenario_margin="default",
         dollar_fu="default",
         dollar_fup="default",
-        k="capm",
+        k="default",
         rf="default",
         erp="default",
         n_g="default",
         g="default",
+        material_algorithm="default",
+        ratio_fu="default",
+        ratio_fup="default",
     ):
         ###### gather parameters ######
         self.salary_g = salary_g
@@ -5972,6 +5967,8 @@ class Stock:
         self.other_g_done = 1
         future_year = self.income_rial_yearly.index[-1] + 1
         self.future_year = future_year
+        self.ratio_fu = ratio_fu
+        self.ratio_fup = ratio_fup
         if scenario == "default":
             self.scenario = indusries[self.industry]["scenario"]
         else:
@@ -6022,11 +6019,15 @@ class Stock:
             self.erp = 0.15
         else:
             self.erp = erp
-        if n_g == "defalut":
+        if n_g == "default":
             self.n_g = 0
         else:
             self.n_g = n_g
 
+        if material_algorithm == "default":
+            self.material_algorithm = "yearly"
+        else:
+            self.material_algorithm = material_algorithm
         ####### create required data #######
 
         q = []
@@ -6261,11 +6262,15 @@ class Stock:
             pred_count_revenue.loc[self.future_year + 1] = 0
 
             # calculate pred count revenue
+            drop_non_same_columns(self.pred_rate, pred_count_revenue)
             if flag_unusual_g != 1:
                 for i in pred_count_revenue.columns:
-                    pred_count_revenue.loc[self.future_year, i] = (
+                    pred_count_revenue.loc[self.future_year, i] = min(
                         pred_growth.loc[self.future_year, i]
-                        * last_count_revenue.loc[self.future_year - 1, i]
+                        * last_count_revenue.loc[self.future_year - 1, i],
+                        12
+                        / (self.last_m)
+                        * count_revenue_done.loc[self.future_year, i],
                     )
                     pred_count_revenue.loc[self.future_year + 1, i] = (
                         pred_growth.loc[self.future_year + 1, i]
@@ -6452,6 +6457,24 @@ class Stock:
         plt.figure(figsize=[20, 8])
         plt.bar(x=self.rev_op_quarterly.index, height=self.rev_op_quarterly["ratio"])
         plt.title(f"rev_op_ratio {self.Name}")
+        x_min = self.rev_op_yearly["rev"].min()
+        x_max = self.rev_op_yearly["rev"].max()
+        x = np.linspace(x_min, x_max, 1000)
+        x = x.reshape(-1, 1)
+        y = self.model_rev_op_yearly.predict(x)
+        plt.figure()
+        plt.scatter(self.rev_op_yearly["rev"], self.rev_op_yearly["opex"])
+        plt.scatter(
+            self.rev_op_yearly["rev"].iloc[-1],
+            self.rev_op_yearly["opex"].iloc[-1],
+            color="red",
+        )
+        plt.plot(x, y)
+
+        plt.title(f"rev_op_yearly {self.Name}")
+        plt.figure(figsize=[20, 8])
+        plt.bar(x=self.rev_op_yearly.index, height=self.rev_op_yearly["ratio"])
+        plt.title(f"rev_op_ratio {self.Name}")
 
     def predict_other(self):
         rev_other_yearly = pd.DataFrame(columns=["rev", "other"])
@@ -6460,6 +6483,7 @@ class Stock:
             "Other_operating_Income_Expense"
         ]
         rev_other_yearly["ratio"] = rev_other_yearly["other"] / rev_other_yearly["rev"]
+        converte_numeric(rev_other_yearly)
         model_rev_other_yearly = linear.LinearRegression()
         model_rev_other_yearly.fit(rev_other_yearly[["rev"]], rev_other_yearly["other"])
         rev_other_yearly["pred"] = model_rev_other_yearly.predict(
@@ -6483,6 +6507,7 @@ class Stock:
         rev_other_non_yearly["ratio"] = (
             rev_other_non_yearly["other_non"] / rev_other_non_yearly["rev"]
         )
+        converte_numeric(rev_other_non_yearly)
         model_rev_other_non_yearly = linear.LinearRegression()
         model_rev_other_non_yearly.fit(
             rev_other_non_yearly[["rev"]], rev_other_non_yearly["other_non"]
@@ -6702,6 +6727,59 @@ class Stock:
                 plt.axhline(self.pred_count_revenue[i].iloc[-1], linestyle="dashed")
             except:
                 pass
+
+    def plot_structure(self):
+        df = -self.income_rial_yearly[
+            [
+                "Cost_of_Revenue",
+                "Operating_Expense",
+                "Interest_Expense",
+                "Tax_Provision",
+            ]
+        ]
+        df.iloc[-1].plot(kind="pie", autopct="%.2f")
+        plt.title("structure of cost")
+        plt.figure()
+        df = self.income_rial_yearly[
+            [
+                "Gross_Profit",
+                "Other_non_operate_Income_Expense",
+                "Other_operating_Income_Expense",
+            ]
+        ]
+        df.iloc[-1].plot(kind="pie", autopct="%.2f")
+        plt.title("structure of income")
+
+    def value_monte_corlo_simulation(self):
+        ##### cretae mont corlo probablity of rate residual #######
+        # calculate number of residual month
+        number_res_month = 12 - int(self.rate_monthly.index[-1].split("/")[1])
+        # create mont carlo of major_good rate
+        mont_carlo_rate = monte_carlo_simulate(
+            self.rate_monthly[self.major_good], 100, number_res_month
+        )
+        mont_carlo_mean = np.mean(mont_carlo_rate)
+        # calculate rate of other goods
+        temp = self.pred_rate[self.major_good].values
+        temp = temp.T
+        temp = temp.reshape(2, -1)
+        rate_com = self.pred_rate / temp
+        rate_com
+        ### predict income for multiple rates ###
+        lst = []
+        for i in mont_carlo_mean:
+            self.pred_rate.loc[1402, self.major_good] = i
+            rate_m = self.pred_rate[self.major_good].values
+            rate_m = rate_m.reshape(2, -1)
+            self.pred_rate = rate_com * rate_m
+            self.predict_revenue()
+            self.predict_income()
+            lst.append(self.pred_income.loc[1402, "EPS_Capital"])
+        eps = np.array(lst)
+        value = self.pe_forward_adjust["pe"].median() * eps
+        self.prob_value = value
+        self.mont_carlo_mean = mont_carlo_mean
+        self.mont_carlo_rate = mont_carlo_rate
 
 
 class OptPort:
