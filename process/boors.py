@@ -423,16 +423,17 @@ def show_analyze(stock_name):
         print(i)
 
 
-def random_plot():
+def random_plot(n):
     number = 200
     chart = []
-    for i in range(100000):
+    for i in range(n):
         number += random.choice([1, -1])
         chart.append(number)
     plt.figure(figsize=[20, 8])
     plt.title("random_chart")
     plt.plot(chart)
     plt.grid()
+    return chart    
 
 
 def voloume_profile(stock, date_start, bins):
@@ -5605,7 +5606,9 @@ class Stock:
         count_revenue_residual = count_revenue_residual.applymap(
             lambda x: x if x > 0 else 0
         )
+
         self.count_revenue_residual = count_revenue_residual
+        drop_non_same_columns(self.count_revenue_residual, self.pred_rate)
         price_revenue_residual = pd.DataFrame(
             index=[self.future_year, self.future_year + 1], columns=["revenue"]
         )
@@ -5828,10 +5831,15 @@ class Stock:
         dep_g_next,
     ):
         pred_overhead = OverheadDataFrame(self.overhead_yearly)
+        g_count = (
+            self.pred_count_revenue.loc[self.future_year].sum()
+            / self.count_revenue_yearly.loc[self.future_year - 1]["جمع"]
+        )
+        self.g_count = g_count
         pred_overhead.loc[self.future_year] = 0
         pred_overhead.loc[self.future_year + 1] = 0
         pred_overhead.loc[self.future_year, "energy"] = (
-            energy_g * pred_overhead.loc[self.future_year - 1, "energy"]
+            g_count * energy_g * pred_overhead.loc[self.future_year - 1, "energy"]
         )
         pred_overhead.loc[self.future_year + 1, "energy"] = (
             energy_g_next * pred_overhead.loc[self.future_year, "energy"]
@@ -5883,7 +5891,7 @@ class Stock:
         pred_other_over = pd.DataFrame(
             index=[self.future_year, self.future_year + 1], columns=["other"]
         )
-        pred_other_over["other"] = model.predict(self.pred_revenue[["revenue"]])
+        pred_other_over["other"] = model.predict(self.pred_revenue[["revenue"]].values)
         pred_overhead.loc[self.future_year, "other"] = pred_other_over.loc[
             self.future_year
         ]["other"]
@@ -5908,7 +5916,7 @@ class Stock:
         pred_consum = pd.DataFrame(
             index=[self.future_year, self.future_year + 1], columns=["consum"]
         )
-        pred_consum["consum"] = model.predict(self.pred_revenue[["revenue"]])
+        pred_consum["consum"] = model.predict(self.pred_revenue[["revenue"]].values)
         self.pred_consum = pred_consum
         pred_overhead.loc[self.future_year, "consuming_material"] = pred_consum.loc[
             self.future_year
@@ -6386,7 +6394,7 @@ class Stock:
         model_rev_op_quarterly = linear.LinearRegression()
         model_rev_op_quarterly.fit(rev_op_quarterly[["rev"]], rev_op_quarterly["opex"])
         rev_op_quarterly["pred"] = model_rev_op_quarterly.predict(
-            rev_op_quarterly[["rev"]]
+            rev_op_quarterly[["rev"]].values
         )
         rev_op_quarterly["error"] = rev_op_quarterly["opex"] - rev_op_quarterly["pred"]
         self.rev_op_quarterly = rev_op_quarterly
@@ -6399,7 +6407,7 @@ class Stock:
         converte_numeric(rev_op_quarterly)
         model_rev_op_yearly = linear.LinearRegression()
         model_rev_op_yearly.fit(rev_op_yearly[["rev"]], rev_op_yearly["opex"])
-        rev_op_yearly["pred"] = model_rev_op_yearly.predict(rev_op_yearly[["rev"]])
+        rev_op_yearly["pred"] = model_rev_op_yearly.predict(rev_op_yearly[["rev"]].values)
         rev_op_yearly["error"] = rev_op_yearly["opex"] - rev_op_yearly["pred"]
         self.rev_op_yearly = rev_op_yearly
         self.model_rev_op_yearly = model_rev_op_yearly
@@ -6415,11 +6423,11 @@ class Stock:
         ##### Check Strong corrolation #######
         if self.rev_op_quarterly[["rev", "opex"]].corr().iloc[1, 0] > 0.5:
             opex_residual["opex"] = model_rev_op_quarterly.predict(
-                self.income_residual[["revenue"]]
+                self.income_residual[["revenue"]].values
             )
         else:
             opex_residual["opex"] = model_rev_op_yearly.predict(
-                self.income_residual[["revenue"]]
+                self.income_residual[["revenue"]].values
             )
 
         if isinstance(self.income_done, pd.DataFrame):
@@ -6622,6 +6630,12 @@ class Stock:
         last_rate.drop(["جمع", "total"], axis=1, inplace=True)
         last_rate.fillna(0, inplace=True)
         self.last_rate = last_rate
+        last_year_rate = self.rate_yearly.iloc[[-1]]
+        last_year_rate.rename(
+            index={last_year_rate.index[0]: self.future_year}, inplace=True
+        )
+        last_year_rate.loc[self.future_year + 1] = last_year_rate.loc[self.future_year]
+        self.last_year_rate = last_year_rate
         if self.industry != "palayesh":
             df = (
                 self.rate_dollar_nima_monthly.iloc[-10:].median()
@@ -6662,7 +6676,7 @@ class Stock:
         if self.scenario == "dollar":
             self.pred_rate = self.pred_dollar_rial_rate
         if self.scenario == "last":
-            self.pred_rate = self.last_rate * np.array(
+            self.pred_rate = self.last_year_rate * np.array(
                 [[self.alpha_rate], [self.alpha_rate_next]]
             )
             self.pred_dollar_rate = (
