@@ -23,6 +23,7 @@ def benfords_law(nums):
 
 
 def all_dict_values(data: dict):
+    """{"A": 1,"B": {"C": 2,"D": {"E": 3}}} => [1,2,3]"""
     for v in data.values():
         if isinstance(v, dict):
             yield from all_dict_values(v)
@@ -31,6 +32,7 @@ def all_dict_values(data: dict):
 
 
 def only_zero_inequality(n):
+    """Accepts only non-zero values"""
     if isinstance(n, (int, float)) and n != 0:
         return n
     else:
@@ -62,7 +64,7 @@ def clarify_number(a, seprator=",", n=2):
     l = len(a) % 3
     b = ""
     b += a[:l]
-    for i in range(len(a) // 3):
+    for _ in range(len(a) // 3):
         b += seprator
         b += a[l : l + 3]
         l += 3
@@ -99,16 +101,6 @@ def to_digits(a):
         ]
     )
     return int(b) * (-1 if "(" in str(a) and ")" in str(a) else 1) if b else False
-
-
-def best_table_id(data_tables):
-    tester = 0
-    for i in range(0, len(data_tables)):
-        if len(data_tables[i]) > tester:
-            tester = len(data_tables[i])
-            table_id = i
-
-    return table_id
 
 
 def load_windows_app(app_name):
@@ -161,7 +153,7 @@ def save_as_file(file_path, ext):
 
 def move_last_file(new_path, base_path=DB):
     filename = max(
-        [f for f in os.listdir(DB)],
+        os.listdir(DB),
         key=lambda x: os.path.getctime(os.path.join(DB, x)),
     )
     old_path = f"{base_path}/{filename}"
@@ -239,6 +231,7 @@ def filepath_info(file):
 
 
 def find_deficiencies(stock_name):
+    """deficiencies, pe, opt, eps"""
     base_files = [
         f"{INDUSPATH}/{wl_prod[stock_name]['indus']}/{stock_name}/{s}"
         for s in all_dict_values(structure)
@@ -276,7 +269,7 @@ def find_deficiencies(stock_name):
 
 
 def check_stock_files(
-    stock_name, user_year=False, user_month=False, user_quarter=False, action=False
+    stock_name, last_year=False, last_quarter=False, last_month=False, delete=False
 ):
     base_files = [
         f"{INDUSPATH}/{wl_prod[stock_name]['indus']}/{stock_name}/{s}"
@@ -322,18 +315,18 @@ def check_stock_files(
                     print("unmatch time :", file)
                     failed.append(file)
 
-                if stock_time == "monthly" and user_month != False:
-                    if str(user_month) != str(excel_months[-1]):
+                if stock_time == "monthly" and last_month != False:
+                    if str(last_month) != str(excel_months[-1]):
                         print("old data monthly :", file, excel_months[-1])
                         failed.append(file)
 
-                if stock_time == "quarterly" and user_quarter != False:
-                    if str(user_quarter) != str(excel_months[-1]):
+                if stock_time == "quarterly" and last_quarter != False:
+                    if str(last_quarter) != str(excel_months[-1]):
                         print("old data quarterly :", file, excel_months[-1])
                         failed.append(file)
 
-                if stock_time == "yearly" and user_year != False:
-                    if str(user_year) != str(excel_years[-1]):
+                if stock_time == "yearly" and last_year != False:
+                    if str(last_year) != str(excel_years[-1]):
                         print("old data yearly :", file, excel_years[-1])
                         failed.append(file)
 
@@ -365,6 +358,6 @@ def check_stock_files(
                 pass
 
     failed = list(set(failed))
-    if action:
+    if delete:
         for i in failed:
             os.remove(i)
