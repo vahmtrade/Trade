@@ -433,7 +433,7 @@ def random_plot(n):
     plt.title("random_chart")
     plt.plot(chart)
     plt.grid()
-    return chart    
+    return chart
 
 
 def voloume_profile(stock, date_start, bins):
@@ -740,15 +740,20 @@ def read_stock(name, start_date, end_date):
     stock["Cummax"] = stock["Cret"].cummax()
     stock["Drow_Down"] = stock["Cummax"] - stock["Cret"]
     stock.dropna(inplace=True)
-    dollar_azad, dollar_nima = read_dollar(start_date, end_date)
-    stock_dollar = stock["Close"].copy()
-    stock_dollar = stock_dollar.to_frame()
-    stock_dollar["Close"] = stock_dollar["Close"] / dollar_azad["Close"]
-    stock_dollar["Change"] = stock_dollar["Close"].pct_change()
-    stock_dollar["Ret"] = np.log(stock_dollar["Close"] / stock_dollar["Close"].shift(1))
-    stock_dollar["Cret"] = stock_dollar["Ret"].cumsum().apply(np.exp)
-    stock_dollar["Cummax"] = stock_dollar["Cret"].cummax()
-    stock_dollar["Drow_Down"] = stock_dollar["Cummax"] - stock_dollar["Cret"]
+    try:
+        dollar_azad, dollar_nima = read_dollar(start_date, end_date)
+        stock_dollar = stock["Close"].copy()
+        stock_dollar = stock_dollar.to_frame()
+        stock_dollar["Close"] = stock_dollar["Close"] / dollar_azad["Close"]
+        stock_dollar["Change"] = stock_dollar["Close"].pct_change()
+        stock_dollar["Ret"] = np.log(
+            stock_dollar["Close"] / stock_dollar["Close"].shift(1)
+        )
+        stock_dollar["Cret"] = stock_dollar["Ret"].cumsum().apply(np.exp)
+        stock_dollar["Cummax"] = stock_dollar["Cret"].cummax()
+        stock_dollar["Drow_Down"] = stock_dollar["Cummax"] - stock_dollar["Cret"]
+    except:
+        stock_dollar = 0
     return stock, stock_dollar
 
 
@@ -6407,7 +6412,9 @@ class Stock:
         converte_numeric(rev_op_quarterly)
         model_rev_op_yearly = linear.LinearRegression()
         model_rev_op_yearly.fit(rev_op_yearly[["rev"]], rev_op_yearly["opex"])
-        rev_op_yearly["pred"] = model_rev_op_yearly.predict(rev_op_yearly[["rev"]].values)
+        rev_op_yearly["pred"] = model_rev_op_yearly.predict(
+            rev_op_yearly[["rev"]].values
+        )
         rev_op_yearly["error"] = rev_op_yearly["opex"] - rev_op_yearly["pred"]
         self.rev_op_yearly = rev_op_yearly
         self.model_rev_op_yearly = model_rev_op_yearly
