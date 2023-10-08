@@ -42,7 +42,7 @@ driver.maximize_window()
 
 
 def ime_physical(start=month_ago, end=today_10char):
-    webwait = WebDriverWait(driver, 4 * wait_time)
+    webwait = WebDriverWait(driver, 10 * wait_time)
     # get page
     driver.get("https://ime.co.ir/offer-stat.html")
     sleep(break_time)
@@ -91,7 +91,7 @@ def ime_physical(start=month_ago, end=today_10char):
     csv = "//*[@id='AmareMoamelatGrid']/div[1]/div[1]/div[1]/div[2]/ul/li[6]"
     webwait.until(clickable((By.XPATH, csv)))
     driver.find_element(By.XPATH, csv).click()
-    sleep(2 * break_time)
+    sleep(4 * break_time)
 
     # replace last file
     new_path = f"{MACROPATH}/physical.xls"
@@ -100,7 +100,6 @@ def ime_physical(start=month_ago, end=today_10char):
 
     # save as excel file
     save_as_file(new_path, "xlsx")
-    sleep(2 * break_time)
 
 
 def codal_login():
@@ -335,7 +334,7 @@ def codal_statement(name):
 
             page = driver.page_source
             data_tables = pd.read_html(page)
-            df = data_tables[best_table_id(data_tables)]
+            df = max(data_tables, key=len)
             df_list.append(df)
 
             driver.close()
@@ -454,7 +453,7 @@ def bourseview_balancesheet(name, y=5, q=10, time_types=["yearly", "quarterly"])
             dl_btn = '//*[@id="new-balance-sheet-grid"]/div/div[1]/span[2]/span'
             webwait.until(clickable((By.XPATH, dl_btn)))
             driver.find_element(By.XPATH, dl_btn).click()
-            sleep(2 * break_time)
+            sleep(4 * break_time)
 
             # replace last file
             new_path = f"{INDUSPATH}/{wl_prod[name]['indus']}/{name}/{structure['balance'][time_type]}"
@@ -463,7 +462,6 @@ def bourseview_balancesheet(name, y=5, q=10, time_types=["yearly", "quarterly"])
 
             # open and ctrl + s excel file
             resave_excel(new_path)
-            sleep(2 * break_time)
 
     except Exception as err:
         print(f"cant download balancesheet {name} : {err}")
@@ -514,7 +512,7 @@ def bourseview_income_statement(
             dl_btn = '//*[@id="new-income-statement-grid"]/div/div[1]/span[2]/span'
             webwait.until(clickable((By.XPATH, dl_btn)))
             driver.find_element(By.XPATH, dl_btn).click()
-            sleep(2 * break_time)
+            sleep(4 * break_time)
 
             # replace last file
             new_path = f"{INDUSPATH}/{wl_prod[name]['indus']}/{name}/{structure['income'][time_type][report_type][currency_type]}"
@@ -523,7 +521,6 @@ def bourseview_income_statement(
 
             # open and ctrl + s excel file
             resave_excel(new_path)
-            sleep(2 * break_time)
 
     try:
         # select 'sood va zian'
@@ -600,7 +597,7 @@ def bourseview_cashflow(name, y=5, q=10, time_types=["yearly", "quarterly"]):
             dl_btn = '//*[@id="new-cash-flow-grid"]/div/div[1]/span[2]/span'
             webwait.until(clickable((By.XPATH, dl_btn)))
             driver.find_element(By.XPATH, dl_btn).click()
-            sleep(2 * break_time)
+            sleep(4 * break_time)
 
             # replace last file
             new_path = f"{INDUSPATH}/{wl_prod[name]['indus']}/{name}/{structure['cash'][time_type]}"
@@ -609,7 +606,6 @@ def bourseview_cashflow(name, y=5, q=10, time_types=["yearly", "quarterly"]):
 
             # open and ctrl + s excel file
             resave_excel(new_path)
-            sleep(2 * break_time)
 
     except Exception as err:
         print(f"cant download cashflow {name} : {err}")
@@ -680,7 +676,7 @@ def bourseview_product_revenue(
                 dl_btn = '//*[@id="grid"]/div/div[1]/span[2]/span'
                 webwait.until(clickable((By.XPATH, dl_btn)))
                 driver.find_element(By.XPATH, dl_btn).click()
-                sleep(2 * break_time)
+                sleep(4 * break_time)
 
                 # replace last file
                 new_path = f"{INDUSPATH}/{wl_prod[name]['indus']}/{name}/{structure['product'][time_type][report_type]}"
@@ -689,7 +685,6 @@ def bourseview_product_revenue(
 
                 # open and ctrl + s excel file
                 resave_excel(new_path)
-                sleep(2 * break_time)
 
     except Exception as err:
         print(f"cant download product {name} : {err}")
@@ -749,7 +744,7 @@ def bourseview_cost(name, y=5, q=10, time_types=["yearly", "quarterly"]):
             dl_btn = '//*[@id="grid-cogs"]/div/div[3]/span[2]/span'
             webwait.until(clickable((By.XPATH, dl_btn)))
             driver.find_element(By.XPATH, dl_btn).click()
-            sleep(2 * break_time)
+            sleep(4 * break_time)
 
             # replace last file
             new_path = f"{INDUSPATH}/{wl_prod[name]['indus']}/{name}/{structure['cost'][time_type]}"
@@ -758,7 +753,6 @@ def bourseview_cost(name, y=5, q=10, time_types=["yearly", "quarterly"]):
 
             # open and ctrl + s excel file
             resave_excel(new_path)
-            sleep(2 * break_time)
 
     except Exception as err:
         print(f"cant download cost {name} : {err}")
@@ -808,14 +802,15 @@ def bourseview_official(name, y=5, q=10, time_types=["yearly", "quarterly"]):
             dl_btn = '//*[@id="grid"]/div/div[3]/span[2]/span'
             webwait.until(clickable((By.XPATH, dl_btn)))
             driver.find_element(By.XPATH, dl_btn).click()
-            sleep(2 * break_time)
+            sleep(4 * break_time)
 
             # replace last file
             new_path = f"{INDUSPATH}/{wl_prod[name]['indus']}/{name}/{structure['official'][time_type]}"
             move_last_file(new_path)
             sleep(2 * break_time)
+
+            # open and ctrl + s excel file
             resave_excel(new_path)
-            sleep(2 * break_time)
 
     except Exception as err:
         print(f"cant download official {name} : {err}")
@@ -862,7 +857,7 @@ def bourseview_price_history(name, start=year_ago, end=today_10char):
         dl_btn = '//*[@id="stocks-content-body"]/div[1]/div[2]/div[1]/div[2]/div/div/div[2]/div/span'
         webwait.until(clickable((By.XPATH, dl_btn)))
         driver.find_element(By.XPATH, dl_btn).click()
-        sleep(2 * break_time)
+        sleep(4 * break_time)
 
         # replace last file
         new_path = f"{INDUSPATH}/{wl_prod[name]['indus']}/{name}/{structure['pe']}"
@@ -871,7 +866,6 @@ def bourseview_price_history(name, start=year_ago, end=today_10char):
 
         # open and ctrl + s excel file
         resave_excel(new_path)
-        sleep(2 * break_time)
 
     except Exception as err:
         print(f"cant download price history of {name} : {err}")
@@ -979,7 +973,7 @@ def bourseview_macro(start=year_ago, end=today_10char):
         dl_btn = '//*[@id="myModal"]/div/div/div[3]/button'
         webwait.until(clickable((By.XPATH, dl_btn)))
         driver.find_element(By.XPATH, dl_btn).click()
-        sleep(2 * break_time)
+        sleep(4 * break_time)
 
         # click blank page
         driver.find_element(By.XPATH, "/html").click()
@@ -994,10 +988,23 @@ def bourseview_macro(start=year_ago, end=today_10char):
         print(f"cant download macro data : {err}")
 
 
-def integrate_database(stocks=wl_prod_keys, y=5, q=10, m=50):
+def integrate_database(
+    stocks=wl_prod_keys,
+    y=5,
+    q=10,
+    m=50,
+    last_year=False,
+    last_quarter=False,
+    last_month=False,
+    delete=False,
+):
     """download deficiencies of stock files"""
 
     create_database_structure()
+    # delete old and corrupted files
+    for name in stocks:
+        check_stock_files(name, last_year, last_quarter, last_month, delete)
+        print(name, find_deficiencies(name))
 
     bourseview_login()
     for name in stocks:
@@ -1034,10 +1041,3 @@ def integrate_database(stocks=wl_prod_keys, y=5, q=10, m=50):
         if find_deficiencies(name)[3]:
             codal_search(name)
             codal_eps(name)
-
-
-if __name__ == "__main__":
-    integrate_database()
-    for i in wl_prod:
-        check_stock_files(i, action=True)
-        print(i, find_deficiencies(i))
