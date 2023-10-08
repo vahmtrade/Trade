@@ -1027,7 +1027,7 @@ def integrate_database(stocks=wl_prod_keys, y=5, q=10, m=50):
             bourseview_search(name)
             bourseview_price_history(name)
 
-    bourseview_macro()
+    # bourseview_macro()
 
     codal_login()
     for name in stocks:

@@ -12,19 +12,25 @@ import sklearn.metrics as met
 import seaborn as sns
 import arabic_reshaper
 import tse_index
-
+from statsmodels.tsa.holtwinters import ExponentialSmoothing
+import statsmodels.api as sm
+import itertools
 from cmath import tan
 from itertools import cycle
 from scipy import stats
 from persiantools.jdatetime import JalaliDate
 from statsmodels.tsa.filters import hp_filter
 from bidi.algorithm import get_display
-
+from sklearn.metrics import mean_squared_error
 from statics.setting import *
 from preprocess.basic import *
 from process.strategy import *
 import finpy_tse as fpy
 import warnings
+from sklearn.metrics import r2_score, mean_absolute_percentage_error, accuracy_score
+import plotly.data as pdd
+import plotly.express as px
+import pmdarima as pm
 
 warnings.filterwarnings("ignore")
 plt.style.use("seaborn")
@@ -134,6 +140,193 @@ class OverheadDataFrame(pd.DataFrame):
 
     def update_dependent_columns(self):
         self.loc[:, "total"] = self.sum(axis=1) - self["total"]
+
+
+def convert_monthly_dataframe(df):
+    if isinstance(df, pd.Series):
+        df = df.to_frame()
+    ys = int(df.index[0].split("-")[0])
+    ms = int(df.index[0].split("-")[1])
+    ds = int(df.index[0].split("-")[2])
+    ye = int(df.index[-1].split("-")[0])
+    me = int(df.index[-1].split("-")[1])
+    de = int(df.index[-1].split("-")[2])
+    months = (ye - ys) * 12 + (me - ms) + 1
+    mstart = ms
+    ystart = ys
+    m = mstart
+    y = ystart
+    prices = []
+    dates = []
+    for i in range(months):
+        if m < 10:
+            try:
+                month_price = df.loc[f"{y}-0{m}-01":f"{y}-0{m}-30"].iloc[-1].values[0]
+            except:
+                month_price = prices[-1]
+        else:
+            try:
+                month_price = df.loc[f"{y}-{m}-01":f"{y}-{m}-30"].iloc[-1].values[0]
+            except:
+                month_price = prices[-1]
+
+        date = f"{y}/{m}"
+        prices.append(month_price)
+        dates.append(date)
+        m = m + 1
+        if m > 12:
+            m = 1
+            y = y + 1
+    monthly_df = pd.DataFrame(columns=["Close"], index=dates)
+    monthly_df["Close"] = prices
+    monthly_df["Ret"] = monthly_df["Close"].pct_change()
+    monthly_df.dropna(inplace=True)
+    return monthly_df
+
+
+def fill_outlier_data(df, alpha=1):
+    for i in df.columns:
+        iqr = df[i].quantile(0.75) - df[i].quantile(0.25)
+        up_threshold = df[i].quantile(0.75) + alpha * iqr
+        down_threshold = df[i].quantile(0.25) - alpha * iqr
+        df[i] = df[i].apply(
+            lambda x: df[i].median()
+            if ((x > up_threshold) or (x < down_threshold))
+            else x
+        )
+
+
+def walkforward(
+    df,
+    h,
+    steps,
+    trend_type,
+    seasonal_type,
+    damped_trend,
+    init_method,
+    use_boxcox,
+    debug=False,
+):
+    errors = []
+    seen_last = False
+    steps_completed = 0
+    ntest = len(df) - h - steps + 1
+    for end_train in range(ntest, len(df) - h + 1):
+        train = df.iloc[:end_train]
+        test = df.iloc[end_train : end_train + h]
+        if test.index[-1] == df.index[-1]:
+            seen_last = True
+        steps_completed += 1
+        hw = ExponentialSmoothing(
+            train,
+            trend=trend_type,
+            seasonal=seasonal_type,
+            seasonal_periods=12,
+            initialization_method=init_method,
+            use_boxcox=use_boxcox,
+            damped_trend=damped_trend,
+        )
+        res_hw = hw.fit()
+        fcast = res_hw.forecast(h)
+        try:
+            error = mean_squared_error(test, fcast)
+        except:
+            break
+        errors.append(error)
+        model = ExponentialSmoothing(
+            df,
+            trend=trend_type,
+            seasonal=seasonal_type,
+            seasonal_periods=12,
+            initialization_method=init_method,
+            use_boxcox=use_boxcox,
+            damped_trend=damped_trend,
+        )
+        res_model = model.fit()
+    if debug:
+        print("seen_last :", seen_last)
+        print("steps completed", steps_completed)
+    return np.mean(errors), res_model, seen_last
+
+
+def best_hw_model(df, h, steps):
+    trend_type_lst = ["add", "mul"]
+    seasonal_type_lst = ["add", "mul"]
+    damped_trend_lst = [True, False]
+    init_method_lst = ["estimated", "heuristic", "legacy-heuristic"]
+    use_box_cox_lst = [True, False]
+    tuple_option_lists = (
+        trend_type_lst,
+        seasonal_type_lst,
+        damped_trend_lst,
+        init_method_lst,
+        use_box_cox_lst,
+    )
+    best_score = float("inf")
+    best_option = None
+    for x in itertools.product(*tuple_option_lists):
+        score = walkforward(df, h, steps, *x)[0]
+        seen_last = walkforward(df, h, steps, *x)[2]
+        if (score < best_score) and (seen_last == True):
+            print("best_score", score)
+            best_score = score
+            best_option = x
+            best_model = walkforward(df, h, steps, *x)[1]
+    return best_option, best_model
+
+
+def get_coloumn(df, fiscal_year):
+    fiscal_dic = {
+        12: {3: 1, 6: 2, 9: 3, 12: 4},
+        9: {12: 1, 3: 2, 6: 3, 9: 4},
+        6: {9: 1, 12: 2, 3: 3, 6: 4},
+        3: {6: 1, 9: 2, 12: 3, 3: 4},
+        10: {1: 1, 4: 2, 7: 3, 10: 4},
+        8: {11: 1, 2: 2, 5: 3, 8: 4},
+    }
+
+    all_time_id = re.findall(regex_en_timeid_q, str(df))
+    n = len(all_time_id)
+
+    my_month = int(all_time_id[-1][5:])
+    my_Q = fiscal_dic[fiscal_year][my_month]
+    if my_Q == 4:
+        my_year = my_year - 1
+
+    for i in df.iloc[0][1:]:
+        i = i[0:10]
+        b = [int(j) for j in i.split("-")]
+        year = b[0]
+        month = b[1]
+        day = b[2]
+    for i in range(n):
+        data = "{} Q_{}".format(my_year, my_Q)
+        session.append(my_Q)
+        year.append(my_year)
+        my_col.append(data)
+        my_Q = my_Q - 1
+        if my_Q == 0:
+            my_Q = 4
+            my_year = my_year - 1
+    my_col.append("Data")
+    my_col = my_col[::-1]
+    session = session[::-1]
+    return my_col
+
+
+def best_stepwise_reg(x, y):
+    while len(x.columns) > 0:
+        x_subset = sm.add_constant(x)
+        model = sm.OLS(y, x_subset).fit()
+        pval = model.pvalues
+        pval_max = pval.max()
+        var_max = pval.idxmax()
+        if pval_max > 0.1:
+            x.drop(var_max, axis=1, inplace=True)
+        else:
+            best_model = model
+            break
+    return best_model
 
 
 def save_watchlist(date=today_8char):
@@ -921,6 +1114,9 @@ def get_income_yearly(stock, money_type):
         )
     stock_income = stock_income.T
     stock_common_size = stock_common_size.T
+    # converte_numeric
+    converte_numeric(stock_income)
+    converte_numeric(stock_common_size)
     mean_p_m = stock_common_size["Operating_Income"].mean()
     risk_p_m = stock_common_size["Operating_Income"].std()
     a = stock_income["Total_Revenue"].pct_change()
@@ -1476,7 +1672,7 @@ def select_df(df, str1, str2):
     for i in resault.index:
         for j in resault.columns:
             if resault.loc[i, j] == "-":
-                resault.loc[i, j] = 0.01
+                resault.loc[i, j] = 0
     return resault
 
 
@@ -1495,9 +1691,13 @@ def delete_empty(df):
 
 def remove_zero(df):
     for i in df.index:
+        c = 0
         for j in df.columns:
             if df.loc[i, j] == 0:
+                c += 1
                 df.loc[i, j] = 0.01
+        if c == len(df.columns):
+            df.drop(i, inplace=True)
 
 
 def search_df_month(df, fiscal_year, future_year, word):
@@ -1637,16 +1837,6 @@ def add_extra_columns_dfs(df1, df2):
     for i in df2.columns:
         if i not in df1.columns:
             df1[i] = 0
-
-
-def fill_out_data(df, alpha):
-    for i in df.index:
-        for j in df.columns:
-            irq = df[j].quantile(0.75) - df[j].quantile(0.25)
-            l = df[j].quantile(0.25) - alpha * irq
-            u = df[j].quantile(0.75) + alpha * irq
-            if (df.loc[i, j] > u) | (df.loc[i, j] < l):
-                df.loc[i, j] = df[j].quantile(0.5)
 
 
 def merge_same_columns(df):
@@ -3891,7 +4081,11 @@ class Stock:
             count_buy = select_df(cost_dl, "مقدار خرید طی دوره", "جمع")
             price_buy = select_df(cost_dl, "مبلغ خرید طی دوره", "جمع")
             # define column
-            my_col = list(self.income_rial_yearly.index)
+            all_time_id = re.findall(regex_en_timeid_q, str(cost_dl.loc[6]))
+            my_col = []
+            for i in all_time_id:
+                my_col.append(int(i[:4]))
+
             my_col.insert(0, "Data")
 
         elif period == "quarterly":
@@ -4016,16 +4210,17 @@ class Stock:
         delete_empty(price_consump)
         delete_empty(count_buy)
         delete_empty(price_buy)
-        # remove_zero_from_data
-        remove_zero(count_consump)
-        remove_zero(price_consump)
-        remove_zero(count_buy)
-        remove_zero(price_buy)
         # merge_Same_columns
         merge_same_columns(count_consump)
         merge_same_columns(price_consump)
         merge_same_columns(count_buy)
         merge_same_columns(price_buy)
+        # remove_zero_from_data
+        remove_zero(count_consump)
+        remove_zero(price_consump)
+        remove_zero(count_buy)
+        remove_zero(price_buy)
+
         # delete non same columns
         drop_non_same_columns(price_consump, count_consump)
         # merge_similar_columns
@@ -4035,6 +4230,11 @@ class Stock:
         price_consump = merge_similar_columns(price_buy)
         drop_non_same_columns(price_consump, count_consump)
         drop_non_same_columns(price_buy, count_buy)
+        ##### fill_outlier_data ########
+        fill_outlier_data(count_consump)
+        fill_outlier_data(price_consump)
+        fill_outlier_data(count_buy)
+        fill_outlier_data(price_buy)
         rate_consump = price_consump / count_consump
         rate_buy = price_buy / count_buy
         for i in rate_consump.index:
@@ -4346,7 +4546,10 @@ class Stock:
             price_revenue = select_df(product_dl, "مبلغ فروش", "جمع")
             categ_cost = select_df(product_dl, "مبلغ بهای تمام شده", "جمع")
             # define column
-            my_col = list(self.income_rial_yearly.index)
+            all_time_id = re.findall(regex_en_timeid_q, str(product_dl.loc[6]))
+            my_col = []
+            for i in all_time_id:
+                my_col.append(int(i[:4]))
             my_col.insert(0, "Data")
             my_col.insert(1, "unit")
 
@@ -4519,6 +4722,10 @@ class Stock:
 
         # replace negative data in count_revenue
         replace_negative_data(count_revenue)
+        ### fill outlier data ######
+        fill_outlier_data(count_product)
+        fill_outlier_data(count_revenue)
+        fill_outlier_data(price_revenue)
         # create count_product_com
         count_product_com = pd.DataFrame(columns=count_product.columns)
         try:
@@ -4758,7 +4965,9 @@ class Stock:
                 "Close"
             ].mean()
         dollar_yearly["ratio"] = dollar_yearly["nima"] / dollar_yearly["azad"]
+
         self.dollar_yearly = dollar_yearly
+        converte_numeric(self.dollar_yearly)
         #### create dollar quarterly #########
         dollar_quarterly = pd.DataFrame(
             index=self.income_rial_quarterly.index, columns=["azad", "nima"]
@@ -4784,6 +4993,7 @@ class Stock:
                 "Close"
             ].mean()
         dollar_quarterly["ratio"] = dollar_quarterly["nima"] / dollar_quarterly["azad"]
+        # converte_numeric(dollar_quarterly)
         self.dollar_quarterly = dollar_quarterly
         ###### Create_dollar_monthly #########
         dollar_monthly = pd.DataFrame(
@@ -4803,6 +5013,7 @@ class Stock:
                 "Close"
             ].mean()
         dollar_monthly["ratio"] = dollar_monthly["nima"] / dollar_monthly["azad"]
+        # converte_numeric(dollar_monthly)
         self.dollar_monthly = dollar_monthly
         ##### Create dollar rate ########
         (
@@ -5170,7 +5381,7 @@ class Stock:
         plt.title(self.Name)
 
     def create_end_data(self):
-        end_data = self.pred_income[["EPS_Capital"]]
+        end_data = self.income_rial_yearly[["EPS_Capital"]]
         price = []
         price_first = []
         price_last = []
@@ -5180,6 +5391,7 @@ class Stock:
         pe_fw_yearly = []
         eps_yearly = []
         days = []
+        vol = []
         lst_adjust_eps = []
 
         end_data["EPS_Capital"] = end_data["EPS_Capital"].apply(
@@ -5209,6 +5421,7 @@ class Stock:
                     pass
 
             price.append(self.Price.loc[date_1:date_2]["Close"].mean())
+            vol.append(self.Price.loc[date_1:date_2]["Value"].mean())
             min_price.append(self.Price.loc[date_1:date_2]["Close"].min())
             max_price.append(self.Price.loc[date_1:date_2]["Close"].max())
             pe_fw_yearly.append(
@@ -5241,7 +5454,7 @@ class Stock:
         end_data["min_price"] = min_price
         end_data["first_price"] = price_first
         end_data["last_price"] = price_last
-
+        end_data["volume"] = vol
         end_data["mean_price/eps"] = end_data["price"] / end_data["EPS_Capital"]
         end_data["max_price/eps"] = end_data["max_price"] / end_data["EPS_Capital"]
         end_data["min_price/eps"] = end_data["min_price"] / end_data["EPS_Capital"]
@@ -5250,19 +5463,23 @@ class Stock:
         end_data["volatility"] = (end_data["max_price"] / end_data["min_price"]) - 1
         end_data["yearly_ret"] = (end_data["last_price"] / end_data["first_price"]) - 1
         end_data["eps_ret"] = end_data["EPS_Capital"].pct_change()
+        end_data["vol_ret"] = end_data["volume"].pct_change()
         ## predict future year+1
-        end_data["min_price"].loc[self.future_year + 1] = (
-            end_data["min_price/eps"].median()
-            * end_data.loc[self.future_year + 1]["EPS_Capital"]
-        )
-        end_data["max_price"].loc[self.future_year + 1] = (
-            end_data["max_price/eps"].median()
-            * end_data.loc[self.future_year + 1]["EPS_Capital"]
-        )
-        end_data["price"].loc[self.future_year + 1] = (
-            end_data["mean_price/eps"].median()
-            * end_data.loc[self.future_year + 1]["EPS_Capital"]
-        )
+        try:
+            end_data["min_price"].loc[self.future_year + 1] = (
+                end_data["min_price/eps"].median()
+                * end_data.loc[self.future_year + 1]["EPS_Capital"]
+            )
+            end_data["max_price"].loc[self.future_year + 1] = (
+                end_data["max_price/eps"].median()
+                * end_data.loc[self.future_year + 1]["EPS_Capital"]
+            )
+            end_data["price"].loc[self.future_year + 1] = (
+                end_data["mean_price/eps"].median()
+                * end_data.loc[self.future_year + 1]["EPS_Capital"]
+            )
+        except:
+            pass
         self.end_data = end_data
         self.pe_fw_yearly = pe_fw_yearly
         self.eps_yearly = eps_yearly
@@ -5607,39 +5824,12 @@ class Stock:
 
     def predict_revenue(self):
         ########################################### calculate Revenue #########################################
-        count_revenue_residual = self.pred_count_revenue - self.count_revenue_done
-        count_revenue_residual = count_revenue_residual.applymap(
-            lambda x: x if x > 0 else 0
-        )
-
-        self.count_revenue_residual = count_revenue_residual
-        drop_non_same_columns(self.count_revenue_residual, self.pred_rate)
-        price_revenue_residual = pd.DataFrame(
-            index=[self.future_year, self.future_year + 1], columns=["revenue"]
-        )
-        price_revenue_residual.loc[self.future_year] = self.count_revenue_residual.loc[
-            self.future_year
-        ].dot(self.pred_rate.loc[self.future_year].T)
-        price_revenue_residual.loc[
-            self.future_year + 1
-        ] = self.count_revenue_residual.loc[self.future_year + 1].dot(
-            self.pred_rate.loc[self.future_year + 1].T
-        )
+        price_revenue_residual = self.count_residual * self.rate_residual
+        price_revenue_residual["total"] = price_revenue_residual.sum(axis=1)
+        pred_price_revenue = price_revenue_residual + self.price_revenue_done
+        self.pred_price_revenue = pred_price_revenue
         self.price_revenue_residual = price_revenue_residual
-        pred_revenue = pd.DataFrame(
-            index=[self.future_year, self.future_year + 1], columns=["revenue"]
-        )
-        if isinstance(self.price_revenue_done, pd.DataFrame):
-            pred_revenue["revenue"] = np.squeeze(
-                price_revenue_residual["revenue"].values
-                + self.price_revenue_done["total"].values
-            )
-        else:
-            pred_revenue["revenue"] = np.squeeze(
-                price_revenue_residual["revenue"].values + 0
-            )
-        self.price_revenue_residual = price_revenue_residual
-        self.pred_revenue = pred_revenue
+        self.pred_revenue = pred_price_revenue[["total"]]
 
     def predict_material(self):
         convert_revenue_yearly = (
@@ -5677,6 +5867,9 @@ class Stock:
         )
         converte_numeric(rev_mat_yearly)
         converte_numeric(rev_mat_quarterly)
+        ### dropna ###
+        rev_mat_yearly.dropna(inplace=True)
+        rev_mat_quarterly.dropna(inplace=True)
         count_rev_mat_yearly = pd.concat(
             [self.count_revenue_yearly, self.count_consump_yearly], axis=1
         )
@@ -5880,6 +6073,9 @@ class Stock:
         other_over_quarterly["ratio"] = (
             other_over_quarterly["other"] / other_over_quarterly["rev"]
         )
+        ### dropna ####
+        other_over_yearly.dropna(inplace=True)
+        other_over_quarterly.dropna(inplace=True)
         model = linear.LinearRegression()
         model.fit(other_over_yearly[["rev"]], other_over_yearly["other"])
         other_over_yearly["pred"] = model.predict(other_over_yearly[["rev"]])
@@ -5912,6 +6108,7 @@ class Stock:
             rev_consum["ratio"] = rev_consum["consum"] / rev_consum["rev"]
         except:
             pass
+        rev_consum.dropna(inplace=True)
         model = linear.LinearRegression()
         model.fit(rev_consum[["rev"]], rev_consum["consum"])
         rev_consum["pred"] = model.predict(rev_consum[["rev"]])
@@ -6396,12 +6593,14 @@ class Stock:
         rev_op_quarterly["opex"] = -self.income_rial_quarterly["Operating_Expense"]
         rev_op_quarterly["ratio"] = rev_op_quarterly["opex"] / rev_op_quarterly["rev"]
         converte_numeric(rev_op_quarterly)
+        rev_op_quarterly.dropna(inplace=True)
         model_rev_op_quarterly = linear.LinearRegression()
         model_rev_op_quarterly.fit(rev_op_quarterly[["rev"]], rev_op_quarterly["opex"])
         rev_op_quarterly["pred"] = model_rev_op_quarterly.predict(
             rev_op_quarterly[["rev"]].values
         )
         rev_op_quarterly["error"] = rev_op_quarterly["opex"] - rev_op_quarterly["pred"]
+
         self.rev_op_quarterly = rev_op_quarterly
         self.model_rev_op_quarterly = model_rev_op_quarterly
 
@@ -6410,6 +6609,7 @@ class Stock:
         rev_op_yearly["opex"] = -self.income_rial_yearly["Operating_Expense"]
         rev_op_yearly["ratio"] = rev_op_yearly["opex"] / rev_op_yearly["rev"]
         converte_numeric(rev_op_quarterly)
+        rev_op_yearly.dropna(inplace=True)
         model_rev_op_yearly = linear.LinearRegression()
         model_rev_op_yearly.fit(rev_op_yearly[["rev"]], rev_op_yearly["opex"])
         rev_op_yearly["pred"] = model_rev_op_yearly.predict(
@@ -6801,6 +7001,81 @@ class Stock:
         self.prob_value = value
         self.mont_carlo_mean = mont_carlo_mean
         self.mont_carlo_rate = mont_carlo_rate
+
+    def ret_analyse(self):
+        ret = self.Price[["Ret"]]
+        idx = ret[ret["Ret"] == 0].index
+        ret.drop(idx, inplace=True)
+        self.ret = ret
+        norm_dis = stats.norm(ret.mean(), ret.std())
+        self.ret_norm_dis = norm_dis
+        deg, loc, scale = stats.t.fit(ret)
+        t_dis = stats.t(deg, loc, scale)
+        self.ret_t_dis = t_dis
+
+    def plot_ret(self):
+        self.ret_analyse()
+        x_lst = np.linspace(self.ret.min(), self.ret.max(), 1000)
+        norm_lst = self.ret_norm_dis.pdf(x_lst)
+        t_lst = self.ret_t_dis.pdf(x_lst)
+        self.ret.hist(bins=100, density=True, edgecolor="black")
+        plt.plot(x_lst, norm_lst, label="normal_distribution")
+        plt.plot(x_lst, t_lst, label="t_distribution")
+        plt.legend()
+
+    def monte_carlo(self, n_sim=100, n_days=100):
+        self.ret_analyse()
+        last_price = self.Price.iloc[-1]["Close"]
+        df = pd.DataFrame()
+        for i in range(n_sim):
+            count = 0
+            prices = []
+            prices.append(last_price)
+            for d in range(n_days):
+                ret = self.ret_norm_dis.rvs()
+                price = prices[count] * (1 + ret)
+                prices.append(price)
+                count += 1
+            df[i] = prices
+        self.sim_price = df
+        self.sim_price_last = df.iloc[-1]
+
+    def predict_revenue_residual(self):
+        drop_non_same_columns(self.count_revenue_monthly, self.rate_monthly)
+        df = self.count_revenue_monthly.copy()
+        df.drop(["total", "جمع"], axis=1, inplace=True)
+        products_lst = df.columns.values
+        self.products_lst = products_lst
+        m_residual = 12 - self.last_m
+        count_residual = pd.DataFrame(
+            columns=products_lst, index=[self.future_year, self.future_year + 1]
+        )
+        rate_residual = pd.DataFrame(
+            columns=products_lst, index=[self.future_year, self.future_year + 1]
+        )
+        for i in products_lst:
+            ####### predict_count_revenue_residual ########
+            model = pm.auto_arima(df[i], seasonal=True, m=12)
+            vars()[f"model_count{i}"] = model
+            self.__dict__[f"model_count{i}"] = vars()[f"model_count{i}"]
+            res_prod = model.predict(m_residual)
+            res_prod_next = model.predict(m_residual + 12).sum() - res_prod.sum()
+            count_residual.loc[self.future_year, i] = res_prod.sum()
+            count_residual.loc[self.future_year + 1, i] = res_prod_next
+            ###### Predict_rate_residual ############
+            model = pm.auto_arima(self.rate_monthly[i], seasonal=True, m=12)
+            vars()[f"model_rate{i}"] = model
+            self.__dict__[f"model_rate{i}"] = vars()[f"model_rate{i}"]
+            res_rate = model.predict(m_residual)
+            res_rate = res_rate.mean()
+            res_rate_next = model.predict(m_residual + 12)
+            res_rate_next = res_rate_next[-12:].mean()
+            rate_residual.loc[self.future_year, i] = res_rate
+            rate_residual.loc[self.future_year + 1, i] = res_rate_next
+        count_residual = count_residual.applymap(lambda x: 0 if x < 0 else x)
+        rate_residual = rate_residual.applymap(lambda x: 0 if x < 0 else x)
+        self.count_residual = count_residual
+        self.rate_residual = rate_residual
 
 
 class OptPort:
@@ -7279,3 +7554,259 @@ class Industry:
         plt.subplot(1, 2, 2)
         plt.plot(self.total_industry_quarterly_12["Net_Profit"], marker="o")
         plt.title("Total_Net_quarterly")
+
+
+class Time_Series:
+    def __init__(self, df, model, type_step):
+        self.model = model
+        self.type_step = type_step
+        self.df = df
+        self.series = df.to_numpy()
+        if type_step == "multi":
+            self.Tx = int(input("Enter Tx:"))
+            self.Ty = int(input("Enter Ty:"))
+        if type_step == "single":
+            self.ntest = int(input("Enter ntest:"))
+            self.T = int(input("Enter of desired lags :"))
+        self.create_x_y()
+        self.fit_model()
+        self.create_resault()
+
+    def create_x_y(self):
+        if self.type_step == "multi":
+            X = []
+            Y = []
+            for t in range(len(self.series) - self.Tx - self.Ty + 1):
+                x = self.series[t : t + self.Tx]
+                y = self.series[t + self.Tx : t + self.Tx + self.Ty]
+                X.append(x)
+                Y.append(y)
+            X = np.array(X).reshape(-1, self.Tx)
+            Y = np.array(Y).reshape(-1, self.Ty)
+            self.X = X
+            self.Y = Y
+            Xtrain = X[:-1]
+            Ytrain = Y[:-1]
+            Xtest = X[-1:]
+            Ytest = Y[-1:]
+            self.Xtrain = Xtrain
+            self.Ytrain = Ytrain
+            self.Xtest = Xtest
+            self.Ytest = Ytest
+            train_idx = self.df.index[self.Tx : len(self.series) - self.Ty]
+            test_idx = self.df.index[-self.Ty :]
+            self.train_idx = train_idx
+            self.test_idx = test_idx
+        if self.type_step == "single":
+            X = []
+            Y = []
+            for t in range(len(self.series) - self.T):
+                x = self.series[t : t + self.T]
+                y = self.series[t + self.T]
+                X.append(x)
+                Y.append(y)
+            X = np.array(X).reshape(-1, self.T)
+            Y = np.array(Y)
+            self.X = X
+            self.Y = Y
+            Xtrain = X[: -self.ntest]
+            Ytrain = Y[: -self.ntest]
+            Xtest = X[-self.ntest :]
+            Ytest = Y[-self.ntest :]
+            self.Xtrain = Xtrain
+            self.Ytrain = Ytrain
+            self.Xtest = Xtest
+            self.Ytest = Ytest
+            train_idx = self.df.index[self.T : len(self.series) - self.ntest]
+            test_idx = self.df.index[-self.ntest :]
+            self.train_idx = train_idx
+            self.test_idx = test_idx
+
+    def fit_model(self):
+        self.model.fit(self.Xtrain, self.Ytrain)
+        if self.type_step == "single":
+            self.pred = self.predict_future(self.Xtest[0], self.ntest)
+
+        if self.type_step == "multi":
+            self.pred = self.model.predict(self.Xtest).flatten()
+
+    def predict_future(self, last_x, steps):
+        if self.type_step == "single":
+            pred = []
+            while len(pred) < steps:
+                p = self.model.predict(last_x.reshape(1, -1))[0]
+                pred.append(p)
+                last_x = np.roll(last_x, -1)
+                last_x[-1] = p
+        if self.type_step == "multi":
+            pred = self.model.predict(last_x.reshape(1, -1)).flatten()
+        return pred
+
+    def create_resault(self):
+        res = self.df.loc[self.test_idx]
+        res.loc[self.test_idx, "pred"] = self.pred
+        self.res = res
+
+    def plot_resault(self):
+        self.res.plot()
+        r2 = r2_score(self.Ytest.flatten(), self.pred)
+        print("R2:", r2)
+
+
+class TimeSeries_diff:
+    def __init__(self, df, model, type_step):
+        self.model = model
+        self.type_step = type_step
+        df.rename(columns={df.columns[0]: "Data"}, inplace=True)
+        df["diff"] = df.diff(1)
+        df.dropna(inplace=True)
+        self.df = df
+        self.series = df["diff"].to_numpy()
+        if type_step == "multi":
+            self.Tx = int(input("Enter Tx:"))
+            self.Ty = int(input("Enter Ty:"))
+        if type_step == "single":
+            self.ntest = int(input("Enter ntest:"))
+            self.T = int(input("Enter of desired lags :"))
+        self.create_x_y()
+        self.fit_model()
+        self.create_resault()
+
+    def create_x_y(self):
+        if self.type_step == "multi":
+            X = []
+            Y = []
+            for t in range(len(self.series) - self.Tx - self.Ty + 1):
+                x = self.series[t : t + self.Tx]
+                y = self.series[t + self.Tx : t + self.Tx + self.Ty]
+                X.append(x)
+                Y.append(y)
+            X = np.array(X).reshape(-1, self.Tx)
+            Y = np.array(Y).reshape(-1, self.Ty)
+            self.X = X
+            self.Y = Y
+            Xtrain = X[:-1]
+            Ytrain = Y[:-1]
+            Xtest = X[-1:]
+            Ytest = Y[-1:]
+            self.Xtrain = Xtrain
+            self.Ytrain = Ytrain
+            self.Xtest = Xtest
+            self.Ytest = Ytest
+            train_idx = self.df.index[self.Tx : len(self.series) - self.Ty]
+            test_idx = self.df.index[-self.Ty :]
+            self.train_idx = train_idx
+            self.test_idx = test_idx
+            self.last_train = self.df.iloc[-self.Ty - 1]["Data"]
+        if self.type_step == "single":
+            X = []
+            Y = []
+            for t in range(len(self.series) - self.T):
+                x = self.series[t : t + self.T]
+                y = self.series[t + self.T]
+                X.append(x)
+                Y.append(y)
+            X = np.array(X).reshape(-1, self.T)
+            Y = np.array(Y)
+            self.X = X
+            self.Y = Y
+            Xtrain = X[: -self.ntest]
+            Ytrain = Y[: -self.ntest]
+            Xtest = X[-self.ntest :]
+            Ytest = Y[-self.ntest :]
+            self.Xtrain = Xtrain
+            self.Ytrain = Ytrain
+            self.Xtest = Xtest
+            self.Ytest = Ytest
+            train_idx = self.df.index[self.T : len(self.series) - self.ntest]
+            test_idx = self.df.index[-self.ntest :]
+            self.train_idx = train_idx
+            self.test_idx = test_idx
+            self.last_train = self.df.iloc[-self.ntest - 1]["Data"]
+
+    def fit_model(self):
+        self.model.fit(self.Xtrain, self.Ytrain)
+        if self.type_step == "single":
+            self.pred = self.predict_future(self.Xtest[0], self.ntest)[0]
+            self.pred_y = self.predict_future(self.Xtest[0], self.ntest)[1]
+
+        if self.type_step == "multi":
+            self.pred = self.model.predict(self.Xtest)[0].flatten()
+            self.pred_y = self.predict_future(self.Xtest[0], self.Tx)[1].flatten()
+
+    def predict_future(self, last_x, steps):
+        if self.type_step == "single":
+            pred = []
+            pred_y = []
+            last = self.last_train
+            while len(pred) < steps:
+                p = self.model.predict(last_x.reshape(1, -1))[0]
+                pred.append(p)
+                last_x = np.roll(last_x, -1)
+                last_x[-1] = p
+                pred_y.append(last + p)
+                last = pred_y[-1]
+                self.pred_y = pred_y
+        if self.type_step == "multi":
+            pred = self.model.predict(last_x.reshape(1, -1)).flatten()
+            pred_y = self.last_train + np.cumsum(pred)
+        return pred, pred_y
+
+    def create_resault(self):
+        res = self.df.loc[self.test_idx]
+        res.loc[self.test_idx, "pred_diff"] = self.pred
+        res.loc[self.test_idx, "pred_y"] = self.pred_y
+        self.res = res
+
+    def plot_resault(self):
+        self.res[["Data", "pred_y"]].plot()
+        r2 = r2_score(self.Ytest.flatten(), self.pred)
+        print("R2:", r2)
+
+
+class TimeSeries_direct:
+    def __init__(self, model, df, T, ntest):
+        self.model = model
+        self.T = T
+        self.ntest = ntest
+        df.rename(columns={df.columns[0]: "Data"}, inplace=True)
+        df["diff"] = df.diff(1)
+        df.dropna(inplace=True)
+        zero = df[df["diff"] == 0]
+        df.drop(zero.index, inplace=True)
+        self.df = df
+
+        self.series = df["diff"].to_numpy()
+        self.target = (self.series > 0) * 1
+        self.create_x_y()
+        self.fit_model()
+
+    def create_x_y(self):
+        X = []
+        Y = []
+        for t in range(len(self.series) - self.T):
+            x = self.series[t : t + self.T]
+            X.append(x)
+            y = self.target[t + self.T]
+            Y.append(y)
+        X = np.array(X).reshape(-1, self.T)
+        Y = np.array(Y)
+        self.X = X
+        self.Y = Y
+        Xtrain = X[: -self.ntest]
+        Ytrain = Y[: -self.ntest]
+        Xtest = X[-self.ntest :]
+        Ytest = Y[-self.ntest :]
+        self.Xtrain = Xtrain
+        self.Xtest = Xtest
+        self.Ytrain = Ytrain
+        self.Ytest = Ytest
+
+    def fit_model(self):
+        self.model.fit(self.Xtrain, self.Ytrain)
+        ypred = self.model.predict(self.Xtest)
+        self.ypred = ypred
+
+    def resault(self):
+        score = accuracy_score(self.ypred, self.Ytest)
+        print("acuracy_score:", score)

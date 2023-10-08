@@ -583,13 +583,13 @@ indusries = {
     "folad": {
         "scenario": "dollar",
         "scenario_margin": "constant",
-        "energy_g": 1,
+        "energy_g": 1.75,
         "energy_g_next": 1,
     },
     "felezat": {
         "scenario": "dollar",
         "scenario_margin": "constant",
-        "energy_g": 1,
+        "energy_g": 1.75,
         "energy_g_next": 1,
     },
     "ravankar": {
@@ -607,19 +607,19 @@ indusries = {
     "palayesh": {
         "scenario": "dollar",
         "scenario_margin": "constant",
-        "energy_g": 1,
+        "energy_g": 1.75,
         "energy_g_next": 1,
     },
     "urea": {
         "scenario": "dollar",
         "scenario_margin": "not",
-        "energy_g": 1,
+        "energy_g": 1.75,
         "energy_g_next": 1,
     },
     "methanol": {
         "scenario": "dollar",
         "scenario_margin": "not",
-        "energy_g": 1,
+        "energy_g": 1.75,
         "energy_g_next": 1,
     },
     "siman": {
@@ -627,7 +627,7 @@ indusries = {
         "scenario_margin": "constant",
         "alpha_rate": 1.4,
         "alpha_rate_next": 1.4 * 1.4,
-        "energy_g": 1,
+        "energy_g": 2.8,
         "energy_g_next": 1,
     },
     "lastic": {
@@ -635,7 +635,7 @@ indusries = {
         "scenario_margin": "not",
         "alpha_rate": 1.3,
         "alpha_rate_next": 1.3 * 1.3,
-        "energy_g": 1,
+        "energy_g": 2,
         "energy_g_next": 1,
     },
     "shishe": {
