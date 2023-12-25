@@ -3087,30 +3087,64 @@ class Stock:
         df_income.loc[self.future_year] = 0
         df_income.loc[self.future_year + 1] = 0
         pred_income = IncomeDataFrame(df_income, self.pred_cost)
-        pred_income.loc[self.future_year, "فروش"] = self.pred_revenue.loc[
-            self.future_year
-        ].values[0]
-        pred_income.loc[self.future_year + 1, "فروش"] = self.pred_revenue.loc[
-            self.future_year + 1
-        ].values[0]
-        pred_income.loc[
-            self.future_year, "هزینه های عمومی, اداری و تشکیلاتی"
-        ] = -self.pred_opex.loc[self.future_year].values[0]
-        pred_income.loc[
-            self.future_year + 1, "هزینه های عمومی, اداری و تشکیلاتی"
-        ] = -self.pred_opex.loc[self.future_year + 1].values[0]
-        pred_income.loc[
-            self.future_year, "خالص سایر درامدها (هزینه ها) ی عملیاتی"
-        ] = self.pred_other_op.loc[self.future_year].values[0]
-        pred_income.loc[
-            self.future_year + 1, "خالص سایر درامدها (هزینه ها) ی عملیاتی"
-        ] = self.pred_other_op.loc[self.future_year + 1].values[0]
-        pred_income.loc[
-            self.future_year, "خالص سایر درامدها و هزینه های غیرعملیاتی"
-        ] = self.pred_other_non_op.loc[self.future_year].values[0]
-        pred_income.loc[
-            self.future_year + 1, "خالص سایر درامدها و هزینه های غیرعملیاتی"
-        ] = self.pred_other_non_op.loc[self.future_year + 1].values[0]
+        try:
+            pred_income.loc[self.future_year, "فروش"] = self.pred_revenue.loc[
+                self.future_year
+            ].values[0]
+        except:
+            pred_income.loc[self.future_year, "فروش"] = 0
+        try:
+            pred_income.loc[self.future_year + 1, "فروش"] = self.pred_revenue.loc[
+                self.future_year + 1
+            ].values[0]
+        except:
+            pred_income.loc[self.future_year + 1, "فروش"] = 0
+        try:
+            pred_income.loc[
+                self.future_year, "هزینه های عمومی, اداری و تشکیلاتی"
+            ] = -self.pred_opex.loc[self.future_year].values[0]
+        except:
+            pred_income.loc[self.future_year, "هزینه های عمومی, اداری و تشکیلاتی"] = 0
+        try:
+            pred_income.loc[
+                self.future_year + 1, "هزینه های عمومی, اداری و تشکیلاتی"
+            ] = -self.pred_opex.loc[self.future_year + 1].values[0]
+        except:
+            pred_income.loc[
+                self.future_year + 1, "هزینه های عمومی, اداری و تشکیلاتی"
+            ] = 0
+        try:
+            pred_income.loc[
+                self.future_year, "خالص سایر درامدها (هزینه ها) ی عملیاتی"
+            ] = self.pred_other_op.loc[self.future_year].values[0]
+        except:
+            pred_income.loc[
+                self.future_year, "خالص سایر درامدها (هزینه ها) ی عملیاتی"
+            ] = 0
+        try:
+            pred_income.loc[
+                self.future_year + 1, "خالص سایر درامدها (هزینه ها) ی عملیاتی"
+            ] = self.pred_other_op.loc[self.future_year + 1].values[0]
+        except:
+            pred_income.loc[
+                self.future_year + 1, "خالص سایر درامدها (هزینه ها) ی عملیاتی"
+            ] = 0
+        try:
+            pred_income.loc[
+                self.future_year, "خالص سایر درامدها و هزینه های غیرعملیاتی"
+            ] = self.pred_other_non_op.loc[self.future_year].values[0]
+        except:
+            pred_income.loc[
+                self.future_year, "خالص سایر درامدها و هزینه های غیرعملیاتی"
+            ] = 0
+        try:
+            pred_income.loc[
+                self.future_year + 1, "خالص سایر درامدها و هزینه های غیرعملیاتی"
+            ] = self.pred_other_non_op.loc[self.future_year + 1].values[0]
+        except:
+            pred_income.loc[
+                self.future_year + 1, "خالص سایر درامدها و هزینه های غیرعملیاتی"
+            ] = 0
         pred_income.loc[self.future_year, "سرمایه"] = self.income_quarterly[
             "سرمایه"
         ].iloc[-1]
@@ -4753,18 +4787,31 @@ class Stock:
         pred_cost = CostDataFrame(df_cost, self.pred_overhead)
         pred_cost.loc[self.future_year] = 0
         pred_cost.loc[self.future_year + 1] = 0
-        pred_cost.loc[self.future_year, "مواد مستقیم مصرفی"] = self.pred_material.loc[
-            self.future_year
-        ].values[0]
-        pred_cost.loc[
-            self.future_year + 1, "مواد مستقیم مصرفی"
-        ] = self.pred_material.loc[self.future_year + 1].values[0]
-        pred_cost.loc[
-            self.future_year, "دستمزد مستقیم تولید"
-        ] = self.pred_direct_salary.loc[self.future_year].values[0]
-        pred_cost.loc[
-            self.future_year + 1, "دستمزد مستقیم تولید"
-        ] = self.pred_direct_salary.loc[self.future_year + 1].values[0]
+        try:
+            pred_cost.loc[
+                self.future_year, "مواد مستقیم مصرفی"
+            ] = self.pred_material.loc[self.future_year].values[0]
+        except:
+            pred_cost.loc[self.future_year, "مواد مستقیم مصرفی"] = 0
+
+        try:
+            pred_cost.loc[
+                self.future_year + 1, "مواد مستقیم مصرفی"
+            ] = self.pred_material.loc[self.future_year + 1].values[0]
+        except:
+            pred_cost.loc[self.future_year + 1, "مواد مستقیم مصرفی"] = 0
+        try:
+            pred_cost.loc[
+                self.future_year, "دستمزد مستقیم تولید"
+            ] = self.pred_direct_salary.loc[self.future_year].values[0]
+        except:
+            pred_cost.loc[self.future_year, "دستمزد مستقیم تولید"] = 0
+        try:
+            pred_cost.loc[
+                self.future_year + 1, "دستمزد مستقیم تولید"
+            ] = self.pred_direct_salary.loc[self.future_year + 1].values[0]
+        except:
+            pred_cost.loc[self.future_year + 1, "دستمزد مستقیم تولید"] = 0
         pred_cost.update_dependent_columns()
 
         self.pred_cost = pred_cost
@@ -4785,6 +4832,25 @@ class Stock:
 
         self.pred_revenue = pred_price_revenue[["total"]]
         self.pred_count_revenue = pred_count_revenue
+        income_residual = pd.DataFrame(
+            columns=["revenue"], index=[self.future_year, self.future_year + 1]
+        )
+        if isinstance(self.income_done, pd.DataFrame):
+            income_residual.loc[self.future_year] = np.squeeze(
+                self.pred_revenue.loc[self.future_year].values
+                - self.income_done["فروش"].values
+            )
+            income_residual.loc[self.future_year + 1] = np.squeeze(
+                self.pred_revenue.loc[self.future_year + 1].values
+            )
+        else:
+            income_residual.loc[self.future_year] = self.pred_revenue.loc[
+                self.future_year
+            ].values[0]
+            income_residual.loc[self.future_year + 1] = self.pred_revenue.loc[
+                self.future_year + 1
+            ].values[0]
+        self.income_residual = income_residual
 
     def predict_rate_consump(self):
         df = self.rate_consump_quarterly.copy()
@@ -4808,9 +4874,6 @@ class Stock:
         self.pred_rate_consump = pred_rate_consump
 
     def predict_count_consump(self):
-        income_residual = pd.DataFrame(
-            columns=["revenue"], index=[self.future_year, self.future_year + 1]
-        )
         #### create_count_done #####
         count_quarter_done = pd.DataFrame(
             columns=self.products_lst, index=[self.future_year, self.future_year + 1]
@@ -4828,22 +4891,7 @@ class Stock:
             "count_consump", self.future_year, self.last_q
         )
         self.count_consump_done = count_consump_done
-        if isinstance(self.income_done, pd.DataFrame):
-            income_residual.loc[self.future_year] = np.squeeze(
-                self.pred_revenue.loc[self.future_year].values
-                - self.income_done["فروش"].values
-            )
-            income_residual.loc[self.future_year + 1] = np.squeeze(
-                self.pred_revenue.loc[self.future_year + 1].values
-            )
-        else:
-            income_residual.loc[self.future_year] = self.pred_revenue.loc[
-                self.future_year
-            ].values[0]
-            income_residual.loc[self.future_year + 1] = self.pred_revenue.loc[
-                self.future_year + 1
-            ].values[0]
-        self.income_residual = income_residual
+
         material_residual = pd.DataFrame(
             columns=["material"], index=[self.future_year, self.future_year + 1]
         )
@@ -4954,6 +5002,9 @@ class Stock:
             self.pred_material = pred_material
 
     def predict_non_direct_material(self):
+        self.pred_material = pd.DataFrame(
+            columns=["material"], index=[self.future_year, self.future_year + 1]
+        )
         rev_mat = pd.DataFrame(columns=["revenue", "material"])
         rev_mat["revenue"] = self.income_quarterly["فروش"]
         rev_mat["material"] = self.cost_quarterly["مواد مستقیم مصرفی"]
@@ -4964,20 +5015,17 @@ class Stock:
         model = linear.LinearRegression()
         model.fit(x, y)
         self.model_rev_mat = model
+        self.pred_material = pd.DataFrame(
+            columns=["material"], index=[self.future_year, self.future_year + 1]
+        )
         self.pred_material.loc[self.future_year] = (
             model.predict(self.income_residual)[0]
             + self.cost_done["مواد مستقیم مصرفی"].values[0]
-        )
-        self.pred_material = pd.DataFrame(
-            columns=["material"], index=[self.future_year, self.future_year + 1]
         )
         self.pred_material.loc[self.future_year + 1] = model.predict(
             self.income_residual
         )[1]
         self.predict_material_over()
-        self.predict_overhead()
-        self.predict_cost()
-        self.predict_income()
 
     def predict_overhead(
         self,
@@ -4986,18 +5034,32 @@ class Stock:
         pred_overhead = OverheadDataFrame(df_overhead)
         pred_overhead.loc[self.future_year] = 0
         pred_overhead.loc[self.future_year + 1] = 0
-        pred_overhead.loc[
-            self.future_year, "هزینه حقوق و دستمزد"
-        ] = self.pred_overhead_salary.loc[self.future_year].values[0]
-        pred_overhead.loc[
-            self.future_year + 1, "هزینه حقوق و دستمزد"
-        ] = self.pred_overhead_salary.loc[self.future_year + 1].values[0]
-        pred_overhead.loc[
-            self.future_year, "هزینه انرژی (آب، برق، گاز و سوخت)"
-        ] = self.pred_energy.loc[self.future_year].values[0]
-        pred_overhead.loc[
-            self.future_year + 1, "هزینه انرژی (آب، برق، گاز و سوخت)"
-        ] = self.pred_energy.loc[self.future_year + 1].values[0]
+        try:
+            pred_overhead.loc[
+                self.future_year, "هزینه حقوق و دستمزد"
+            ] = self.pred_overhead_salary.loc[self.future_year].values[0]
+        except:
+            pred_overhead.loc[self.future_year, "هزینه حقوق و دستمزد"] = 0
+        try:
+            pred_overhead.loc[
+                self.future_year + 1, "هزینه حقوق و دستمزد"
+            ] = self.pred_overhead_salary.loc[self.future_year + 1].values[0]
+        except:
+            pred_overhead.loc[self.future_year + 1, "هزینه حقوق و دستمزد"] = 0
+        try:
+            pred_overhead.loc[
+                self.future_year, "هزینه انرژی (آب، برق، گاز و سوخت)"
+            ] = self.pred_energy.loc[self.future_year].values[0]
+        except:
+            pred_overhead.loc[self.future_year, "هزینه انرژی (آب، برق، گاز و سوخت)"] = 0
+        try:
+            pred_overhead.loc[
+                self.future_year + 1, "هزینه انرژی (آب، برق، گاز و سوخت)"
+            ] = self.pred_energy.loc[self.future_year + 1].values[0]
+        except:
+            pred_overhead.loc[
+                self.future_year + 1, "هزینه انرژی (آب، برق، گاز و سوخت)"
+            ] = 0
         if "هزینه حمل و نقل و انتقال" in pred_overhead.columns:
             pred_overhead.loc[
                 self.future_year, "هزینه حمل و نقل و انتقال"
@@ -5480,20 +5542,26 @@ class Stock:
             - model_direct_salary.predict(q_residual).sum()
         )
         self.pred_direct_salary = pred_direct_salary
+
         pred_overhead_salary = pd.DataFrame(
             index=[self.future_year, self.future_year + 1], columns=["overhead_salary"]
         )
-        overhead_salary = self.overhead_quarterly[["هزینه حقوق و دستمزد"]]
-        model_overhead_salary = pm.auto_arima(overhead_salary, seasonal=True, m=4)
-        self.model_overhead_salary = model_overhead_salary
-        pred_overhead_salary.loc[self.future_year] = (
-            self.overhead_done["هزینه حقوق و دستمزد"].values[0]
-            + model_overhead_salary.predict(q_residual).sum()
-        )
-        pred_overhead_salary.loc[self.future_year + 1] = (
-            model_overhead_salary.predict(4 + q_residual).sum()
-            - model_overhead_salary.predict(q_residual).sum()
-        )
+        if "هزینه حقوق و دستمزد" in self.overhead_quarterly.columns:
+            overhead_salary = self.overhead_quarterly[["هزینه حقوق و دستمزد"]]
+            model_overhead_salary = pm.auto_arima(overhead_salary, seasonal=True, m=4)
+            self.model_overhead_salary = model_overhead_salary
+            pred_overhead_salary.loc[self.future_year] = (
+                self.overhead_done["هزینه حقوق و دستمزد"].values[0]
+                + model_overhead_salary.predict(q_residual).sum()
+            )
+            pred_overhead_salary.loc[self.future_year + 1] = (
+                model_overhead_salary.predict(4 + q_residual).sum()
+                - model_overhead_salary.predict(q_residual).sum()
+            )
+        else:
+            pred_overhead_salary.loc[self.future_year] = 0
+            pred_overhead_salary.loc[self.future_year + 1] = 0
+
         self.pred_overhead_salary = pred_overhead_salary
 
     def predict_energy(self):
@@ -5621,6 +5689,32 @@ class Stock:
         self.pred_income.loc[self.future_year, "مالیات"] = -pred_tax[0]
         self.pred_income.loc[self.future_year + 1, "مالیات"] = -pred_tax[1]
         self.pred_income.update_dependent_columns()
+
+    def create_analyse(self):
+        #####predict_revenue####
+        self.predict_revenue_residual()
+        self.predict_revenue()
+        ####predict_material####
+        if self.material == "default":
+            self.predict_count_consump()
+            self.predict_rate_consump()
+            self.predict_material()
+        else:
+            self.predict_non_direct_material()
+        #####predict_over_head#######
+        self.predict_salary()
+        self.predict_energy()
+        self.predict_transport()
+        self.predict_non_direct_material()
+        self.predict_other_over()
+        self.predict_overhead()
+        self.predict_cost()
+        ######predict_income#######
+        self.predict_opex()
+        self.predict_other_operate()
+        self.predict_other_non_operate()
+        self.predict_income()
+        self.predict_tax()
 
 
 class OptPort:
