@@ -990,8 +990,8 @@ def bourseview_macro(start=year_ago, end=today_10char):
 
 def integrate_database(
     stocks=wl_prod_keys,
-    y=5,
-    q=10,
+    y=10,
+    q=20,
     m=50,
     last_year=False,
     last_quarter=False,
