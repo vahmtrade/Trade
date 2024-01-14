@@ -70,11 +70,14 @@ class IncomeDataFrame(pd.DataFrame):
             + self["هزینه های عمومی, اداری و تشکیلاتی"]
             + self["خالص سایر درامدها (هزینه ها) ی عملیاتی"]
         )
-        self.loc[:, "سود (زیان) خالص عملیات در حال تداوم قبل از مالیات"] = (
-            self["سود (زیان) عملیاتی"]
-            + self["هزینه های مالی"]
-            + self["خالص سایر درامدها و هزینه های غیرعملیاتی"]
-        )
+        try:
+            self.loc[:, "سود (زیان) خالص عملیات در حال تداوم قبل از مالیات"] = (
+                self["سود (زیان) عملیاتی"]
+                + self["هزینه های مالی"]
+                + self["خالص سایر درامدها و هزینه های غیرعملیاتی"]
+            )
+        except:
+            pass
         self.loc[:, "سود (زیان) خالص عملیات در حال تداوم"] = (
             self["سود (زیان) خالص عملیات در حال تداوم قبل از مالیات"] + self["مالیات"]
         )
@@ -1081,7 +1084,7 @@ def create_quaretrly_columns(df, fiscal_year):
     all_time_id = re.findall(regex_en_timeid_q, str(df.loc[6]))
     n = len(all_time_id)
     my_month = int(all_time_id[-1][5:])
-    my_Q = fiscal_dic[12][my_month]
+    my_Q = fiscal_dic[fiscal_year][my_month]
     my_year = int(all_time_id[-1][:4])
     my_col = []
     session = []
@@ -2719,6 +2722,7 @@ class Stock:
         rf=0.3,
         erp=0.15,
         material="default",
+        n_g=2,
     ):
         self.discounted_n = discounted_n
         self.Name = Name
@@ -2746,6 +2750,7 @@ class Stock:
         self.fiscal_dic = fiscal_dic
         self.rf = rf
         self.erp = erp
+        self.n_g = n_g
         ######## load price data ##########
         try:
             self.Price, self.Price_dollar = read_stock(
@@ -3145,6 +3150,18 @@ class Stock:
             pred_income.loc[
                 self.future_year + 1, "خالص سایر درامدها و هزینه های غیرعملیاتی"
             ] = 0
+        try:
+            pred_income.loc[
+                self.future_year, "هزینه های مالی"
+            ] = self.pred_interest.loc[self.future_year].values[0]
+        except:
+            pred_income.loc[self.future_year, "هزینه های مالی"] = 0
+        try:
+            pred_income.loc[
+                self.future_year + 1, "هزینه های مالی"
+            ] = self.pred_interest.loc[self.future_year + 1].values[0]
+        except:
+            pred_income.loc[self.future_year + 1, "هزینه های مالی"] = 0
         pred_income.loc[self.future_year, "سرمایه"] = self.income_quarterly[
             "سرمایه"
         ].iloc[-1]
@@ -3638,8 +3655,13 @@ class Stock:
         rate_consump = price_consump / count_consump
         rate_buy = price_buy / count_buy
         ##### delete negative data from cost #####
-        cost[cost["دستمزد مستقیم تولید"] < 0] = cost["دستمزد مستقیم تولید"].median()
-        cost[cost["مواد مستقیم مصرفی"] < 0] = cost["مواد مستقیم مصرفی"].median()
+        cost["مواد مستقیم مصرفی"] = cost["مواد مستقیم مصرفی"].apply(
+            lambda x: cost["مواد مستقیم مصرفی"].median() if x < 0 else x
+        )
+        cost["دستمزد مستقیم تولید"] = cost["دستمزد مستقیم تولید"].apply(
+            lambda x: cost["دستمزد مستقیم تولید"].median() if x < 0 else x
+        )
+        # cost[cost["مواد مستقیم مصرفی"] < 0] = cost["مواد مستقیم مصرفی"].median()
         ##### work with inf data ######
         rate_consump.replace([np.inf, -np.inf], np.nan, inplace=True)
         rate_consump.fillna(method="ffill", inplace=True)
@@ -4107,6 +4129,25 @@ class Stock:
         df.drop(["دوره مالی", "تاریخ انتشار"], inplace=True)
         df = remove_zero(df)
         df = df.T
+        if "خالص سایر درآمدها و هزینه‌های غیرعملیاتی" in df.columns:
+            df.rename(
+                columns={
+                    "خالص سایر درآمدها و هزینه‌های غیرعملیاتی": "خالص سایر درامدها و هزینه های غیرعملیاتی"
+                },
+                inplace=True,
+            )
+        if "هزینه‌های مالی" in df.columns:
+            df.rename(columns={"هزینه‌های مالی": "هزینه های مالی"}, inplace=True)
+        if "سود (زیان) عملیات در حال تداوم قبل از مالیات" in df.columns:
+            df.rename(
+                columns={
+                    "سود (زیان) عملیات در حال تداوم قبل از مالیات": "سود (زیان) خالص عملیات در حال تداوم قبل از مالیات"
+                },
+                inplace=True,
+            )
+        df["سود هر سهم بر اساس آخرین سرمایه"] = (
+            df["سود (زیان) خالص"] * 1000 / df["سرمایه"].iloc[-1]
+        )
         converte_numeric(df)
         df_com = df.div(df["فروش"], axis=0)
         if period == "yearly":
@@ -4239,8 +4280,10 @@ class Stock:
             pass
 
     def predict_value(self, pe_terminal=1):
-        eps1 = self.pred_income.loc[self.future_year, "EPS_Capital"]
-        eps2 = self.pred_income.loc[self.future_year + 1, "EPS_Capital"]
+        eps1 = self.pred_income.loc[self.future_year, "سود هر سهم بر اساس آخرین سرمایه"]
+        eps2 = self.pred_income.loc[
+            self.future_year + 1, "سود هر سهم بر اساس آخرین سرمایه"
+        ]
         dps_ratio = self.eps_data["ratio"].iloc[-1]
         dps1 = eps1 * dps_ratio
         dps2 = eps2 * dps_ratio
@@ -4275,7 +4318,7 @@ class Stock:
             pe_terminal_historical = self.pe_fw_historical[["pe"]].median()
             pe_terminal_historical = pe_terminal_historical.values[0]
             self.pe_terminal_historical = pe_terminal_historical
-            pe_terminal_capm = (1 + self.g) / (self.k - self.g)
+            pe_terminal_capm = (self.g_stock) / (1 + self.k - self.g_stock)
             self.pe_terminal_capm = pe_terminal_capm
             pe_terminal = np.average(
                 [pe_terminal_historical, pe_terminal_capm], weights=[2, 1]
@@ -4299,12 +4342,12 @@ class Stock:
         lst = list(range(self.future_year, self.future_year + self.n_g + 2))
         df = pd.DataFrame(index=lst, columns=["EPS", "DPS"])
 
-        df["EPS"].loc[self.future_year] = self.pred_income["EPS_Capital"].loc[
-            self.future_year
-        ]
-        df["EPS"].loc[self.future_year + 1] = self.pred_income["EPS_Capital"].loc[
-            self.future_year + 1
-        ]
+        df["EPS"].loc[self.future_year] = self.pred_income[
+            "سود هر سهم بر اساس آخرین سرمایه"
+        ].loc[self.future_year]
+        df["EPS"].loc[self.future_year + 1] = self.pred_income[
+            "سود هر سهم بر اساس آخرین سرمایه"
+        ].loc[self.future_year + 1]
         df["DPS"].loc[self.future_year] = dps1
         df["DPS"].loc[self.future_year + 1] = dps2
         for j in range(3, self.n_g + 2 + 1):
@@ -4442,11 +4485,13 @@ class Stock:
     def plot_price_value(self):
         pe_2 = (
             self.Price["Close"].iloc[-1]
-            / self.pred_income.loc[self.future_year + 1, "EPS_Capital"]
+            / self.pred_income.loc[
+                self.future_year + 1, "سود هر سهم بر اساس آخرین سرمایه"
+            ]
         )
         pe_1 = (
             self.Price["Close"].iloc[-1]
-            / self.pred_income.loc[self.future_year, "EPS_Capital"]
+            / self.pred_income.loc[self.future_year, "سود هر سهم بر اساس آخرین سرمایه"]
         )
         plt.figure(figsize=[20, 14])
         plt.subplot(2, 1, 1)
@@ -4460,7 +4505,7 @@ class Stock:
         plt.title(self.Name)
 
     def create_end_data(self):
-        end_data = self.income_yearly[["EPS_Capital"]]
+        end_data = self.income_yearly[["سود هر سهم بر اساس آخرین سرمایه"]]
         price = []
         price_first = []
         price_last = []
@@ -4473,9 +4518,13 @@ class Stock:
         vol = []
         lst_adjust_eps = []
 
-        end_data["EPS_Capital"] = end_data["EPS_Capital"].apply(
-            lambda x: 0.1 if x == 0 else x
-        )
+        end_data["سود هر سهم بر اساس آخرین سرمایه"] = end_data[
+            "سود هر سهم بر اساس آخرین سرمایه"
+        ].apply(lambda x: 0.1 if x == 0 else x)
+        end_data.loc[self.future_year] = 0
+        end_data.loc[
+            self.future_year, "سود هر سهم بر اساس آخرین سرمایه"
+        ] = self.pred_income.loc[self.future_year, "سود هر سهم بر اساس آخرین سرمایه"]
         pe_forward_adjust = {}
         for i in end_data.index:
             date_1 = f"{i}-01-01"
@@ -4487,14 +4536,16 @@ class Stock:
                 dt = dt.days
 
                 try:
-                    adjust_eps = end_data.loc[i]["EPS_Capital"] / (
-                        (1 + self.k) ** (dt / 365)
+                    adjust_eps = end_data.loc[i]["سود هر سهم بر اساس آخرین سرمایه"] / (
+                        (1 + 0.4) ** (dt / 365)
                     )
                     pe_forward_adjust[convert_to_jalali(j)] = (
                         self.Price.loc[convert_to_jalali(j)]["Close"] / adjust_eps
                     )
                     days.append(dt)
-                    eps_yearly.append(end_data.loc[i]["EPS_Capital"])
+                    eps_yearly.append(
+                        end_data.loc[i]["سود هر سهم بر اساس آخرین سرمایه"]
+                    )
                     lst_adjust_eps.append(adjust_eps)
                 except:
                     pass
@@ -4505,7 +4556,7 @@ class Stock:
             max_price.append(self.Price.loc[date_1:date_2]["Close"].max())
             pe_fw_yearly.append(
                 self.Price.loc[date_1:date_2]["Close"].values
-                / end_data["EPS_Capital"].loc[i]
+                / end_data["سود هر سهم بر اساس آخرین سرمایه"].loc[i]
             )
             try:
                 price_first.append(self.Price.loc[date_1:date_2]["Close"][0])
@@ -4524,7 +4575,7 @@ class Stock:
         pe_forward_adjust["pe"] = pe_forward_adjust["price"] / pe_forward_adjust["eps"]
         pe_forward_adjust["ret"] = pe_forward_adjust["price"].pct_change()
         pe_forward_adjust["value"] = (
-            pe_forward_adjust["eps_adjust"] * pe_forward_adjust["pe_adjust"].median()
+            pe_forward_adjust["eps"] * pe_forward_adjust["pe"].median()
         )
         pe_forward_adjust["value_trades"] = self.Price["Value"]
         self.pe_forward_adjust = pe_forward_adjust
@@ -4534,31 +4585,25 @@ class Stock:
         end_data["first_price"] = price_first
         end_data["last_price"] = price_last
         end_data["volume"] = vol
-        end_data["mean_price/eps"] = end_data["price"] / end_data["EPS_Capital"]
-        end_data["max_price/eps"] = end_data["max_price"] / end_data["EPS_Capital"]
-        end_data["min_price/eps"] = end_data["min_price"] / end_data["EPS_Capital"]
-        end_data["first_price/eps"] = end_data["first_price"] / end_data["EPS_Capital"]
-        end_data["last_price/eps"] = end_data["last_price"] / end_data["EPS_Capital"]
+        end_data["mean_price/eps"] = (
+            end_data["price"] / end_data["سود هر سهم بر اساس آخرین سرمایه"]
+        )
+        end_data["max_price/eps"] = (
+            end_data["max_price"] / end_data["سود هر سهم بر اساس آخرین سرمایه"]
+        )
+        end_data["min_price/eps"] = (
+            end_data["min_price"] / end_data["سود هر سهم بر اساس آخرین سرمایه"]
+        )
+        end_data["first_price/eps"] = (
+            end_data["first_price"] / end_data["سود هر سهم بر اساس آخرین سرمایه"]
+        )
+        end_data["last_price/eps"] = (
+            end_data["last_price"] / end_data["سود هر سهم بر اساس آخرین سرمایه"]
+        )
         end_data["volatility"] = (end_data["max_price"] / end_data["min_price"]) - 1
         end_data["yearly_ret"] = (end_data["last_price"] / end_data["first_price"]) - 1
-        end_data["eps_ret"] = end_data["EPS_Capital"].pct_change()
+        end_data["eps_ret"] = end_data["سود هر سهم بر اساس آخرین سرمایه"].pct_change()
         end_data["vol_ret"] = end_data["volume"].pct_change()
-        ## predict future year+1
-        try:
-            end_data["min_price"].loc[self.future_year + 1] = (
-                end_data["min_price/eps"].median()
-                * end_data.loc[self.future_year + 1]["EPS_Capital"]
-            )
-            end_data["max_price"].loc[self.future_year + 1] = (
-                end_data["max_price/eps"].median()
-                * end_data.loc[self.future_year + 1]["EPS_Capital"]
-            )
-            end_data["price"].loc[self.future_year + 1] = (
-                end_data["mean_price/eps"].median()
-                * end_data.loc[self.future_year + 1]["EPS_Capital"]
-            )
-        except:
-            pass
         self.end_data = end_data
         self.pe_fw_yearly = pe_fw_yearly
         self.eps_yearly = eps_yearly
@@ -4598,9 +4643,9 @@ class Stock:
             dt = t2 - i
             dt = dt.days
             try:
-                adjust_eps = self.end_data["EPS_Capital"].loc[year_eps] / (
-                    1 + self.k
-                ) ** ((year_eps - year) + dt / 365)
+                adjust_eps = self.end_data["سود هر سهم بر اساس آخرین سرمایه"].loc[
+                    year_eps
+                ] / (1 + self.k) ** ((year_eps - year) + dt / 365)
 
                 pe[i] = self.Price.loc[i]["Close"] / adjust_eps
                 lst_adjust_eps.append(adjust_eps)
@@ -5228,8 +5273,10 @@ class Stock:
         ##### calculate expected_return #####
         k_capm = self.rf + self.beta * self.erp
         k_historical = self.re_historical - 1
+
         self.k_historical = k_historical
         self.k_capm = k_capm
+        self.k = np.mean([k_capm, k_historical])
         ### calculate aggregate growth #######
         rate_aggr = (
             self.rate_yearly[major_good][-5:] / self.rate_yearly[major_good].iloc[-5]
@@ -5325,23 +5372,6 @@ class Stock:
             [[self.price_revenue_residual.loc[self.future_year + 1, "total"]]]
         )
         self.pred_opex = pred_opex
-
-    def predict_tax(self):
-        rev_tax = pd.DataFrame(columns=["pretax", "tax"])
-        rev_tax["pretax"] = self.income_yearly["Pretax_Income"]
-        rev_tax["tax"] = -self.income_yearly["Tax_Provision"]
-        rev_tax["ratio"] = rev_tax["tax"] / rev_tax["pretax"]
-        model = linear.LinearRegression()
-        model.fit(rev_tax[["pretax"]], rev_tax["tax"])
-        self.model_rev_tax = model
-        rev_tax["pred"] = model.predict(rev_tax[["pretax"]])
-        rev_tax["error"] = rev_tax["tax"] - rev_tax["pred"]
-        self.rev_tax = rev_tax
-        tax_future = self.model_rev_tax.predict(
-            self.pred_income[["Pretax_Income"]].iloc[-2:]
-        )
-        self.pred_income.loc[self.future_year, "Tax_Provision"] = -tax_future[0]
-        self.pred_income.loc[self.future_year + 1, "Tax_Provision"] = -tax_future[1]
 
     def predict_other_over(self):
         df = pd.DataFrame(columns=["other", "revenue"])
@@ -5439,7 +5469,7 @@ class Stock:
             self.pred_rate = rate_com * rate_m
             self.predict_revenue()
             self.predict_income()
-            lst.append(self.pred_income.loc[1402, "EPS_Capital"])
+            lst.append(self.pred_income.loc[1402, "سود هر سهم بر اساس آخرین سرمایه"])
         eps = np.array(lst)
         value = self.pe_forward_adjust["pe"].median() * eps
         self.prob_value = value
@@ -5494,10 +5524,17 @@ class Stock:
                 model = pm.auto_arima(df[i], seasonal=True, m=12)
                 vars()[f"model_count{c}"] = model
                 self.__dict__[f"model_count{c}"] = vars()[f"model_count{c}"]
-                res_prod = model.predict(m_residual)
-                res_prod_next = model.predict(m_residual + 12).sum() - res_prod.sum()
-                count_revenue_residual.loc[self.future_year, i] = res_prod.sum()
-                count_revenue_residual.loc[self.future_year + 1, i] = res_prod_next
+                if m_residual == 0:
+                    res_prod_next = model.predict(m_residual + 12).sum()
+                    count_revenue_residual.loc[self.future_year, i] = 0
+                    count_revenue_residual.loc[self.future_year + 1, i] = res_prod_next
+                else:
+                    res_prod = model.predict(m_residual)
+                    res_prod_next = (
+                        model.predict(m_residual + 12).sum() - res_prod.sum()
+                    )
+                    count_revenue_residual.loc[self.future_year, i] = res_prod.sum()
+                    count_revenue_residual.loc[self.future_year + 1, i] = res_prod_next
             except:
                 count_revenue_residual.loc[self.future_year, i] = 0
                 count_revenue_residual.loc[self.future_year + 1, i] = 0
@@ -5507,8 +5544,11 @@ class Stock:
                 model = pm.auto_arima(self.rate_monthly[i], seasonal=True, m=12)
                 vars()[f"model_rate{c}"] = model
                 self.__dict__[f"model_rate{c}"] = vars()[f"model_rate{c}"]
-                res_rate = model.predict(m_residual)
-                res_rate = res_rate.mean()
+                if m_residual == 0:
+                    res_rate = 0
+                else:
+                    res_rate = model.predict(m_residual)
+                    res_rate = res_rate.mean()
                 res_rate_next = model.predict(m_residual + 12)
                 res_rate_next = res_rate_next[-12:].mean()
                 rate_residual.loc[self.future_year, i] = res_rate
@@ -5690,10 +5730,34 @@ class Stock:
         self.pred_income.loc[self.future_year + 1, "مالیات"] = -pred_tax[1]
         self.pred_income.update_dependent_columns()
 
+    def Predict_interest(self):
+        q_residual = 4 - self.last_q
+        interest = self.income_quarterly["هزینه های مالی"].copy()
+        model = pm.auto_arima(interest, seasonal=True, m=4)
+        self.model_interest = model
+        pred_interest = pd.DataFrame(
+            index=[self.future_year, self.future_year + 1], columns=["interest"]
+        )
+        pred_interest.loc[self.future_year] = (
+            model.predict(q_residual).sum()
+            + self.income_done["هزینه های مالی"].values[0]
+        )
+        pred_interest.loc[self.future_year + 1] = (
+            model.predict(4 + q_residual).sum() - model.predict(q_residual).sum()
+        )
+        self.pred_interest = pred_interest
+        self.model_interest = model
+
     def create_analyse(self):
         #####predict_revenue####
-        self.predict_revenue_residual()
-        self.predict_revenue()
+        try:
+            self.predict_revenue_residual()
+        except:
+            self.error.append("cant predict revenue_residual")
+        try:
+            self.predict_revenue()
+        except:
+            self.error.append("cant predict revenue")
         ####predict_material####
         if self.material == "default":
             self.predict_count_consump()
@@ -5702,19 +5766,53 @@ class Stock:
         else:
             self.predict_non_direct_material()
         #####predict_over_head#######
-        self.predict_salary()
-        self.predict_energy()
-        self.predict_transport()
-        self.predict_non_direct_material()
-        self.predict_other_over()
-        self.predict_overhead()
+        try:
+            self.predict_salary()
+        except:
+            self.error.append("cant predict salary")
+        try:
+            self.predict_energy()
+        except:
+            self.error.append("cant predict energy")
+        try:
+            self.predict_transport()
+        except:
+            self.error.append("cant predict transport")
+        try:
+            self.predict_non_direct_material()
+        except:
+            self.error.append("cant predict non_direct_material")
+        try:
+            self.predict_other_over()
+        except:
+            self.error.append("cant predict other_overl")
+        try:
+            self.predict_overhead()
+        except:
+            self.error.append("cant predict_overhead")
         self.predict_cost()
         ######predict_income#######
-        self.predict_opex()
-        self.predict_other_operate()
-        self.predict_other_non_operate()
+        try:
+            self.predict_opex()
+        except:
+            self.error.append("cant predict_opex")
+        try:
+            self.predict_other_operate()
+        except:
+            self.error.append("cant predict_other_operate")
+        try:
+            self.predict_other_non_operate()
+        except:
+            self.error.append("cant other_non_operate")
+        try:
+            self.Predict_interest()
+        except:
+            self.error.append("cant Predict_interest")
         self.predict_income()
-        self.predict_tax()
+        try:
+            self.predict_tax()
+        except:
+            self.error.append("cant Predict_tax")
 
 
 class OptPort:

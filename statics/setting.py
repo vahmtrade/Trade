@@ -513,6 +513,12 @@ wl_prod = {
         "name": "سیمان سپاهان",
         "fiscal_year": 6,
     },
+    "deghazi": {
+        "indus": "darou",
+        "token": "دقاضی",
+        "name": "داروسازی شهید قاضی",
+        "fiscal_year": 12,
+    },
 }
 
 wl_nprod = {
