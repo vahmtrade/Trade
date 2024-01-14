@@ -10,6 +10,8 @@ numpy==1.23.1
 openpyxl==3.0.10
 pandas==1.4.3
 persiantools==3.0.1
+plotly==5.17.0
+pmdarima==2.0.4
 pyportfolioopt==1.5.3
 pyswarm==0.6
 python-bidi==0.4.2

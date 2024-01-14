@@ -355,10 +355,10 @@ def bourseview_login():
         driver.get("https://www.bourseview.com/home/#/account/login")
         sleep(break_time)
 
-        # go to login page
-        page = '//*[@id="web-app-log-in-top-wrapper-fa"]/a/span'
-        webwait.until(clickable((By.XPATH, page)))
-        driver.find_element(By.XPATH, page).click()
+        # click 'vorod'
+        entry = '//*[@id="web-app-log-in-top-wrapper-fa"]/a/span'
+        webwait.until(clickable((By.XPATH, entry)))
+        driver.find_element(By.XPATH, entry).click()
         sleep(break_time)
 
         # send username
@@ -385,8 +385,8 @@ def bourseview_login():
             driver.find_element(By.XPATH, block).click()
             sleep(break_time)
 
-        except:
-            pass
+        except Exception as err:
+            print("cant block add:", err)
 
     except Exception as err:
         print(f"cant login into bourseview : {err}")
