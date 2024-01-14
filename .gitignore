@@ -3,11 +3,6 @@ __pycache__
 .vscode
 .ipynb_checkpoints
 
-*.egg-info
-*.pdf
-*.docx
-*.pkl
-
 /_temp
 /ramanu
 /database/Portfolio
@@ -15,5 +10,10 @@ __pycache__
 
 /statics/secrets.py
 geckodriver.log
+
+*.egg-info
+*.pdf
+*.docx
+*.pkl
+*.ipynb
 test*.py
-test*.ipynb
