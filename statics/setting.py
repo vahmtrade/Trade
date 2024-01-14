@@ -515,6 +515,7 @@ wl_prod = {
     },
 }
 
+
 wl_nprod = {
     "kian": {"indus": "fixed_income", "token": "کیان", "name": "کیان"},
     "palayesh": {"indus": "etf", "token": "پالایش", "name": "پالایش"},
@@ -529,6 +530,8 @@ wl_nprod = {
         "name": "سرمایه گذاری تأمین اجتماعی",
     },
 }
+
+
 structure = {
     "balance": {
         "yearly": "balancesheet/yearly.xlsx",
@@ -579,6 +582,8 @@ structure = {
     "opt": "opt.xlsx",
     "value_opt": "value_opt.xlsx",
 }
+
+
 indusries = {
     "folad": {
         "scenario": "dollar",
@@ -715,6 +720,19 @@ indusries = {
         "energy_g_next": 1,
     },
 }
+
+
+article_types_dict = {
+    "balancesheet": "Balance Sheet",
+    "income": "Income Statements",
+    "cashflow": "Cash Flow",
+    "product": "تولید و فروش",
+    "cost": "بهای تمام شده",
+    "official": "هزینه های عمومی و اداری",
+    "pe": "تاریخچه قیمت",
+}
+
+
 pred_dollar = {1401: 380000, 1402: 450000, 1403: 650000}
 wl_prod_df = pd.DataFrame(wl_prod).T
 wl_prod_keys = list(wl_prod.keys())

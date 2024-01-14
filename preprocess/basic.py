@@ -4,12 +4,13 @@ import shutil
 import subprocess
 import re
 import platform
+import jdatetime
 import pandas as pd
 
 from datetime import datetime
 from pathlib import Path
 from collections import defaultdict
-from itertools import pairwise, tee
+from itertools import tee
 
 from statics.setting import *
 
@@ -17,13 +18,14 @@ if platform.system() == "Windows":
     import win32com.client as win32  # type: ignore
 
 
-def benfords_law(nums):
-    ones = list(filter(lambda x: True if str(x)[0] == "1" else False, nums))
-    return len(ones) / len(nums)
+def pairwise(iterable):
+    a, b = tee(iterable)
+    next(b, None)
+    return zip(a, b)
 
 
 def all_dict_values(data: dict):
-    """{"A": 1,"B": {"C": 2,"D": {"E": 3}}} => [1,2,3]"""
+    """data : {"A": 1,"B": {"C": 2,"D": {"E": 3}}} => [1,2,3]"""
     for v in data.values():
         if isinstance(v, dict):
             yield from all_dict_values(v)
@@ -37,6 +39,58 @@ def only_zero_inequality(n):
         return n
     else:
         return None
+
+
+def remove_non_digit(content):
+    if isinstance(content, (float, int)):
+        return content
+    en_digits = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
+    fa_digits = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"]
+    digits = "".join(
+        [
+            en_digits[fa_digits.index(d)] if d in fa_digits else d
+            for d in str(content)
+            if d.isdigit()
+        ]
+    )
+
+    return digits
+
+
+def to_digits(content):
+    """
+    (۲۵۴,۱۵۹) => -254159
+
+    ۴۳۹,۶۲۸ => 439628
+    """
+    digits = remove_non_digit(content)
+    return (
+        int(digits) * (-1 if "(" in str(content) and ")" in str(content) else 1)
+        if digits
+        else False
+    )
+
+
+def convert_timeid(t, option="gregorian"):
+    """
+    t : 14010701
+
+    option : gregorian,persian
+    """
+    t = remove_non_digit(t)
+    year, month, day = int(t[:4]), int(t[4:6]), int(t[6:8])
+    hijri_date = jdatetime.date(year, month, day)
+
+    persian_date = f'{hijri_date.jweekday()} {hijri_date.strftime("%d %B %Y")}'
+    gregorian_date = (hijri_date.togregorian()).isoformat()
+
+    data = {"gregorian": gregorian_date, "persian": persian_date}
+    return data[option]
+
+
+def benfords_law(nums):
+    ones = list(filter(lambda x: True if str(x)[0] == "1" else False, nums))
+    return len(ones) / len(nums)
 
 
 def clarify_number(a, seprator=",", n=2):
@@ -82,25 +136,14 @@ def clarify_number(a, seprator=",", n=2):
     return b
 
 
-def to_digits(a):
-    """
-    (۲۵۴,۱۵۹) => -254159
-
-    ۴۳۹,۶۲۸ => 439628
-    """
-
-    if isinstance(a, (float, int)):
-        return a
-    en_digits = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
-    fa_digits = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"]
-    b = "".join(
-        [
-            en_digits[fa_digits.index(d)] if d in fa_digits else d
-            for d in str(a)
-            if d.isdigit()
-        ]
+def move_last_file(new_path, base_path=DB):
+    filename = max(
+        os.listdir(DB),
+        key=lambda x: os.path.getctime(os.path.join(DB, x)),
     )
-    return int(b) * (-1 if "(" in str(a) and ")" in str(a) else 1) if b else False
+    old_path = f"{base_path}/{filename}"
+    if os.path.isfile(old_path):
+        os.replace(old_path, new_path)
 
 
 def load_windows_app(app_name):
@@ -151,14 +194,24 @@ def save_as_file(file_path, ext):
         shutil.move(f"./{new_name}", f"{folder}/{new_name}")
 
 
-def move_last_file(new_path, base_path=DB):
-    filename = max(
-        os.listdir(DB),
-        key=lambda x: os.path.getctime(os.path.join(DB, x)),
-    )
-    old_path = f"{base_path}/{filename}"
-    if os.path.isfile(old_path):
-        os.replace(old_path, new_path)
+def get_excel_nums(file_path):
+    df = pd.read_excel(file_path)
+    nums = []
+    for i in df.items():
+        for j in df[i[0]].items():
+            num = j[1]
+            if pd.notna(num) and to_digits(num):
+                nums.append(abs(to_digits(num)))
+
+    return nums
+
+
+def essential_stock_files(stock_name):
+    return [
+        f"{INDUSPATH}/{wl_prod[stock_name]['indus']}/{stock_name}/{i}"
+        for i in all_dict_values(structure)
+        if ".xlsx" in i
+    ]
 
 
 def list_stock_files(stock_name):
@@ -176,18 +229,6 @@ def list_stock_files(stock_name):
     return stock_dirs, stock_files
 
 
-def get_excel_nums(file_path):
-    df = pd.read_excel(file_path)
-    nums = []
-    for i in df.items():
-        for j in df[i[0]].items():
-            num = j[1]
-            if pd.notna(num) and to_digits(num):
-                nums.append(abs(to_digits(num)))
-
-    return nums
-
-
 def create_database_structure():
     for stock, info in wl_prod.items():
         for file in all_dict_values(structure):
@@ -202,50 +243,39 @@ def create_database_structure():
     Path(PKLPATH).mkdir(parents=True, exist_ok=True)
 
 
-def filepath_info(file):
-    stock_types = {
-        "balancesheet": "Balance Sheet",
-        "income": "Income Statements",
-        "cashflow": "Cash Flow",
-        "product": "تولید و فروش",
-        "cost": "بهای تمام شده",
-        "official": "هزینه های عمومی و اداری",
-        "pe": "تاریخچه قیمت",
-    }
-
-    stock_type, per_stock_type, stock_time = "", "", ""
+def filepath_info(filepath):
+    article_type, per_article_type, time_type = "", "", ""
     try:
-        stock_type = [i for i in list(stock_types.keys()) if i in file][0]
-        per_stock_type = stock_types[stock_type]
-    except:
-        pass
+        for i in article_types_dict:
+            if i in filepath:
+                article_type = i
+
+        per_article_type = article_types_dict[article_type]
+
+    except Exception as err:
+        print("cant get type:", filepath, err)
 
     try:
-        stock_times = ["monthly", "quarterly", "yearly"]
-        stock_time = [i for i in stock_times if i in file][0]
+        for i in ["monthly", "quarterly", "yearly"]:
+            if i in filepath:
+                time_type = i
 
-    except:
-        pass
+    except Exception as err:
+        print("cant get time:", filepath, err)
 
-    return [stock_type, per_stock_type, stock_time]
+    return [article_type, per_article_type, time_type]
 
 
 def find_deficiencies(stock_name):
     """deficiencies, pe, opt, eps"""
-    base_files = [
-        f"{INDUSPATH}/{wl_prod[stock_name]['indus']}/{stock_name}/{s}"
-        for s in all_dict_values(structure)
-        if ".xlsx" in s
-    ]
 
-    files = [file for file in base_files if not Path(file).exists()]
-    deficiencies = defaultdict(list)
-    stock_types, time_types = [], []
-    pe = False
-    opt = False
-    eps = False
+    base_files = essential_stock_files(stock_name)
+    missing_files = [i for i in base_files if not Path(i).exists()]
 
-    for file in files:
+    article_types, time_types = [], []
+    pe, opt, eps = False, False, False
+
+    for file in missing_files:
         if "eps.xlsx" in file:
             eps = True
         elif "opt.xlsx" in file:
@@ -254,11 +284,13 @@ def find_deficiencies(stock_name):
             pe = True
 
         else:
-            stock_type, per_stock_type, stock_time = filepath_info(file)
-            stock_types.append(stock_type)
-            time_types.append(stock_time)
+            article_type, per_article_type, time_type = filepath_info(file)
+            article_types.append(article_type)
+            time_types.append(time_type)
 
-    for key, value in zip(stock_types, time_types):
+    deficiencies = defaultdict(list)
+
+    for key, value in zip(article_types, time_types):
         deficiencies[key].append(value)
     deficiencies = dict(deficiencies)
 
@@ -271,12 +303,8 @@ def find_deficiencies(stock_name):
 def check_stock_files(
     stock_name, last_year=False, last_quarter=False, last_month=False, delete=False
 ):
-    base_files = [
-        f"{INDUSPATH}/{wl_prod[stock_name]['indus']}/{stock_name}/{s}"
-        for s in all_dict_values(structure)
-        if ".xlsx" in s
-    ]
     failed = []
+    base_files = essential_stock_files(stock_name)
 
     for file in base_files:
         if Path(file).exists():
@@ -293,12 +321,12 @@ def check_stock_files(
                     print("empty file :", file)
                     failed.append(file)
 
-            except:
-                print("old format : ", file)
+            except Exception as err:
+                print("old format : ", file, err)
                 failed.append(file)
 
             try:
-                stock_type, per_stock_type, stock_time = filepath_info(file)
+                article_type, per_article_type, time_type = filepath_info(file)
 
             except Exception as err:
                 print("cant get filepath info :", file, err)
@@ -309,23 +337,24 @@ def check_stock_files(
                 excel_months = list(map(lambda x: int(x.split("/")[1]), excel_timeids))
                 excel_steps = [abs(a - b) for a, b in pairwise(excel_months)]
                 excel_step = max(excel_steps, key=excel_steps.count)
+                excel_last_quarter = ((excel_months[-1] - 1) // 3) + 1
 
                 steptypes = {1: "monthly", 3: "quarterly", 0: "yearly"}
-                if steptypes[excel_step] != stock_time:
+                if steptypes[excel_step] != time_type:
                     print("unmatch time :", file)
                     failed.append(file)
 
-                if stock_time == "monthly" and last_month != False:
+                if time_type == "monthly" and last_month != False:
                     if str(last_month) != str(excel_months[-1]):
                         print("old data monthly :", file, excel_months[-1])
                         failed.append(file)
 
-                if stock_time == "quarterly" and last_quarter != False:
-                    if str(last_quarter) != str(excel_months[-1]):
+                if time_type == "quarterly" and last_quarter != False:
+                    if str(last_quarter) != str(excel_last_quarter):
                         print("old data quarterly :", file, excel_months[-1])
                         failed.append(file)
 
-                if stock_time == "yearly" and last_year != False:
+                if time_type == "yearly" and last_year != False:
                     if str(last_year) != str(excel_years[-1]):
                         print("old data yearly :", file, excel_years[-1])
                         failed.append(file)
@@ -333,7 +362,7 @@ def check_stock_files(
             except Exception as err:
                 # TODO : remove pe,opt,eps from this exception
                 # print("cant get excel timeids :", file, err)
-                pass
+                print(err)
 
             try:
                 excel_author = df["Unnamed: 1"][0]
@@ -344,8 +373,8 @@ def check_stock_files(
                     print("not bourseview : ", file)
                     failed.append(file)
 
-                if excel_type != per_stock_type:
-                    print("unmatch type : ", file, per_stock_type)
+                if excel_type != per_article_type:
+                    print("unmatch type : ", file, per_article_type)
                     failed.append(file)
 
                 if excel_token != wl_prod[stock_name]["token"]:
@@ -355,7 +384,7 @@ def check_stock_files(
             except Exception as err:
                 # TODO : remove pe,opt,eps from this exception
                 # print("cant get excel author :", file, err)
-                pass
+                print(err)
 
     failed = list(set(failed))
     if delete:

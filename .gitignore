@@ -9,12 +9,11 @@ __pycache__
 *.pkl
 
 /_temp
-/test
 /ramanu
 /database/Portfolio
 /database/manual
-/statics/secrets.py
 
+/statics/secrets.py
 geckodriver.log
 test*.py
 test*.ipynb
